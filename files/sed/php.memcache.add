@@ -1,0 +1,1 @@
+s/dbpassword.*/&\n  'memcache.local' => 'x',/

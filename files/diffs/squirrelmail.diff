@@ -1,0 +1,11 @@
+--- squirrelmail.conf.bak_VW	2015-05-22 14:36:17.687041788 +0200
++++ squirrelmail.conf	2015-05-22 14:36:00.447041788 +0200
+@@ -32,5 +32,8 @@
+     Order allow,deny
+     Allow from all
+   </IfModule>
++  <IfModule passenger_module>
++    PassengerEnabled off
++  </IfModule>
+ </Directory>
+ 

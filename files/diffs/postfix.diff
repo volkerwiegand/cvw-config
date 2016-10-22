@@ -1,0 +1,138 @@
+diff -Naur postfix.old/main.cf postfix/main.cf
+--- postfix.old/main.cf	2014-06-10 03:39:24.000000000 +0200
++++ postfix/main.cf	2015-05-20 15:23:50.932041788 +0200
+@@ -72,7 +72,7 @@
+ # from gethostname(). $myhostname is used as a default value for many
+ # other configuration parameters.
+ #
+-#myhostname = host.domain.tld
++myhostname = host.domain.tld
+ #myhostname = virtual.domain.tld
+ 
+ # The mydomain parameter specifies the local internet domain name.
+@@ -80,7 +80,7 @@
+ # $mydomain is used as a default value for many other configuration
+ # parameters.
+ #
+-#mydomain = domain.tld
++mydomain = domain.tld
+ 
+ # SENDING MAIL
+ # 
+@@ -96,7 +96,7 @@
+ # to recipient addresses that have no @domain part.
+ #
+ #myorigin = $myhostname
+-#myorigin = $mydomain
++myorigin = $mydomain
+ 
+ # RECEIVING MAIL
+ 
+@@ -110,10 +110,10 @@
+ #
+ # Note: you need to stop/start Postfix when this parameter changes.
+ #
+-#inet_interfaces = all
++inet_interfaces = all
+ #inet_interfaces = $myhostname
+ #inet_interfaces = $myhostname, localhost
+-inet_interfaces = localhost
++#inet_interfaces = localhost
+ 
+ # Enable IPv4, and IPv6 if supported
+ inet_protocols = all
+@@ -205,7 +205,7 @@
+ # In the left-hand side, specify a bare username, an @domain.tld
+ # wild-card, or specify a user@domain.tld address.
+ # 
+-#local_recipient_maps = unix:passwd.byname $alias_maps
++local_recipient_maps = unix:passwd.byname $alias_maps
+ #local_recipient_maps = proxy:unix:passwd.byname $alias_maps
+ #local_recipient_maps =
+ 
+@@ -248,7 +248,7 @@
+ # 
+ #mynetworks_style = class
+ #mynetworks_style = subnet
+-#mynetworks_style = host
++mynetworks_style = host
+ 
+ # Alternatively, you can specify the mynetworks list by hand, in
+ # which case Postfix ignores the mynetworks_style setting.
+@@ -293,7 +293,7 @@
+ # list this system as their primary or backup MX host. See the
+ # permit_mx_backup restriction description in postconf(5).
+ #
+-#relay_domains = $mydestination
++relay_domains = $mydestination
+ 
+ # INTERNET OR INTRANET
+ 
+@@ -416,7 +416,7 @@
+ # "Maildir/" for qmail-style delivery (the / is required).
+ #
+ #home_mailbox = Mailbox
+-#home_mailbox = Maildir/
++home_mailbox = Maildir/
+  
+ # The mail_spool_directory parameter specifies the directory where
+ # UNIX-style mailboxes are kept. The default setting depends on the
+@@ -446,6 +446,7 @@
+ #
+ #mailbox_command = /some/where/procmail
+ #mailbox_command = /some/where/procmail -a "$EXTENSION"
++mailbox_command = /usr/libexec/dovecot/deliver
+ 
+ # The mailbox_transport specifies the optional transport in master.cf
+ # to use after processing aliases and .forward files. This parameter
+@@ -677,3 +678,23 @@
+ # readme_directory: The location of the Postfix README files.
+ #
+ readme_directory = /usr/share/doc/postfix-2.10.1/README_FILES
++
++# Encryption and authentication / SASL configuration
++#
++smtpd_sasl_type = dovecot
++smtpd_sasl_path = private/auth
++smtpd_sasl_auth_enable = yes
++broken_sasl_auth_clients = yes
++smtpd_sasl_authenticated_header = yes
++smtpd_sasl_security_options = noanonymous
++smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
++smtp_tls_session_cache_database = btree:\$data_directory/smtp_tls_session_cache
++smtp_tls_security_level = may
++smtp_tls_loglevel = 1
++smtp_tls_CAfile = /etc/pki/tls/certs/ca-bundle.crt
++smtpd_tls_cert_file = /etc/pki/tls/certs/localhost.crt
++smtpd_tls_key_file = /etc/pki/tls/private/localhost.key
++smtpd_tls_session_cache_database = btree:\$data_directory/smtpd_tls_session_cache
++smtpd_tls_security_level = may
++smtpd_tls_received_header = yes
++tls_random_source = dev:/dev/urandom
+diff -Naur postfix.old/master.cf postfix/master.cf
+--- postfix.old/master.cf	2014-06-10 03:39:23.000000000 +0200
++++ postfix/master.cf	2015-05-20 15:22:32.597041788 +0200
+@@ -13,16 +13,16 @@
+ #smtpd     pass  -       -       n       -       -       smtpd
+ #dnsblog   unix  -       -       n       -       0       dnsblog
+ #tlsproxy  unix  -       -       n       -       0       tlsproxy
+-#submission inet n       -       n       -       -       smtpd
+-#  -o syslog_name=postfix/submission
+-#  -o smtpd_tls_security_level=encrypt
+-#  -o smtpd_sasl_auth_enable=yes
+-#  -o smtpd_reject_unlisted_recipient=no
++submission inet n       -       n       -       -       smtpd
++  -o syslog_name=postfix/submission
++  -o smtpd_tls_security_level=encrypt
++  -o smtpd_sasl_auth_enable=yes
++  -o smtpd_reject_unlisted_recipient=no
++  -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
++  -o milter_macro_daemon_name=ORIGINATING
+ #  -o smtpd_client_restrictions=$mua_client_restrictions
+ #  -o smtpd_helo_restrictions=$mua_helo_restrictions
+ #  -o smtpd_sender_restrictions=$mua_sender_restrictions
+-#  -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
+-#  -o milter_macro_daemon_name=ORIGINATING
+ #smtps     inet  n       -       n       -       -       smtpd
+ #  -o syslog_name=postfix/smtps
+ #  -o smtpd_tls_wrappermode=yes

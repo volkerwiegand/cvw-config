@@ -1,0 +1,205 @@
+<?xml version="1.0"?>
+
+<config xmlns:xi="http://www.w3.org/2001/XInclude">
+  <host ipv6="true" hostname="true" firewall="true" ntp="true">
+    <os>centos7</os>
+    <fqdn>www.example.com</fqdn>
+    <addr>192.168.12.34</addr>
+    <ssh_port>22221</ssh_port>
+    <admin>admin@example.com</admin>
+  </host>
+
+  <users>
+    <rootmail>admin</rootmail>
+
+    <user id="admin" active="true" maildir="true" ssh="true" imap="true">
+      <info>Example Admin</info>
+      <password>secret123password</password>
+    </user>
+
+    <user id="gogs" active="false" ssh="true">
+      <info>Git Service User</info>
+      <home>/var/local/gogs</home>
+    </user>
+
+    <user id="rails" active="false" ssh="true">
+      <info>Rails Deployer</info>
+      <home>/var/local/rails</home>
+    </user>
+  </users>
+
+  <system priorities="true">
+    <app_root>/var/local</app_root>
+    <language>de_DE</language>
+    <timezone>Europe/Berlin</timezone>
+
+    <web>
+      <server>apache</server>
+      <port>80</port>
+      <ssl_port>443</ssl_port>
+    </web>
+  </system>
+
+  <software development="false" go="true">
+    <certbot active="true">
+      <san>ftp.example.com</san>
+    </certbot>
+
+    <docker active="false">
+    </docker>
+
+    <nginx active="false" php="false">
+      <container id="wordpress" active="true">
+        <uri>/</uri>
+        <port>8100</port>
+      </container>
+      <container id="dokuwiki" active="true">
+        <uri>/dokuwiki</uri>
+        <port>8200</port>
+      </container>
+      <container id="tracker" active="true">
+        <uri>/tracker/</uri>
+        <port>8300</port>
+      </container>
+      <container id="odoo" active="true">
+        <uri>/odoo</uri>
+        <port>8400</port>
+      </container>
+    </nginx>
+
+    <apache active="true" php="true">
+      <loglevel>debug</loglevel>
+    </apache>
+
+    <php active="true" ius56="true">
+    </php>
+
+    <memcache active="true">
+    </memcache>
+
+    <redis active="true">
+    </redis>
+
+    <nodejs active="true">
+      <module>bower</module>
+    </nodejs>
+
+    <openldap active="false" ssl="true">
+      <password>secret456password</password>
+    </openldap>
+
+    <mysql active="true">
+      <password>secret789password</password>
+    </mysql>
+
+    <sqlbuddy active="true">
+      <app_name>SQL Buddy</app_name>
+      <uri>/sqlbuddy</uri>
+    </sqlbuddy>
+
+    <postgresql active="true">
+      <password>secret012password</password>
+    </postgresql>
+
+    <vsftpd active="true">
+      <password>secret345password</password>
+    </vsftpd>
+
+    <b2evolution active="true">
+      <uri>/</uri>
+      <password>secret678password</password>
+    </b2evolution>
+
+    <webdav active="false">
+      <uri>/webdav</uri>
+      <username>wiegand</username>
+      <password>secret901password</password>
+    </webdav>
+
+    <owncloud active="false">
+      <uri>/cloud</uri>
+      <password>secret234password</password>
+    </owncloud>
+
+    <rails active="false" sudo="true">
+      <ruby>2.3.1</ruby>
+
+      <app id="rails_de" active="false">
+        <uri>/app</uri>
+	<port>8100</port>
+        <password>secret567password</password>
+	<secret1>very_long_string_that_no_one_would_guess_if_she_had_to_64_bytes1</secret1>
+	<secret2>very_long_string_that_no_one_would_guess_if_she_had_to_64_bytes2</secret2>
+      </app>
+    </rails>
+
+    <gogs active="false" register="true">
+      <user>gogs</user>
+      <uri>/hub</uri>
+      <password>secret567password</password>
+      <secret>secret_for_gogs</secret>
+    </gogs>
+
+    <kivitendo active="true">
+      <uri>/erp</uri>
+      <password>secret890password</password>
+      <mail>
+        <method>smtp</method>
+        <host>smtp.gmail.com</host>
+        <port>587</port>
+        <security>tls</security>
+        <login>username@gmail.com</login>
+        <password>secret321password</password>
+      </mail>
+    </kivitendo>
+
+    <opencart active="true">
+      <uri>/shop</uri>
+      <password>secret111password</password>
+    </opencart>
+
+    <wordpress active="false">
+      <uri>/wpblog</uri>
+      <password>secret222password</password>
+      <key_1>secret_key_for_wordpress_number_1_of_8aa</key_1>
+      <key_2>secret_key_for_wordpress_number_2_of_8bb</key_2>
+      <key_3>secret_key_for_wordpress_number_3_of_8cc</key_3>
+      <key_4>secret_key_for_wordpress_number_4_of_8dd</key_4>
+      <key_5>secret_key_for_wordpress_number_5_of_8ee</key_5>
+      <key_6>secret_key_for_wordpress_number_6_of_8ff</key_6>
+      <key_7>secret_key_for_wordpress_number_7_of_8gg</key_7>
+      <key_8>secret_key_for_wordpress_number_8_of_8hh</key_8>
+    </wordpress>
+
+    <serendipity active="false">
+      <uri>/syblog</uri>
+      <password>secret333password</password>
+    </serendipity>
+
+    <piwik active="false">
+      <uri>/analytics</uri>
+      <password>secret444password</password>
+    </piwik>
+
+    <mantis active="false">
+      <uri>/tracker</uri>
+      <password>secret555password</password>
+      <salt>salt_for_mantis_which_is_used_for_new_users=</salt>
+      <title>Example Bug Tracker</title>
+    </mantis>
+
+    <piwigo active="false">
+      <uri>/gallery</uri>
+      <password>secret666password</password>
+    </piwigo>
+
+    <dokuwiki active="true">
+      <uri>/dokuwiki</uri>
+      <password>secret777password</password>
+    </dokuwiki>
+  </software>
+
+  <xi:include href="../common.xml" />
+</config>
+
+<!-- vim: set expandtab softtabstop=2 shiftwidth=2 autoindent : -->
