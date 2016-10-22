@@ -1,0 +1,315 @@
+  <common>
+    <download id="b2evolution">
+      <link>http://b2evolution.net/downloads/</link>
+      <url>https://github.com/b2evolution/b2evolution/archive/6.7.7.zip</url>
+    </download>
+    <download id="cloudstore">
+      <link>http://cloudstore.codewizards.co/latest-stable/download/index.html</link>
+      <url>http://cloudstore.codewizards.co/latest-stable/download/co.codewizards.cloudstore.server-0.9.11-bin.tar.gz</url>
+    </download>
+    <download id="consul">
+      <link>https://dl.bintray.com/mitchellh/consul/</link>
+      <url>https://dl.bintray.com/mitchellh/consul/0.5.2_linux_amd64.zip</url>
+      <sha256>171cf4074bfca3b1e46112105738985783f19c47f4408377241b868affa9d445</sha256>
+    </download>
+    <download id="docker_compose">
+      <link>https://github.com/docker/compose/releases/</link>
+      <url>https://github.com/docker/compose/releases/download/1.8.1/docker-compose-Linux-x86_64</url>
+    </download>
+    <download id="dokuwiki">
+      <link>https://download.dokuwiki.org/archive</link>
+      <url>https://download.dokuwiki.org/src/dokuwiki/dokuwiki-2016-06-26a.tgz</url>
+      <md5>9b9ad79421a1bdad9c133e859140f3f2</md5>
+    </download>
+    <download id="ghost">
+      <url>https://ghost.org/zip/ghost-0.5.8.zip</url>
+      <version>0.5.8</version>
+    </download>
+    <download id="gitlist">
+      <url>https://s3.amazonaws.com/gitlist/gitlist-0.5.0.tar.gz</url>
+    </download>
+    <download id="gogs">
+      <link>https://dl.gogs.io/</link>
+      <url>https://dl.gogs.io/gogs_v0.9.97_linux_amd64.tar.gz</url>
+      <sha256>41b0438f3e183f895aa459f5ea90153cbd448edc0ab241cff670e5fea193f1c1</sha256>
+    </download>
+    <download id="haproxy">
+      <url>http://www.haproxy.org/download/1.6/src/haproxy-1.6.9.tar.gz</url>
+      <md5>c52eee40eb66f290d6f089c339b9d2b3</md5>
+    </download>
+    <download id="kivitendo">
+      <url>https://github.com/kivitendo/kivitendo-erp/archive/release-3.4.1.tar.gz</url>
+      <md5>32f81effdfeac82c7a36a77e43dfbf1c</md5>
+    </download>
+    <download id="mantis">
+      <link>http://mantisbt.org/</link>
+      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/1.3.1/mantisbt-1.3.1.tar.gz</url>
+    </download>
+    <download id="nodejs">
+      <link>https://nodejs.org/en/download/</link>
+      <url>https://nodejs.org/dist/v4.5.0/node-v4.5.0-linux-x64.tar.xz</url>
+    </download>
+    <download id="owncloud">
+      <link>https://owncloud.org/install/</link>
+      <url>https://download.owncloud.org/community/owncloud-9.1.1.tar.bz2</url>
+      <md5>7f4ee507750ceaae6c8240f7e6f7896b</md5>
+      <sha256>a6bf3531ebb7e09a11aaae641bc3af933f339261424782841c640bf9df1ba7b9</sha256>
+    </download>
+    <download id="passenger_repo">
+      <url>https://oss-binaries.phusionpassenger.com/yum/definitions/el-passenger.repo</url>
+    </download>
+    <download id="piwigo">
+      <url>http://piwigo.org/download/dlcounter.php?code=2.8.2</url>
+      <name>piwigo-2.8.2.zip</name>
+    </download>
+    <download id="piwik">
+      <url>http://builds.piwik.org/piwik.zip</url>
+    </download>
+    <download id="roundcube">
+      <url>https://github.com/roundcube/roundcubemail/releases/download/1.2.1/roundcubemail-1.2.1-complete.tar.gz</url>
+      <sha256>271aabea275739b5a1f66510b02b79818aa218ffbac2abc9ff168e20a9031d45</sha256>
+    </download>
+    <download id="seafile">
+      <link>https://bitbucket.org/haiwen/seafile/downloads</link>
+      <url>https://bitbucket.org/haiwen/seafile/downloads/seafile-server_4.2.1_x86-64.tar.gz</url>
+    </download>
+    <download id="serendipity">
+      <link>http://www.s9y.org/12.html</link>
+      <url>https://github.com/s9y/Serendipity/releases/download/2.0.4/serendipity-2.0.4.zip</url>
+      <md5>edf8bf832bd1835fb4f769b682d37514</md5>
+      <version>2.0.4</version>
+    </download>
+    <download id="shariff">
+      <link>https://github.com/heiseonline/shariff-backend-php/releases</link>
+      <url>https://github.com/heiseonline/shariff-backend-php/archive/6.0.0.tar.gz</url>
+    </download>
+    <download id="sqlbuddy">
+      <url>https://github.com/calvinlough/sqlbuddy/raw/gh-pages/sqlbuddy.zip</url>
+    </download>
+    <download id="squirrelmail">
+      <link>http://squirrelmail.org/download.php</link>
+      <url>squirrelmail-webmail-1.4.22.tar.gz</url>
+      <md5>ae9e2bc7f4fa58162b6152fcb0cbb3a5</md5>
+      <sha1>c8c3ffba141d067acaeb14dbd22a8d6bedb39267</sha1>
+    </download>
+    <download id="webdav">
+      <link>https://github.com/fruux/sabre-dav/releases</link>
+      <url>https://github.com/fruux/sabre-dav/releases/download/3.2.0/sabredav-3.2.0.zip</url>
+    </download>
+
+    <download id="vault">
+      <url>https://dl.bintray.com/mitchellh/vault/vault_0.2.0_linux_amd64.zip</url>
+      <sha256>b4b64fcea765ebfc7cdbae9cdd2c32bff130ca51f15b9cf47194f112fd5515cf</sha256>
+    </download>
+    <download id="weblate">
+      <link>https://weblate.org/de/download/</link>
+      <url>http://dl.cihar.com/weblate/Weblate-2.4.tar.bz2</url>
+    </download>
+    <download id="wkhtmltox">
+      <url>http://downloads.sourceforge.net/project/wkhtmltopdf/0.12.1/wkhtmltox-0.12.1_linux-centos6-amd64.rpm</url>
+      <version>0.12.1-1</version>
+    </download>
+    <download id="wordpress">
+      <url>https://de.wordpress.org/wordpress-4.6.1-de_DE.tar.gz</url>
+      <md5>8bdf109bcac4b6c05379d01c50c88a51</md5>
+    </download>
+
+    <git id="ruby_build">
+      <url>https://github.com/sstephenson/ruby-build.git</url>
+    </git>
+    <git id="ruby_rbenv">
+      <url>https://github.com/sstephenson/rbenv.git</url>
+    </git>
+
+    <repo id="CentOS">
+      <file>CentOS-Base</file>
+      <prio>1</prio>
+    </repo>
+    <repo id="nginx">
+      <file>nginx</file>
+      <prio>13</prio>
+      <rpm>http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm</rpm>
+      <fingerprint>7bd9bf62</fingerprint>
+    </repo>
+    <repo id="postgresql">
+      <file>pgdg-95-redhat</file>
+      <prio>15</prio>
+      <rpm>http://yum.postgresql.org/9.5/redhat/rhel-7-x86_64/pgdg-redhat95-9.5-2.noarch.rpm</rpm>
+    </repo>
+    <repo id="nodesource">
+      <file>nodesource-el</file>
+      <prio>17</prio>
+      <rpm>https://rpm.nodesource.com/pub_4.x/el/7/x86_64/nodesource-release-el7-1.noarch.rpm</rpm>
+      <key>/etc/pki/rpm-gpg/NODESOURCE-GPG-SIGNING-KEY-EL</key>
+      <flags>--nosignature</flags>
+    </repo>
+    <repo id="docker">
+      <file>docker</file>
+      <key>https://yum.dockerproject.org/gpg</key>
+      <prio>19</prio>
+    </repo>
+    <repo id="webtatic">
+      <file>webtatic</file>
+      <prio>21</prio>
+      <rpm>https://mirror.webtatic.com/yum/el7/webtatic-release.rpm</rpm>
+      <key>/etc/pki/rpm-gpg/RPM-GPG-KEY-webtatic-el7</key>
+      <fingerprint>62e74ca5</fingerprint>
+    </repo>
+    <repo id="ius">
+      <link>https://ius.io/GettingStarted/</link>
+      <file>ius</file>
+      <prio>23</prio>
+      <rpm>https://centos7.iuscommunity.org/ius-release.rpm</rpm>
+      <key>/etc/pki/rpm-gpg/IUS-COMMUNITY-GPG-KEY</key>
+    </repo>
+    <repo id="epel">
+      <file>epel</file>
+      <prio>51</prio>
+      <key>/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7</key>
+      <fingerprint>352c64e5</fingerprint>
+    </repo>
+    <repo id="rpmforge">
+      <prio>53</prio>
+      <key>http://apt.sw.be/RPM-GPG-KEY.dag.txt</key>
+      <rpm>http://packages.sw.be/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm</rpm>
+    </repo>
+    <repo id="rpmfusion">
+      <prio>55</prio>
+      <rpm>http://download1.rpmfusion.org/free/el/updates/6/i386/rpmfusion-free-release-6-1.noarch.rpm</rpm>
+    </repo>
+
+    <rpm_list id="general">
+      <rpm>yum-utils</rpm>
+      <rpm>openssh-clients</rpm>
+      <rpm>bind-utils</rpm>
+      <rpm>wget</rpm>
+      <rpm>lynx</rpm>
+      <rpm>unzip</rpm>
+      <rpm>bzip2</rpm>
+      <rpm>man-pages</rpm>
+      <rpm>vim-enhanced</rpm>
+      <rpm>recode-devel</rpm>
+      <rpm>git</rpm>
+      <rpm>tree</rpm>
+      <rpm>patch</rpm>
+      <rpm>ImageMagick</rpm>
+    </rpm_list>
+    <rpm_list id="devel">
+      <rpm>autoconf</rpm>
+      <rpm>automake</rpm>
+      <rpm>binutils</rpm>
+      <rpm>bison</rpm>
+      <rpm>flex</rpm>
+      <rpm>gcc</rpm>
+      <rpm>gcc-c++</rpm>
+      <rpm>libtool</rpm>
+      <rpm>make</rpm>
+      <rpm>openssl-devel</rpm>
+    </rpm_list>
+    <rpm_list id="development">
+      <rpm>gcc-go</rpm>
+      <rpm>rcs</rpm>
+      <rpm>cvs</rpm>
+      <rpm>subversion</rpm>
+      <rpm>bzr</rpm>
+      <rpm>darcs</rpm>
+      <rpm>mercurial</rpm>
+      <rpm>glibc-devel</rpm>
+      <rpm>python-devel</rpm>
+      <rpm>zlib-devel</rpm>
+      <rpm>bzip2-devel</rpm>
+      <rpm>pcre-devel</rpm>
+      <rpm>expat-devel</rpm>
+      <rpm>json-c-devel</rpm>
+      <rpm>jansson-devel</rpm>
+      <rpm>gettext-devel</rpm>
+      <rpm>readline-devel</rpm>
+      <rpm>ncurses-devel</rpm>
+      <rpm>gdbm-devel</rpm>
+      <rpm>libcurl-devel</rpm>
+      <rpm>libxslt-devel</rpm>
+      <rpm>libxml2-devel</rpm>
+      <rpm>libacl-devel</rpm>
+      <rpm>libtidy-devel</rpm>
+      <rpm>ImageMagick-devel</rpm>
+      <rpm>openldap-devel</rpm>
+      <rpm>sqlite-devel</rpm>
+      <rpm>libffi-devel</rpm>
+      <rpm>libicu-devel</rpm>
+      <rpm>libyaml-devel</rpm>
+    </rpm_list>
+    <rpm_list id="java">
+      <rpm>java-1.8.0-openjdk</rpm>
+      <rpm>maven</rpm>
+    </rpm_list>
+    <rpm_list id="python">
+      <rpm>python-setuptools</rpm>
+      <rpm>python-pip</rpm>
+      <rpm>python-wheel</rpm>
+      <rpm>python-six</rpm>
+      <rpm>translate-toolkit</rpm>
+      <rpm>python-social-auth</rpm>
+      <rpm>python-whoosh</rpm>
+      <rpm>python-pillow</rpm>
+      <rpm>python-lxml</rpm>
+      <rpm>python-dateutil</rpm>
+      <rpm>python-pylibravatar</rpm>
+      <rpm>python-babel</rpm>
+    </rpm_list>
+    <rpm_list id="kivitendo">
+      <rpm>gcc</rpm>
+      <rpm>cpanspec</rpm>
+      <rpm>mod_fcgid</rpm>
+      <rpm>perl-Algorithm-CheckDigits</rpm>
+      <rpm>perl-Archive-Zip</rpm>
+      <rpm>perl-CPAN</rpm>
+      <rpm>perl-CPAN-Meta</rpm>
+      <rpm>perl-CPAN-Meta-YAML</rpm>
+      <rpm>perl-Class-XSAccessor</rpm>
+      <rpm>perl-Clone</rpm>
+      <rpm>perl-DBD-Pg</rpm>
+      <rpm>perl-DBI</rpm>
+      <rpm>perl-DateTime</rpm>
+      <rpm>perl-Email-Address</rpm>
+      <rpm>perl-Email-MIME</rpm>
+      <rpm>perl-ExtUtils-CBuilder</rpm>
+      <rpm>perl-FCGI</rpm>
+      <rpm>perl-File-Copy-Recursive</rpm>
+      <rpm>perl-GD</rpm>
+      <rpm>perl-JSON</rpm>
+      <rpm>perl-List-MoreUtils</rpm>
+      <rpm>perl-Net-SMTP-SSL</rpm>
+      <rpm>perl-Net-SSLGlue</rpm>
+      <rpm>perl-PDF-API2</rpm>
+      <rpm>perl-Params-Validate</rpm>
+      <rpm>perl-parent</rpm>
+      <rpm>perl-Rose-DB</rpm>
+      <rpm>perl-Rose-DB-Object</rpm>
+      <rpm>perl-Rose-Object</rpm>
+      <rpm>perl-Sort-Naturally</rpm>
+      <rpm>perl-String-ShellQuote</rpm>
+      <rpm>perl-TAP-Harness-Env</rpm>
+      <rpm>perl-Template-Toolkit</rpm>
+      <rpm>perl-Text-CSV_XS</rpm>
+      <rpm>perl-Text-Iconv</rpm>
+      <rpm>perl-URI</rpm>
+      <rpm>perl-XML-Writer</rpm>
+      <rpm>perl-YAML</rpm>
+    </rpm_list>
+    <rpm_list id="php">
+      <rpm>php56u</rpm>
+      <rpm>php56u-bcmath</rpm>
+      <rpm>php56u-cli</rpm>
+      <rpm>php56u-common</rpm>
+      <rpm>php56u-devel</rpm>
+      <rpm>php56u-gd</rpm>
+      <rpm>php56u-imap</rpm>
+      <rpm>php56u-intl</rpm>
+      <rpm>php56u-mbstring</rpm>
+      <rpm>php56u-mcrypt</rpm>
+      <rpm>php56u-opcache</rpm>
+      <rpm>php56u-pdo</rpm>
+      <rpm>php56u-pecl-apcu</rpm>
+      <rpm>php56u-xml</rpm>
+    </rpm_list>
+  </common>
