@@ -1,0 +1,502 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw - CVW config system master command
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error 
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+if [[ -s /tmp/cvw.lock ]] ; then
+	_pid=$(cat /tmp/cvw.lock)
+	if kill -0 $_pid 2>/dev/null ; then
+		echo "another cvw process is running (PID $_pid)" >&2
+		exit 1
+	fi
+	rm -f /tmp/cvw.lock
+fi
+echo $$ >/tmp/cvw.lock || exit 1
+trap 'rm /tmp/cvw.lock' 0
+
+
+function usage
+{
+	cat >&2 <<-EOF
+		Syntax: $_prog -b                Fetch backups from host
+		    or: $_prog -B                Restore backups to host
+		    or: $_prog -c [cmd [args]]   Run remote docker-compose command for app
+		    or: $_prog -d [cmd [args]]   Run remote docker command
+		    or: $_prog -e [-D]           Execute config [debug]
+		    or: $_prog -E [-D]           Execute with upgrade [debug]
+		    or: $_prog -f file [name]    Fetch file from server [local name]
+		    or: $_prog -h bits           Generate Diffie-Hellman group
+		    or: $_prog -k [port]         Set remote SSH port in ~/.ssh/config
+		    or: $_prog -K                Delete remote SSH port
+		    or: $_prog -l [cmd]          Remote login as root
+		    or: $_prog -L user [cmd]     Remote login as user
+		    or: $_prog -p len            Generate random password
+		    or: $_prog -P [-y] [-D]      Prepare for setup [copy SSH key, disable ipv6]
+		    or: $_prog -r [svc]          Restart service
+		    or: $_prog -t                Compile and test config.xml
+		    or: $_prog -x flag cmd       Run cvw_xml -flag cmd (verbose)
+		    or: $_prog -X flag cmd       Run cvw_xml -flag cmd (only output)
+		    or: $_prog -z                Zap (delete) remote cvw_... commands
+		Called with: '$_prog $_args'
+	EOF
+	exit 1
+}
+
+
+RSYNC_FLAGS="-az --delete --no-group --no-owner"
+
+
+function failure
+{
+	echo "$_prog: $*" >&2
+	exit 1
+}
+
+
+function finish
+{
+	[[ -s /tmp/cvw/error ]] || exit 0
+
+	echo "=== Error ========" >&2
+	cat /tmp/cvw/error >&2
+	echo "==================" >&2
+	exit 1
+}
+
+
+function combine_ssh_ports
+{
+	local _dir=$HOME/.ssh
+	local _conf=$_dir/config
+	local _file
+
+	rm -f $_conf.tmp_VW
+
+	find $_dir -name "port_*" -print | while read _file ; do
+		cat $_file >>$_conf.tmp_VW
+	done
+
+	if [[ -s $_conf.tmp_VW ]] ; then
+		if cmp -s $_conf $_conf.tmp_VW ; then
+			rm -f $_conf.tmp_VW
+		else
+			mv -f $_conf.tmp_VW $_conf
+		fi
+		chmod 0600 $_conf
+
+		echo ">>> $_conf"
+		cat $_conf
+		echo "<<<"
+	else
+		rm -f $_conf.tmp_VW $_conf
+	fi
+}
+
+
+function setup_config
+{
+	[[ -s config.in.xml ]] || failure "missing config.in.xml"
+	[[ -d ../sbin       ]] || failure "missing ../sbin dir"
+	[[ -d ../files      ]] || failure "missing ../files dir"
+
+	echo "--> creating /tmp/cvw"
+	rm -rf /tmp/cvw
+	mkdir /tmp/cvw
+
+	echo "--> updating /usr/local/sbin"
+	chmod 0755 ../sbin/cvw_*
+	sudo rm -f /usr/local/sbin/cvw_*
+	sudo rsync -a --no-owner --no-group ../sbin/ /usr/local/sbin 2>/tmp/cvw/error
+
+	echo "--> updating /var/local/cfg"
+	xmllint --output cfg/config.xml --xinclude config.in.xml
+	rsync -a ../files/ cfg/files
+	sudo ln -nfs $(pwd)/cfg /var/local/cfg 2>/tmp/cvw/error
+
+	if [[ -d cvw ]] ; then
+		echo "--> updating /var/local/cvw"
+		sudo rsync -a --delete --no-owner --no-group cvw/ /var/local/cvw 2>/tmp/cvw/error
+	fi
+
+	echo "--> setting up access to host"
+	_fqdn=$(cvw_xml -r host/fqdn)
+	_domain=${_fqdn#*.}
+	_addr=$(cvw_xml -r host/addr)
+	[[ -s /tmp/cvw/error ]] && finish
+	rm -f /tmp/cvw/error
+
+	return 0
+}
+
+
+function copy_compose
+{
+	[[ -s docker-compose.yaml ]] || failure "missing docker-compose.yaml"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+
+	cvw_say -a "rsync $_fqdn:/var/local/cvw"
+	sudo rsync -a --delete --no-owner --no-group cvw/ /var/local/cvw 2>>/tmp/cvw/error
+	rsync $RSYNC_FLAGS cvw/ root@$_fqdn:/var/local/cvw 2>>/tmp/cvw/error
+	cvw_say -a "copy docker-compose.yaml"
+	scp docker-compose.yaml root@$_fqdn:/root/docker-compose.yaml 2>>/tmp/cvw/error
+}
+
+
+function wipe_compose
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+
+	cvw_say -a "remove remote docker-compose.yaml"
+	ssh -t root@$_fqdn "rm -f /root/docker-compose.yaml"
+}
+
+
+function copy_local_cvw
+{
+	[[ -d cvw ]] || failure "missing cvw subdir"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+
+	cvw_say -a "rsync $_fqdn:/var/local/cvw"
+	sudo rsync -a --delete --no-owner --no-group cvw/ /var/local/cvw 2>>/tmp/cvw/error
+	rsync $RSYNC_FLAGS cvw/ root@$_fqdn:/var/local/cvw 2>>/tmp/cvw/error
+}
+
+
+function copy_config
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+
+	cvw_say -a "rsync $_fqdn:/usr/local/sbin"
+	rsync -az /usr/local/sbin/cvw_* root@$_fqdn:/usr/local/sbin
+
+	cvw_say -a "rsync $_fqdn:/var/local/cfg"
+	chmod -R go-rwx cfg
+	rsync $RSYNC_FLAGS --copy-links cfg/ root@$_fqdn:/var/local/cfg
+
+	if [[ -d ./cvw ]] ; then
+		cvw_say -a "rsync $_fqdn:/var/local/cvw"
+		rsync $RSYNC_FLAGS cvw/ root@$_fqdn:/var/local/cvw
+	fi
+}
+
+
+function wipe_config
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+
+	cvw_say -a "remove remote CVW files"
+	ssh -t root@$_fqdn "rm -rf /var/local/cfg /tmp/cvw"
+}
+
+
+while getopts ":bBcdDeEf:h:kKlL:p:Pr:tx:X:yz" opt ; do
+	_finito=""
+	case $opt in
+		b)
+			setup_config
+			cvw_say
+			cvw_say -a "Fetch backups from host"
+			rsync -v $RSYNC_FLAGS root@$_fqdn:/var/local/backup/ ./backup
+			exit
+		;;
+
+		B)
+			setup_config
+			cvw_say
+			cvw_say -a "Copy backups to host"
+			rsync -v ./backup/ $RSYNC_FLAGS root@$_fqdn:/var/local/backup
+			exit
+		;;
+
+		c)
+			_compose=1
+			_finito=1
+		;;
+
+		d)
+			_docker=1
+			_finito=1
+		;;
+
+		D)
+			_debug="-d"
+		;;
+
+		e)
+			_update=1
+		;;
+
+		E)
+			_upgrade=1
+		;;
+
+		f)
+			_fetch=$OPTARG
+		;;
+
+		h)
+			if [[ $OPTARG == 1024 || $OPTARG == 2048 || $OPTARG == 4096 ]] ; then
+				mkdir -p cfg/files/keys
+				openssl dhparam -out cfg/files/keys/dh${OPTARG}_param.pem $OPTARG
+			else
+				failure "DH param must be 1024, 2048 or 4096"
+			fi
+			exit
+		;;
+
+		k)
+			_add_ssh_port=1
+		;;
+
+		K)
+			_del_ssh_port=1
+		;;
+
+		l)
+			_root_login=1
+		;;
+
+		L)
+			_user_login=$OPTARG
+		;;
+
+		p)
+			openssl rand -base64 200 | tr -dc [:alnum:] | cut -c-$OPTARG
+			exit
+		;;
+
+		P)
+			_prepare=1
+		;;
+
+		r)
+			_restart=$OPTARG
+		;;
+
+		t)
+			setup_config
+			exit
+		;;
+
+		x)
+			_run_xml=$OPTARG
+		;;
+
+		X)
+			_run_XML=$OPTARG
+		;;
+
+		y)
+			_copy_key=1
+		;;
+
+		z)
+			setup_config
+			cvw_say -a "Remove /usr/local/sbin/cvw_... commands"
+			sudo rm -rf /usr/local/sbin/cvw_*
+			ssh -t root@$_fqdn "rm -rf /usr/local/sbin/cvw_*"
+			exit
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+	[[ $_finito ]] && break
+done
+shift $(($OPTIND-1))
+
+
+if [[ $_compose ]] ; then
+	_fqdn=$(cvw_xml -r host/fqdn)
+	_cmd="$@"
+	[[ -z $_cmd ]] && _cmd="up -d"
+	copy_compose
+	copy_local_cvw
+	cvw_say -a "docker-compose $_cmd"
+	cvw_say
+	ssh -tq root@$_fqdn /usr/local/bin/docker-compose "$_cmd"
+	cvw_say
+	wipe_compose
+	exit
+fi
+
+
+if [[ $_docker ]] ; then
+	_fqdn=$(cvw_xml -r host/fqdn)
+	_cmd="$@"
+	[[ -z $_cmd ]] && _cmd="ps -a"
+	cvw_say -a "docker $_cmd"
+	cvw_say
+	ssh -tq root@$_fqdn docker "$_cmd"
+	cvw_say
+	exit
+fi
+
+
+if [[ $_update ]] ; then
+	setup_config
+	copy_config
+	cvw_say -a "updating $_fqdn $_debug"
+	time ssh -t root@$_fqdn "cvw_boot $_debug"
+	exit
+fi
+
+
+if [[ $_upgrade ]] ; then
+	setup_config
+	copy_config
+	cvw_say -a "upgrading $_fqdn $_debug"
+	time ssh -t root@$_fqdn "cvw_boot -u $_debug"
+	exit
+fi
+
+
+if [[ $_root_login ]] ; then
+	setup_config
+	if [[ $# -ge 1 ]] ; then
+		cvw_say -a "root@$_fqdn: '$@'"
+		cvw_say
+		ssh -t root@$_fqdn "$@"
+	else
+		copy_config
+		cvw_say
+		ssh -t root@$_fqdn
+		wipe_config
+	fi
+	exit
+fi
+
+
+if [[ $_user_login ]] ; then
+	setup_config
+	cvw_say
+	if [[ $# -ge 1 ]] ; then
+		cvw_say -a "$_user_login@$_fqdn: '$@'"
+		ssh -t $_user_login@$_fqdn "$@"
+	else
+		ssh -t $_user_login@$_fqdn
+	fi
+	exit
+fi
+
+
+if [[ $_restart ]] ; then
+	setup_config
+	ssh -t root@$_fqdn "systemctl -t service stop $_restart"
+	sleep 5
+	ssh -t root@$_fqdn "systemctl -t service start $_restart"
+	exit
+fi
+
+
+if [[ $_prepare ]] ; then
+	setup_config
+	cvw_say -a "setup current SSH keys for $_fqdn"
+
+	if [[ -n "$_copy_key" ]] ; then
+		scp $HOME/.ssh/id_rsa.pub root@$_fqdn:/root/.ssh/authorized_keys
+	fi
+	if [[ -n "$_debug" ]] ; then
+		ssh -t root@$_fqdn "sysctl -w net.ipv6.conf.all.disable_ipv6=1"
+		ssh -t root@$_fqdn "sysctl -w net.ipv6.conf.default.disable_ipv6=1"
+	fi
+	cvw_say -a "check if my ssh key has been installed"
+	ssh -t root@$_fqdn "cat /root/.ssh/authorized_keys"
+	cvw_say
+
+	cvw_say -a "disable password login"
+	ssh -t root@$_fqdn "sed -i -e '/^PasswordAuthentication/s/yes/no/' /etc/ssh/sshd_config"
+
+	cvw_say -a "make sure scp is available"
+	ssh -t root@$_fqdn "test -x /usr/bin/scp || yum install -q -y openssh-clients"
+	cvw_say -a "make sure rsync is available"
+	ssh -t root@$_fqdn "test -x /usr/bin/rsync || yum install -q -y rsync"
+	cvw_say -a "make sure deltarpm is available"
+	ssh -t root@$_fqdn "test -x /usr/bin/applydeltarpm || yum install -q -y deltarpm"
+	cvw_say -a "make sure xmlstarlet is available"
+	ssh -t root@$_fqdn "test -s /etc/yum.repos.d/epel.repo || yum install -q -y epel-release"
+	ssh -t root@$_fqdn "rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7"
+	ssh -t root@$_fqdn "test -x /usr/bin/xmlstarlet || yum install -q -y xmlstarlet"
+
+	cvw_say -a "ready for install"
+	exit 0
+fi
+
+
+if [[ $_fetch ]] ; then
+	setup_config
+	cvw_say -a "Fetch $_fetch from $_fqdn"
+	if [[ $# -eq 0 ]] ; then
+		_local="${_fetch##*/}"
+	elif [[ $# -eq 1 ]] ; then
+		_local="$1"
+	else
+		usage
+	fi
+	scp root@$_fqdn:$_fetch $_local
+	exit
+fi
+
+
+if [[ $_add_ssh_port ]] ; then
+	setup_config
+	if [[ -n "$1" ]] ; then
+		_ssh_port=$1
+	else
+		_ssh_port=$(cvw_xml -r host/ssh_port)
+		[[ -s /tmp/cvw/error ]] && finish
+	fi
+	cat >$HOME/.ssh/port_$_fqdn <<-EOF
+		Host $_fqdn
+		Port $_ssh_port
+
+	EOF
+	combine_ssh_ports
+	exit 0
+fi
+
+
+if [[ $_del_ssh_port ]] ; then
+	setup_config
+	rm -f $HOME/.ssh/port_$_fqdn
+	combine_ssh_ports
+	exit 0
+fi
+
+
+if [[ $_run_xml ]] ; then
+	setup_config
+	set +e
+	echo "=== Output ======="
+	cvw_xml -$_run_xml $@
+	echo "=== $? ============"
+	[[ -s /tmp/cvw/error ]] && cat /tmp/cvw/error
+	exit 0
+fi
+
+
+if [[ $_run_XML ]] ; then
+	setup_config >/dev/null
+	cvw_xml -$_run_XML $@
+	exit
+fi
+
+usage
+

@@ -1,0 +1,10 @@
+#
+# Ignore real server configurations
+#
+*.de/
+
+# Ignore files containing private data
+#
+files/keys/authorized_keys
+files/misc/postgrey.common
+
