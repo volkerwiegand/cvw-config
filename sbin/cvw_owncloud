@@ -1,0 +1,172 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_owncloud - Install or remove ownCloud
+######                http://owncloud.org/
+######                https://doc.owncloud.org/server/9.1/admin_manual/installation/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+######          TODO verify configuration in subdir
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="ownCloud"
+_slug="owncloud"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function owncloud_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
+	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _html
+	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
+	local _conf _file _subdir
+
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_html/apps \
+			$_html/assets \
+			$_html/config \
+			$_html/data \
+			$_html/themes
+
+	cvw_unpack -i $_slug $_html index.php
+	for _subdir in apps assets config data ; do
+		mkdir -p $_html/$_subdir
+		chown -R apache $_html/$_subdir
+	done
+
+	if [[ -d /var/local/backup/$_slug/last/mysql && \
+	      -d /var/local/backup/$_slug/last/dirs  && \
+	      -x /usr/local/bin/bkup.$_slug          && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+
+	if cvw_xml -a software/nginx ; then
+		_file="/tmp/cvw/nginx.options"
+		cat >$_file <<-EOF
+			root $_root;
+			    add_header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload;";
+			    add_header X-Content-Type-Options nosniff;
+			    add_header X-Frame-Options "SAMEORIGIN";
+			    add_header X-XSS-Protection "1; mode=block";
+			    add_header X-Robots-Tag none;
+			    gzip off;
+			    rewrite ^$_uri/caldav(.*)\$ $_uri/remote.php/caldav\$1 redirect;
+			    rewrite ^$_uri/carddav(.*)\$ $_uri/remote.php/carddav\$1 redirect;
+			    rewrite ^$_uri/webdav(.*)\$ $_uri/remote.php/webdav\$1 redirect;
+			    index index.php;
+			    error_page 403 $_uri/core/templates/403.php;
+			    error_page 404 $_uri/core/templates/404.php;
+
+			   # location ~ ^$_uri/(?:\\.htaccess|data|config|db_structure\\.xml|README) {
+			   #   deny all;
+			   # }
+		EOF
+		cvw_nginx -p software/$_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
+		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
+		echo "" >>$_conf
+		[[ $_uri != "/" ]] && echo "   Alias $_uri $_html" >>$_conf
+		cat >>$_conf <<-EOF
+			   <Directory $_html>
+			      Options +FollowSymlinks
+			      AllowOverride All
+			      Satisfy Any
+			      <IfModule mod_dav.c>
+			         Dav off
+			      </IfModule>
+			      SetEnv HOME $_html
+			      SetEnv HTTP_HOME $_html
+			   </Directory>
+		EOF
+		cvw_url -a "$_name" $_uri
+	fi
+
+	cvw_say -o "$_slug"
+}
+
+
+function owncloud_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _html
+	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
+
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		cvw_backup -z $_slug
+		cvw_mysql -z $_slug $_slug
+		if [[ $_uri == "/" ]] ; then
+			rm -rf /var/www/html
+			mkdir -p /var/www/html
+		fi
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				owncloud_install
+			else
+				owncloud_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

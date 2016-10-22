@@ -1,0 +1,166 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_openldap - Install or remove OpenLDAP
+######                http://www.openldap.org/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+######          TODO finish and verify OpenLDAP - work in progress
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="OpenLDAP"
+_slug="openldap"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i      Install or remove $_name
+		    or: $_prog -c cn   Get distinguished host name with cn
+		    or: $_prog -d      Get distinguished host name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function openldap_get_dn
+{
+	local _cn="$1"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _dc
+
+	_dc=$(echo ${_fqdn#*.} | sed -e 's/\./,dc=/g')
+
+	if [[ -n "$_cn" ]] ; then
+		echo -n "cn=$_cn,dc=$_dc"
+	else
+		echo -n "dc=$_dc"
+	fi
+}
+
+
+function openldap_modify
+{
+	local _ldif="/tmp/cvw/ldapmodify.ldif"
+	local _out="/tmp/cvw/ldapmodify.out"
+
+	[[ -s $_ldif ]] || cvw_say -f "missing $_ldif"
+
+	ldapmodify -Q -Y EXTERNAL -H ldapi:/// -f $_ldif >$_out 2>/tmp/cvw/error
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	rm -f $_ldif $_out
+}
+
+
+function openldap_install
+{
+	cvw_say -h "Installing OpenLDAP"
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file _dir _cnt
+
+	cvw_rpm -i openldap-devel
+	cvw_rpm -i openldap-servers
+	cvw_rpm -i openldap-clients
+
+	_file="/var/lib/ldap/DB_CONFIG"
+	cat /usr/share/openldap-servers/DB_CONFIG.example >$_file.tmp_VW
+	cvw_file -v $_file slapd
+	cvw_service -S slapd
+
+	cat >/tmp/cvw/ldapmodify.ldif <<-EOF
+		dn: olcDatabase={2}hdb,cn=config
+		changetype: modify
+		replace: olcSuffix
+		olcSuffix: $(cvw_openldap -d)
+		-
+		replace: olcRootDN
+		olcRootDN: $(cvw_openldap -c Manager)
+		-
+		replace: olcRootPW
+		olcRootPW: $(slappasswd -h '{SHA}' -s $_pass)
+	EOF
+	openldap_modify
+
+	_dir="/etc/openldap/slapd.d/cn=config/cn=schema"
+	for _file in core cosine inetorgperson ; do
+		_cnt=$(find $_dir -type f -name "*$_file.ldif" -print | wc -l)
+		if [[ $_cnt -eq 0 ]] ; then
+			ldapadd -Q -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/$_file.ldif 2>/tmp/cvw/error
+		fi
+	done
+
+	cvw_say -o "$_slug"
+}
+
+
+function openldap_remove
+{
+	if cvw_rpm -c openldap-servers ; then
+		cvw_say -h "Removing $_name"
+
+		cvw_service -d slapd
+		cvw_rpm -e openldap-servers
+		cvw_rpm -e openldap-clients
+
+		rm -rf /var/lib/ldap /etc/openldap
+
+		rm -f /tmp/cvw/error
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":c:di" opt ; do
+	case $opt in
+		c)
+			openldap_get_dn $OPTARG
+			exit
+		;;
+
+		d)
+			openldap_get_dn
+			exit
+		;;
+
+		i)
+			if cvw_xml -a software/$_slug ; then
+				openldap_install
+			else
+				openldap_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

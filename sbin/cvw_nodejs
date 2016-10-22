@@ -1,0 +1,113 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_nodejs - Install or remove Node.js
+######              https://nodejs.org/en/
+######              https://facebook.github.io/watchman/docs/install.html
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+######          TODO implement removing nodejs
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Node.js"
+_slug="nodejs"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function nodejs_install
+{
+	cvw_say -h "Installing $_name"
+	local _cmd _file _curr _id
+
+	cvw_yum -a nodesource
+	cvw_rpm -i nodejs
+	cvw_rpm -i nodejs-devel
+
+	if [[ ! -x /usr/local/bin/watchman ]] ; then
+		cvw_rpm -l devel
+		cvw_rpm -i python-devel
+		pushd /tmp
+		rm -rf /tmp/watchman
+		git clone https://github.com/facebook/watchman.git
+		cd watchman
+		git checkout v4.7.0
+		./autogen.sh
+		./configure
+		make
+		make install
+		popd
+	fi
+
+	for _id in $(cvw_xml -l software/$_slug/module | sort) ; do
+		cvw_say -s "module: $_id"
+		[[ -f /usr/lib/node_modules/$_id/package.json ]] && continue
+		npm install -g $_id
+	done
+
+	if [[ -s /tmp/cvw/updating ]] ; then
+		cvw_say -s "updating modules"
+		npm update
+	fi
+
+	cvw_say -o "$_slug"
+}
+
+
+function nodejs_remove
+{
+	if cvw_rpm -c nodejs ; then
+		cvw_say -s "$_slug:remove"
+	fi
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				nodejs_install
+			else
+				nodejs_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

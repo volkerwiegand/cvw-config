@@ -1,0 +1,235 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_nginx - Install or remove Nginx
+######             http://nginx.org/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+######          TODO setup nginx and all apps (currently only with docker)
+######          TODO erase nginx-release-centos-7-0 RPM
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Nginx"
+_slug="nginx"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -x   Execute and cleanup
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function nginx_initial
+{
+	cvw_say -h "Installing $_name"
+	local _canon=$(cvw_xml -r host/fqdn)
+	local _web=$(cvw_xml -r system/web/server)
+	local _root="$(cvw_xml -r system/app_root)/$_slug"
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _cert="/etc/letsencrypt/live/$_canon"
+	local _conf="/etc/nginx/conf.d/server.conf"
+	local _ip _port _ssl_port _file
+	local _container _base _uri _path _cport
+
+	if [[ $(cvw_xml -i software/$_slug/container | wc -l) -lt 1 ]] ; then
+		cvw_say -f "nginx needs at least one container"
+	fi
+	mkdir -p $_root 2>>/tmp/cvw/error
+
+	cvw_yum -a nginx
+	cvw_rpm -i nginx
+	cvw_service -s nginx
+
+	if [[ $_web == $_slug ]] ; then
+		_ip="0.0.0.0"
+		_port=$(cvw_xml -r system/web/port)
+		_ssl_port=$(cvw_xml -r system/web/ssl_port)
+	else
+		_ip="127.0.0.1"
+		_port=$(cvw_xml -R software/$_slug/port 8040)
+		if [ $_port -eq $(cvw_xml -r system/web/port) ] ; then
+			cvw_say -f "conflicting port $_port"
+		fi
+		_ssl_port=$(cvw_xml -R software/$_slug/ssl_port 8043)
+		if [ $_ssl_port -eq $(cvw_xml -r system/web/ssl_port) ] ; then
+			cvw_say -f "conflicting ssl port $_ssl_port"
+		fi
+	fi
+
+	_file="/etc/nginx/nginx.conf"
+	cvw_file -e $_file "s/\(worker_processes\).*/\1 auto;/" nginx
+
+	cat >$_conf.tmp_VW <<-EOF
+		server {
+		  listen              $_port default_server;
+	EOF
+	if [[ -d $_cert ]] ; then
+		cat >>$_conf.tmp_VW <<-EOF
+			  listen              $_ssl_port ssl default_server;
+			  ssl_certificate     $_cert/fullchain.pem;
+			  ssl_certificate_key $_cert/privkey.pem;
+			  ssl_session_timeout 5m;
+			  ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+			  ssl_prefer_server_ciphers on;
+			  ssl_session_cache   shared:SSL:10m;
+			  ssl_dhparam         /etc/pki/tls/dhparam.pem;
+			  ssl_ciphers         ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-RSA-DES-CBC3-SHA:ECDHE-ECDSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA;
+		EOF
+	fi
+	cat >>$_conf.tmp_VW <<-EOF
+
+		  server_name         _;
+		  root                $_root;
+		  index               index.html index.htm index.php;
+		  fastcgi_buffers     64 4K;
+		  client_max_body_size 2G;
+
+		  location = /robots.txt  { access_log off; log_not_found off; allow all; }
+		  location = /favicon.ico { access_log off; log_not_found off; allow all; }	
+		  location ~ /\\.ht        { access_log off; log_not_found off; deny  all; }
+
+		  location ~ /\\.well-known {
+		    root $_root;
+		    allow all;
+		  }
+	EOF
+
+	for _container in $(cvw_xml -i software/$_slug/container) ; do
+		cvw_say -s "container: $_container"
+		_base="software/$_slug/container:$_container"
+		_uri=$(cvw_xml -r $_base/uri)
+		_cport=$(cvw_xml -r $_base/port)
+		[[ -s /tmp/cvw/error ]] && exit 1
+
+		if [[ $_uri == "/" ]] ; then
+			echo '' >>$_conf.tmp_VW
+			_path=""
+		elif [[ ${_uri%/} == $_uri ]] ; then
+			echo '' >>$_conf.tmp_VW
+			_path=""
+		else
+			cat >>$_conf.tmp_VW <<-EOF
+
+				  location = $_uri {
+				    return 302 $_uri/;
+				  }
+			EOF
+			_path="$_uri/"
+		fi
+		cat >>$_conf.tmp_VW <<-EOF
+			  location $_uri$_slash {
+			    proxy_set_header Host \$host;
+			    proxy_set_header X-Real-IP \$remote_addr;
+			    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+			    proxy_set_header X-Forwarded-Proto \$scheme;
+			    proxy_set_header X-Proto \$scheme;
+			    proxy_pass       http://127.0.0.1:$_cport$_path;
+			  }
+		EOF
+	done
+
+	[[ -s /tmp/cvw/error ]] && exit 1
+	echo $_conf >>/tmp/cvw/nginx.enabled
+
+	cvw_say -o "$_slug:initial"
+}
+
+
+function nginx_finish
+{
+	cvw_say -h "Finishing Nginx"
+	local _conf="/etc/nginx/conf.d/server.conf"
+	local _file
+
+	echo "}" >>$_conf.tmp_VW
+	cvw_file -v $_conf nginx
+
+	find /etc/nginx/conf.d -maxdepth 1 -name "*.conf" | while read _file ; do
+		grep -q "^$_file" /tmp/cvw/nginx.enabled && continue
+		cvw_file -r $_file nginx
+	done
+	rm -f /tmp/cvw/nginx.enabled
+
+	[[ -s /tmp/cvw/error ]] && exit 1
+	nginx -t >/tmp/cvw/error 2>&1
+	if grep -q failed /tmp/cvw/error ; then
+		exit 1
+	else
+		rm -f /tmp/cvw/error
+	fi
+
+	cvw_say -o "$_slug:finish"
+}
+
+
+function nginx_remove
+{
+	local _root="$(cvw_xml -r system/app_root)/$_slug"
+
+	if cvw_service -c nginx ; then
+		cvw_say -h "Removing Nginx"
+
+		cvw_service -d nginx
+		cvw_rpm -e nginx
+		# rpm erase nginx-release-centos-7-0
+
+		rm -rf /etc/nginx $_root
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":ixy:" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				nginx_initial
+			else
+				nginx_remove
+			fi
+			exit 0
+		;;
+
+		x)
+			if cvw_xml -a software/$_slug ; then
+				nginx_finish
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
