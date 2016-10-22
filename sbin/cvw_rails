@@ -1,0 +1,365 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_rails - Install or remove Ruby and Rails
+######             https://www.ruby-lang.org/de/downloads/
+######             http://rubyonrails.org/download/
+######             https://github.com/sstephenson/rbenv
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Ruby and Rails"
+_slug="rails"
+
+
+_RBENV_ROOT="/usr/local/rbenv"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function rails_gem_install
+{
+	local _gem=$1
+	local _check=$(gem list -i "^$_gem$")
+
+	if [[ "$_check" != "true" ]] ; then
+		cvw_user -r rails "gem install $_gem"
+		cvw_user -r rails "rbenv rehash"
+	fi
+}
+
+
+function rails_install_app
+{
+	local _id=$1
+	local _base="software/$_slug/app:$_id"
+	local _pass=$(cvw_xml -r $_base/password)
+	local _dir=$(cvw_user -h rails)/$_id
+	local _uri=$(cvw_xml -r $_base/uri)
+	local _port=$(cvw_xml -r $_base/port)
+	local _secret1=$(cvw_xml -r $_base/secret1)
+	local _secret2=$(cvw_xml -r $_base/secret2)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	cvw_say -s "app: $_id -> $_uri ($_port)"
+	local _config=$_dir/shared/config
+	local _current=$_dir/current
+	local _file _host _conf _restart _root
+
+	cvw_mysql -c $_id $_id $_pass utf8_general_ci
+	cvw_backup -m $_id -u $_id -p $_pass $_id \
+			$_dir/shared/public/uploads
+
+	install -d -o rails -g rails  -m 0755 $_dir
+	install -d -o rails -g rails  -m 0755 $_dir/shared
+	install -d -o rails -g rails  -m 0755 $_dir/shared/config
+	install -d -o rails -g rails  -m 0755 $_dir/shared/public
+	install -d -o rails -g rails  -m 0755 $_dir/shared/public/system
+	install -d -o rails -g apache -m 0775 $_dir/shared/public/uploads
+	install -d -o rails -g rails  -m 0755 $_dir/releases
+
+	if [[ -h $_current ]] ; then
+		_restart=$_id
+	else
+		cvw_say -s "application not yet loaded"
+		_restart=""
+	fi
+	_file=$_config/secrets.yml
+	cat >$_file.tmp_VW <<-EOF
+		production:
+		  secret_key_base: $_secret1$_secret2
+	EOF
+	cvw_file -m 0644 -v $_file $_restart
+
+	_file=$_config/database.yml
+	cat >$_file.tmp_VW <<-EOF
+		production:
+		  adapter:  mysql2
+		  encoding: utf8
+		  host:     localhost
+		  socket:   $(cvw_mysql -s)
+		  username: $_id
+		  password: $_pass
+		  database: $_id
+		  pool:     5
+	EOF
+	cvw_file -m 0644 -v $_file $_restart
+
+	_file="/etc/logrotate.d/$_id"
+	cat >$_file.tmp_VW <<-EOF
+		# Rotate Rails application logs based on file size
+		# Rotate log if file greater than 5 MB
+		$_dir/shared/log/*.log {
+		    size=5M
+		    missingok
+		    rotate 50
+		    compress
+		    delaycompress
+		    notifempty
+		    copytruncate
+		}
+	EOF
+	cvw_file -m 0775 -v $_file
+
+	_file="$_config/thin.yml"
+	cat >$_file.tmp_VW <<-EOF
+		--- 
+		chdir: $_current
+		prefix: $_uri
+		user: rails
+		group: rails
+		pid: tmp/pids/thin.pid
+		port: $_port
+		address: 127.0.0.1
+		environment: production
+		timeout: 30
+		wait: 30
+		log: log/thin.log
+		max_conns: 1024
+		max_persistent_conns: 512
+		require: []
+		servers: 1
+		threaded: true
+		no-epoll: true
+		daemonize: false
+		tag: $_id
+	EOF
+	cvw_file -m 0644 -v $_file $_restart
+
+	_file="/etc/sysconfig/$_id"
+	cat >$_file.tmp_VW <<-EOF
+		RAILS_ENV=production
+		RAILS_RELATIVE_URL_ROOT=$_uri
+	EOF
+	cvw_file -v $_file $_restart
+
+	_file="/usr/lib/systemd/system/$_id.service"
+	cat >$_file.tmp_VW <<-EOF
+		[Unit]
+		Description=thin server for $_id
+		Requires=mariadb.service
+		After=mariadb.service
+
+		[Service]
+		Type=forking
+		PIDFile=$_current/tmp/pids/thin.$_port.pid
+		WorkingDirectory=$_current
+		EnvironmentFile=/etc/sysconfig/$_id
+		ExecStart=/usr/local/rbenv/shims/thin --config $_current/config/thin.yml start
+
+		[Install]
+		WantedBy=multi-user.target
+	EOF
+	cvw_file -v $_file $_restart
+
+	_file="/etc/sudoers.d/$_id"
+	cat >$_file.tmp_VW <<-EOF
+		rails ALL = NOPASSWD: /usr/bin/systemctl
+	EOF
+	cvw_file -m 0440 -v $_file
+
+	for _host in $(cvw_web -i $_base) ; do
+		if cvw_web -n ; then
+			# this is for static files (assets e.g.)
+			_root=$(cvw_web -r $_host)
+			[[ -d $_root ]] || cvw_say -f "$_base: missing $_conf"
+			_link="$_root$_uri"
+			[[ -d $_link ]] && rm -rf $_link
+			ln -nfs $_current/public $_link 2>>/tmp/cvw/error
+
+			# this is for the RESTful application routes
+			_conf="/etc/nginx/conf.d/$_host.conf"
+			[[ -s $_conf.tmp_VW ]] || cvw_say -f "$_base: missing $_conf"
+			cat >>$_conf.tmp_VW <<-EOF
+
+				  location ^~ $_uri {
+				    try_files \$uri @app_$_id;
+				  }
+				  location @app_$_id {
+				    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+				    proxy_set_header X-Forwarded-Proto \$scheme;
+				    proxy_set_header Host \$host;
+				    proxy_redirect off;
+				    proxy_pass http://127.0.0.1:$_port;
+				  }
+			EOF
+		fi
+		cvw_url -a "$_id" $_uri
+	done
+
+	if [[ -h $_current ]] ; then
+		cvw_service -s $_id
+	else
+		cvw_service -e $_id
+	fi
+}
+
+
+function rails_delete_app
+{
+	local _id=$1
+	local _base="software/$_slug/app:$_id"
+	local _dir
+
+	cvw_service -z $_id
+	rm -f /usr/local/bin/bkup.$_id
+	rm -f /etc/cron.daily/bkup.$_id
+	rm -f /usr/local/bin/rstr.$_id
+	rm -f /etc/logrotate.d/$_id
+	cvw_mysql -z $_id $_id
+
+	if id rails >/dev/null 2>&1 ; then
+		_dir=$(cvw_user -h rails)/$_id
+		if [[ -d $_dir ]] ; then
+			cvw_say -s "removing $_id"
+			rm -rf $_dir
+		fi
+	fi
+}
+
+
+function rails_install
+{
+	cvw_say -h "Installing $_name"
+	local _ruby=$(cvw_xml -r software/$_slug/ruby)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	cvw_user -s rails
+	local _ssh_dir="$(cvw_user -h rails)/.ssh"
+	local _ssh_port _file _version
+
+	install -o rails -g rails -m 0700 -d $_ssh_dir
+	_file="$_ssh_dir/config"
+	if cvw_xml -c host/ssh_port ; then
+		_ssh_port=$(cvw_xml -r host/ssh_port)
+		cvw_say -s "SSH port is $_ssh_port"
+		cat >$_file.tmp_VW <<-EOF
+			Host $(cvw_xml -r host/fqdn)
+			Port $_ssh_port
+		EOF
+		cvw_file -u rails:rails -m 0600 -v $_file
+	else
+		rm -f $_file
+	fi
+
+	cvw_rpm -l development
+	cvw_rpm -i libyaml
+	cvw_rpm -i v8-devel
+
+	cvw_git -i ruby_rbenv -d $_RBENV_ROOT
+	cvw_git -i ruby_build -d $_RBENV_ROOT/plugins/ruby-build
+
+	_file="/etc/profile.d/rbenv.sh"
+	cat >$_file.tmp_VW <<-EOF
+		#
+		# Add rbenv
+		#
+		export RBENV_ROOT=$_RBENV_ROOT
+
+		if ! echo "\$PATH" | grep -q rbenv.bin ; then
+		    export PATH="\$RBENV_ROOT/bin:\$PATH"
+		fi
+
+		eval "\$(rbenv init -)"
+	EOF
+	cvw_file -v $_file
+	source $_file
+
+	_version=$(rbenv version | awk -e '{ print $1 }')
+	if [[ "$_version" != "$_ruby" ]] ; then
+		rbenv install $_ruby
+		rbenv global $_ruby
+		rbenv rehash
+	fi
+	chown -R rails:rails $_RBENV_ROOT
+
+	rails_gem_install bundler
+	rails_gem_install rails
+	rails_gem_install thin
+
+	if [ -s /tmp/cvw/updating ] ; then
+		cvw_say -s "updating Gems"
+		cvw_user -r rails "gem update --system"
+		cvw_user -r rails "gem update --force"
+	fi
+
+	for _id in $(cvw_xml -u software/$_slug/app) ; do
+		rails_delete_app $_id
+	done
+	for _id in $(cvw_xml -i software/$_slug/app) ; do
+		rails_install_app $_id
+	done
+
+	cvw_say -o "$_slug"
+}
+
+
+function rails_remove
+{
+	set +e
+	local _id
+
+	if id rails >/dev/null 2>&1 ; then
+		cvw_say -h "Removing Rails"
+
+		for _id in $(cvw_xml -x software/$_slug/app) ; do
+			rails_delete_app $_id
+		done
+		cvw_user -z rails
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /etc/profile.d/rbenv.sh
+	rm -rf $_RBENV_ROOT
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				rails_install
+			else
+				rails_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
