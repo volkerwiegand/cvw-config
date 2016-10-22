@@ -1,0 +1,187 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_xml - Read config information using xmlstarlet
+######           (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Do not exit on error
+set +e
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+_xml="/var/local/cfg/config.xml"
+_sed="s/:\\([_A-Za-z][_A-Za-z0-9]*\\)/[@id='\\1']/g"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -a match                 Check if /config/match@active is 'true'
+		    or: $_prog -c match                 Check if /config/match exists
+		    or: $_prog -i match                 List ACTIVE /config/match id attribs
+		    or: $_prog -l match                 List /config/match values or nil
+		    or: $_prog -r match/value           Read /config/match/value variable(s)
+		    or: $_prog -R match/value default   Read /config/match/value variable(s)
+		    or: $_prog -t match                 Check if /config/match is 'true'
+		    or: $_prog -t match/attr            Check if /config/match@attr is 'true'
+		    or: $_prog -u match                 List INACTIVE /config/match id attribs
+		    or: $_prog -x match                 List ALL /config/match id attribs
+		Each :attr within match is converted into [@id='attr']
+		Config file is $_xml
+		Called with: '$_prog $_args'
+	EOF
+
+	if [ -d /tmp/cvw ] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function check
+{
+	local _path="$1"
+
+	xmlstarlet sel -Q -t -c "$_path" $_xml && return 0
+	echo "$_prog: $_path not found" >>/tmp/cvw/error
+	exit 1
+}
+
+
+function true_or_false
+{
+	local _value="$1"
+
+	case $_value in
+		true|yes|1)
+			exit 0
+		;;
+		false|no|0)
+			exit 1
+		;;
+	esac
+}
+
+
+while getopts ":a:c:i:l:r:R:t:u:x:" opt ; do
+	case $opt in
+		a)
+			_match=$(echo "/config/$OPTARG" | sed -e "$_sed")
+			xmlstarlet sel -Q -t -c "$_match" $_xml || exit 1
+			_value=$(xmlstarlet sel -t -m "$_match" -v "@active" $_xml)
+			true_or_false $_value
+			exit 1		# not found means "not active"
+		;;
+
+		c)
+			_match=$(echo "/config/$OPTARG" | sed -e "$_sed")
+			xmlstarlet sel -Q -t -c "$_match" $_xml
+			exit
+		;;
+
+		i)
+			_match=$(echo "/config/${OPTARG%/*}" | sed -e "$_sed")
+			check "$_match"
+			_match=$(echo "/config/$OPTARG" | sed -e "$_sed")
+			xmlstarlet sel -t -m "$_match" -v "@id" -n $_xml \
+			    | grep -v "^$" | while read _id ; do
+				_temp="$_match[@id='$_id']"
+				_value=$(xmlstarlet sel -t -m "$_temp" -v "@active" $_xml)
+				test "$_value" = "true" && echo $_id
+				test "$_value" = "yes"  && echo $_id
+				test "$_value" = "1"    && echo $_id
+			done
+			exit 0
+		;;
+
+		l)
+			_match=$(echo "/config/${OPTARG%/*}" | sed -e "$_sed")
+			check "$_match"
+			_value=${OPTARG##*/}
+			xmlstarlet sel -t -m "$_match" -v "$_value" $_xml | grep -v "^$"
+			exit 0
+		;;
+
+		r)
+			_match=$(echo "/config/${OPTARG%/*}" | sed -e "$_sed")
+			_value=${OPTARG##*/}
+			check "$_match/$_value"
+			xmlstarlet sel -t -m "$_match" -v "$_value" $_xml
+			exit 0
+		;;
+
+		R)
+			if cvw_xml -c $OPTARG ; then
+				cvw_xml -r $OPTARG
+				exit
+			fi
+			_default=1
+		;;
+
+		t)
+			_match=$(echo "/config/${OPTARG%/*}" | sed -e "$_sed")
+			_atrib=${OPTARG##*/}
+			check "$_match"
+			_value=$(xmlstarlet sel -t -m "$_match" -v "@$_atrib" $_xml)
+			true_or_false $_value
+			_value=$(xmlstarlet sel -t -m "$_match" -v "$_atrib" $_xml)
+			true_or_false $_value
+			exit 1		# not found means "not true"
+		;;
+
+		u)
+			_match=$(echo "/config/${OPTARG%/*}" | sed -e "$_sed")
+			check "$_match"
+			_match=$(echo "/config/$OPTARG" | sed -e "$_sed")
+			xmlstarlet sel -t -m "$_match" -v "@id" -n $_xml \
+			    | grep -v "^$" | while read _id ; do
+				_temp="$_match[@id='$_id']"
+				_value=$(xmlstarlet sel -t -m "$_temp" -v "@active" $_xml)
+				test "$_value" = "true" && continue
+				test "$_value" = "yes"  && continue
+				test "$_value" = "1"    && continue
+				echo $_id
+			done
+			exit 0
+		;;
+
+		x)
+			_match=$(echo "/config/${OPTARG%/*}" | sed -e "$_sed")
+			check "$_match"
+			_match=$(echo "/config/$OPTARG" | sed -e "$_sed")
+			xmlstarlet sel -t -m "$_match" -v "@id" -n $_xml \
+			    | grep -v "^$" | while read _id ; do
+				echo $_id
+			done
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+if [ $_default ] ; then
+	echo -n "$1"
+	exit 0
+fi
+
+usage
+

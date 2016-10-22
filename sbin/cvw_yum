@@ -1,0 +1,124 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_yum - Install YUM repos
+######           (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i        Install yum repos
+		    or: $_prog -a repo   Activate yum repo
+		Called with: '$_prog $_args'
+	EOF
+
+	if [ -d /tmp/cvw ] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function yum_activate
+{
+	local _repo=$1
+	local _file="/etc/yum.repos.d/$(cvw_xml -r common/repo:$_repo/file).repo"
+	test -s /tmp/cvw/error && exit 1
+	local _flags _key _rpm _load _prio
+
+	if [ ! -s $_file ] ; then
+		if cvw_xml -c common/repo:$_repo/flags ; then
+			_flags=$( cvw_xml -r common/repo:$_repo/flags)
+		else
+			_flags=""
+		fi
+		if cvw_xml -c common/repo:$_repo/rpm ; then
+			cvw_say -s "adding '$_repo' repo (RPM)"
+			_rpm=$(cvw_xml -r common/repo:$_repo/rpm)
+			rpm -U $_flags $_rpm
+		fi
+		if cvw_xml -c common/repo:$_repo/load ; then
+			cvw_say -s "adding '$_repo' repo (LOAD)"
+			_load=$(cvw_xml -r common/repo:$_repo/load)
+			cvw_download -i $_load /etc/yum.repos.d
+		fi
+		if cvw_xml -c common/repo:$_repo/key ; then
+			_key=$(cvw_xml -r common/repo:$_repo/key)
+			rpmkeys --import $_key
+		fi
+	fi
+	if [ ! -s $_file ] ; then
+		cvw_say -f "can't find $_repo file ($_file)"
+	fi
+
+	if cvw_xml -t system/priorities ; then
+		if cvw_xml -c common/repo:$_repo/prio ; then
+			_prio=$(cvw_xml -r common/repo:$_repo/prio)
+			if ! grep -q "^priority=" $_file ; then
+				cvw_say -s "adding prio to '$_file'"
+				cvw_file -e $_file 's/^gpgcheck=.*/&\npriority=99/'
+			fi
+			cvw_file -e $_file "s/^priority=.*/priority=$_prio/"
+		fi
+	fi
+
+	return 0
+}
+
+
+function init_yum
+{
+	cvw_say -h "Installing yum repos"
+	local _file
+
+	cvw_rpm -i yum-plugin-priorities
+	cvw_rpm -i yum-plugin-versionlock
+	yum_activate CentOS
+	yum_activate epel
+
+	cvw_say -o "yum"
+}
+
+
+while getopts ":a:i" opt ; do
+	case $opt in
+		a)
+			yum_activate $OPTARG
+			exit 0
+		;;
+
+		i)
+			init_yum
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
