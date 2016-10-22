@@ -1,0 +1,260 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_user - Install users
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i                     Install active users
+		    or: $_prog -e user                Get user's email address
+		    or: $_prog -h user                Get user's home dir
+		    or: $_prog -p user                Get user's password
+		    or: $_prog -r user [-d dir] cmd   Run command as user
+		    or: $_prog -s user                Setup (inactive) user
+		    or: $_prog -v user                Verify that user exists
+		    or: $_prog -z user                Zap (delete) user
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function user_setup
+{
+	local _id="$1"
+	local _base="users/user:$_id"
+	local _info=$(cvw_xml -r $_base/info)
+	local _home=$(cvw_xml -R $_base/home /home/$_id)
+	local _file="/etc/aliases"
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _line _folder _subdir _path _rsakey _sshdir _keys
+
+	if id $_id >/dev/null 2>&1 ; then
+		cvw_say -s "user: $_id"
+		_line=$(grep "^$_id:" /etc/passwd | cut -d: -f5)
+		if [[ "$_line" != "$_info" ]] ; then
+			cvw_say -s "updating gecos for $_id"
+			usermod -c "$_info" $_id
+		fi
+		_line=$(grep "^$_id:" /etc/passwd | cut -d: -f6)
+		if [[ "$_line" != "$_home" ]] ; then
+			cvw_say -s "updating home for $_id"
+			usermod -d $_home -m $_id
+		fi
+		if ! cvw_xml -t $_base/imap ; then
+			_line=$(grep "^$_id:" /etc/shadow | cut -d: -f2)
+			if [[ "$_line" != "*" ]] ; then
+				cvw_say -s "removing password for $_id"
+				usermod -p "*" $_id
+			fi
+		fi
+	else
+		cvw_say -s "adding user '$_id'"
+		useradd -d $_home -m -c "$_info" -p "*" -s "/bin/bash" $_id
+	fi
+
+	if cvw_xml -t $_base/imap ; then
+		cvw_xml -r $_base/password | passwd --stdin $_id >/dev/null
+		cvw_file -e $_file.tmp_VW "s/^$_id:/#$_id:/"
+		cvw_xml -l $_base/alias | while read _alias ; do
+			cvw_file -e $_file.tmp_VW "s/^$_alias:/#$_alias:/"
+			echo "$_alias:	$_id" >>$_file.tmp_VW
+		done
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
+
+	if cvw_xml -t $_base/maildir ; then
+		for _folder in .Trash .Sent .Drafts .Junk ; do
+			for _subdir in tmp new cur ; do
+				_path=$_home/Maildir/$_folder/$_subdir
+				test -d $_path && continue
+				cvw_say -s "creating $_path"
+				mkdir -p $_path
+			done
+		done
+		chown -R $_id:$_id $_home/Maildir
+	elif [[ -d $_home/Maildir ]] ; then
+		cvw_say -s "deleting $_home/Maildir in 5 seconds"
+		sleep 5
+		rm -rf $_home/Maildir
+	fi
+
+	_sshdir="$_home/.ssh"
+	mkdir -p $_sshdir
+	_rsakey="/var/local/cfg/files/keys/$_id/id_rsa"
+	if [[ -s $_rsakey ]] ; then
+		cp $_rsakey $_sshdir/id_rsa.tmp_VW
+		cvw_file -v $_sshdir/id_rsa
+		cp $_rsakey.pub $_sshdir/id_rsa.pub.tmp_VW
+		cvw_file -v $_sshdir/id_rsa.pub
+	fi
+	if cvw_xml -t $_base/ssh ; then
+		_keys="/var/local/cfg/files/keys/authorized_keys"
+		cp $_keys $_sshdir/authorized_keys.tmp_VW 2>>/tmp/cvw/error
+		cvw_file -v $_sshdir/authorized_keys
+	fi
+	chown -R $_id:$_id $_sshdir
+	chmod -R go-rwx $_sshdir
+	chmod 0755 $_home
+
+	return 0
+}
+
+
+function init_users
+{
+	cvw_say -h "Installing users"
+	local _file="/etc/aliases"
+	local _id _alias _line
+
+	if [[ ! -s $_file.bak_VW ]] ; then
+		cvw_file -e $_file "s/^root:/#root:/"
+		cvw_file -b $_file
+	fi
+
+	echo "# Aliases for external users" >/tmp/cvw/redirect
+	cvw_xml -i users/alias | sort | while read _id ; do
+		cvw_xml -l users/alias:$_id/mailto | sort | while read _alias ; do
+			if [[ -s /tmp/cvw/redirect.$_id ]] ; then
+				echo -n ",$_alias" >>/tmp/cvw/redirect.$_id
+			else
+				echo -n "$_alias" >/tmp/cvw/redirect.$_id
+			fi
+		done
+		[[ -s /tmp/cvw/redirect.$_id ]] || continue
+		echo "$_id:	$(cat /tmp/cvw/redirect.$_id)" >>/tmp/cvw/redirect
+	done
+
+	_id=$(cvw_xml -r users/rootmail)
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	cat >$_file.tmp_VW <<-EOF
+		$(cat $_file.bak_VW)
+		root:		$_id
+
+		$(cat /tmp/cvw/redirect)
+
+		# Aliases for IMAP users
+	EOF
+
+	cvw_xml -i users/user | sort | while read _id ; do
+		user_setup $_id
+	done
+
+	cvw_file -v $_file
+	if [[ -s /tmp/cvw/changed ]] ; then
+		[[ -x /usr/bin/newaliases ]] && newaliases
+		cvw_say -s "############# aliases database #############"
+		cat /etc/aliases | sed -e 's/^/		/'
+		cvw_say -s "############################################"
+	fi
+
+	cvw_say -o "users"
+}
+
+
+while getopts ":d:e:h:ip:r:s:v:z:" opt ; do
+	case $opt in
+		d)
+			_dir=$OPTARG
+		;;
+
+		e)
+			cvw_xml -r users/user:$OPTARG/email
+			exit
+		;;
+
+		h)
+			if cvw_xml -c users/user:$OPTARG/home ; then
+				cvw_xml -r users/user:$OPTARG/home
+			else
+				echo -n "/home/$OPTARG"
+			fi
+			exit
+		;;
+
+		i)
+			init_users
+			exit 0
+		;;
+
+		p)
+			cvw_xml -r users/user:$OPTARG/password
+			exit
+		;;
+
+		r)
+			_user=$OPTARG
+		;;
+
+		s)
+			user_setup $OPTARG
+			exit
+		;;
+
+		v)
+			id $OPTARG >/dev/null 2>&1 && exit 0
+			echo "$_prog: missing user '$OPTARG'" >>/tmp/cvw/error
+			exit 1
+		;;
+
+		z)
+			id $OPTARG >/dev/null 2>&1 || exit 0
+			cvw_say -s "deleting user '$OPTARG'"
+			userdel -fr $OPTARG 2>/tmp/cvw/error
+			if id $OPTARG >/tmp/cvw/zap_user 2>&1 ; then
+				cvw_say -f "user $OPTARG still exists: $(cat /tmp/cvw/zap_user)"
+			fi
+			rm -f /tmp/cvw/zap_user
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+if [[ $_user ]] ; then
+	test $# -ge 1 || usage
+
+	if [[ $_dir ]] ; then
+		cvw_say -s "user: $_user ($_dir) -> '$*'"
+		su -l $_user -s /bin/bash -c "cd $_dir && $*"
+	else
+		cvw_say -s "user: $_user -> '$*'"
+		su -l $_user -s /bin/bash -c "$*"
+	fi
+
+	exit 0
+fi
+
+usage
+

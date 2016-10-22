@@ -1,0 +1,140 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_rpm - RPM handling
+######           (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -c rpm        Check if RPM is installed
+		    or: $_prog -e rpm        Erase single RPM
+		    or: $_prog -g rpm:grp    Install group based on RPM
+		    or: $_prog -i rpm        Install single RPM
+		    or: $_prog -l list       Install RPM from XML list
+		    or: $_prog -L            List installed RPMs
+		    or: $_prog -r rpm        Query RPM version-release
+		    or: $_prog -u            /ugrade / Update all RPMs
+		    or: $_prog -v rpm        Query RPM version
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+while getopts ":c:e:g:i:l:Lr:uv:" opt ; do
+	case $opt in
+		c)
+			set +e
+			rpm -q $OPTARG >/dev/null
+			exit
+		;;
+
+		e)
+			rpm -q $OPTARG >/dev/null || exit 0
+			cvw_say -s "erasing RPM $OPTARG"
+			yum erase -y -q $OPTARG
+			echo "$OPTARG" >/tmp/cvw/changed
+			exit 0
+		;;
+
+		g)
+			_rpm="${OPTARG%:*}"
+			rpm -q $_rpm >/dev/null && exit 0
+			_grp="${OPTARG#*:}"
+			rm -f /tmp/cvw/changed
+			cvw_say -s "installing RPM group '$_grp'"
+			LC_ALL=C yum groups install -y -q "$_grp"
+			echo "$_grp" >/tmp/cvw/changed
+			exit 0
+		;;
+
+		i)
+			rpm -q $OPTARG >/dev/null && exit 0
+			rm -f /tmp/cvw/changed
+			cvw_say -s "installing RPM $OPTARG"
+			if [ -s /tmp/cvw/debug ] ; then
+				yum install -y $OPTARG
+			else
+				yum install -y -q $OPTARG
+			fi
+			echo "$OPTARG" >/tmp/cvw/changed
+			exit 0
+		;;
+
+		l)
+			_changed=""
+			cvw_xml -l common/rpm_list:$OPTARG/rpm | while read _rpm ; do
+				cvw_rpm -i $_rpm
+				test -s /var/local/cfg/changed || continue
+				_changed=$(cat /var/local/cfg/changed)
+			done
+			test -n "$_changed" && echo "$_changed" >/tmp/cvw/changed
+			exit 0
+		;;
+
+		L)
+			test -s $HOME/initial_rpm_list && exit 0
+			cvw_say -s "ensure yum groups are active"
+			yum groups mark convert
+			cvw_say -s "save initial_rpm_list"
+			rpm -q -a --qf='%{NAME}\n' | sort >$HOME/initial_rpm_list
+			echo "initial_rpm_list" >/tmp/cvw/updating
+			exit 0
+		;;
+
+		r)
+			rpm -q --qf='%{VERSION}-${RELEASE}' $OPTARG 2>/tmp/cvw/error
+			exit 0
+		;;
+
+		u)
+			cvw_say -s "cleanup RPM cache"
+			yum clean all
+			yum makecache fast
+			cvw_say -s "updating RPMs"
+			yum update -y
+			cvw_say -s "upgrading RPMs"
+			yum upgrade -y
+			exit 0
+		;;
+
+		v)
+			rpm -q --qf='%{VERSION}' $OPTARG 2>/tmp/cvw/error
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

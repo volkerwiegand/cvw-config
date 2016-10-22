@@ -1,0 +1,120 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_unpack - Fetch software archives
+######              (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i id [-m] [-s] [-u user] dir [guard]     Download and unpack into dir
+		    or: $_prog -f path [-m] [-s] [-u user] dir [guard]   Unpack archive into dir
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+_user="root"
+
+while getopts ":i:f:msu:" opt ; do
+	case $opt in
+		i)
+			cvw_download -i $OPTARG $HOME/src/files
+			_file=$(cvw_download -f $OPTARG)
+		;;
+
+		f)
+			_file=${OPTARG##*/}
+			ln -nfs $OPTARG $HOME/src/files/$_file
+		;;
+
+		m)
+			_mflag=1
+		;;
+
+		s)
+			_sflag=1
+		;;
+
+		u)
+			_user=$OPTARG
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+test $# -ge 1 || usage
+_dir=$1
+_guard=$2
+_par="${_dir%/*}"
+_box=/tmp/cvw/sandbox
+
+if [[ -n $_guard && -s $_dir/$_guard ]] ; then
+	exit 0
+fi
+
+rm -rf $_box
+mkdir -p $_box
+
+if [[ $_file =~ .*\.zip$ ]] ; then
+	cvw_rpm -i unzip
+	if [ $_mflag ] ; then
+		mkdir -p $_dir
+		_par="$_dir"
+	fi
+	cvw_say -s "unzipping $_file into $_dir"
+	unzip -q -d $_box $HOME/src/files/$_file 2>>/tmp/cvw/error
+elif [[ $_file =~ .*\.tar\.gz$ ]] ; then
+	cvw_say -s "untarring $_file into $_dir"
+	tar -x -z -C $_box -f $HOME/src/files/$_file 2>>/tmp/cvw/error
+elif [[ $_file =~ .*\.tgz$ ]] ; then
+	cvw_say -s "untarring $_file into $_dir"
+	tar -x -z -C $_box -f $HOME/src/files/$_file 2>>/tmp/cvw/error
+elif [[ $_file =~ .*\.tar\.bz2$ ]] ; then
+	cvw_say -s "untarring $_file into $_dir"
+	tar -x -j -C $_box -f $HOME/src/files/$_file 2>>/tmp/cvw/error
+else
+	cvw_say -f "$_prog: $_file is not an archive"
+fi
+
+mkdir -p $_dir
+if [[ $_sflag ]] ; then
+	rsync -a $_box/ $_dir
+else
+	rsync -a $_box/*/ $_dir
+fi
+rm -rf $_box
+chown -R $_user:$_user $_dir 2>>/tmp/cvw/error
+
+exit 0
+

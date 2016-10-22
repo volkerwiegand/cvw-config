@@ -1,0 +1,104 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_say - Diagnostic output
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Do not exit on error
+set +e
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -a text   Print text with arrow
+		    or: $_prog -d text   Print text if debugging
+		    or: $_prog -e text   Print text with emphasis
+		    or: $_prog -f text   Report error and exit
+		    or: $_prog -h text   Print text with header
+		    or: $_prog -o text   Print text with okay
+		    or: $_prog -s text   Print text with space
+		    or: $_prog text      Print plain text
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+while getopts ":adefhos" opt ; do
+	case $opt in
+		a)	_prefix="-->"
+			;;
+
+		d)	test -f /tmp/cvw/debug || exit 0
+			_prefix="+++"
+			;;
+
+		e)	_prefix="#############"
+			;;
+
+		f)	_fail=1
+			;;
+
+		h)	_prefix="==>"
+			;;
+
+		o)	_okay=1
+			;;
+
+		s)	_prefix="   "
+			;;
+
+		\?)	usage
+			;;
+	esac
+done
+shift $(($OPTIND-1))
+
+if [ $_fail ] ; then
+	if [ -d /tmp/cvw ] ; then
+		echo "$*" >>/tmp/cvw/error
+	else
+		echo "$*" >&2
+	fi
+	exit 1
+fi
+
+if [ -n "$_prefix" ] ; then
+	echo "$_prefix $* ..."
+	exit 0
+fi
+
+if [ $_okay ] ; then
+	if [ $# -ge 1 ] ; then
+		echo "    done and okay ($*)"
+	else
+		echo "    done and okay."
+	fi
+	exit 0
+fi
+
+echo "$*"
+
+exit 0
+

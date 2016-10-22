@@ -1,0 +1,126 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_php - Install or remove PHP
+######           https://secure.php.net/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+######          TODO implement removing PHP
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="PHP"
+_slug="php"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -s   List active web servers
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function php_install
+{
+	cvw_say -h "Installing $_name"
+	local _timezone=$(cvw_xml -r system/timezone)
+	local _filesize=$(cvw_xml -R software/$_slug/filesize "2000M")
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file _base
+
+	cvw_yum -a ius
+	cvw_rpm -l $_slug
+	cvw_xml -a software/nginx      && cvw_rpm -i php56u-fpm
+	cvw_xml -a software/mysql      && cvw_rpm -i php56u-mysqlnd
+	cvw_xml -a software/postgresql && cvw_rpm -i php56u-pgsql
+	cvw_xml -a software/openldap   && cvw_rpm -i php56u-ldap
+
+	cvw_rpm -i composer
+
+	if cvw_xml -a software/nginx ; then
+		cvw_service -s php-fpm
+		_file="/etc/php-fpm.d/www.conf"
+		if [[ -s $_file ]] ; then
+			cvw_file -e $_file "s/^;env/env/" php-fpm
+		fi
+	fi
+
+	_file="/etc/php.ini"
+	cvw_file -e $_file "s%^[;#]*\(date\.timezone\).*%\1 = '$_timezone'%" $(cvw_php -s)
+	cvw_file -e $_file "/^post_max_size/s/=.*/= $_filesize/" $(cvw_php -s)
+	cvw_file -e $_file "/^upload_max_filesize/s/=.*/= $_filesize/" $(cvw_php -s)
+
+	_file="/etc/php.d/apcu.ini"
+	if [[ -s $_file ]] ; then
+		cvw_file -e $_file "/^apc.enable_cli/s/=0/=1/" $(cvw_php -s)
+	fi
+
+	cvw_say -o "$_slug"
+}
+
+
+function php_remove
+{
+	if cvw_rpm -c php56u ; then
+		cvw_say -s "$_slug:remove"
+	fi
+}
+
+
+while getopts ":is" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				php_install
+			else
+				php_remove
+			fi
+			exit 0
+		;;
+
+		s)
+			if cvw_xml -a software/apache ; then
+				_servers="httpd"
+			else
+				_servers=""
+			fi
+			if cvw_xml -a software/nginx ; then
+				_servers="$_servers nginx php-fpm"
+			fi
+			echo -n $_servers
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

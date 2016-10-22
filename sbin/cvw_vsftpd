@@ -1,0 +1,110 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_vsftpd - Install or remove vsftpd FTP server
+######              https://security.appspot.com/vsftpd.html
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="vsftpd"
+_slug="vsftpd"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function vsftpd_install
+{
+	cvw_say -h "Installing $_name"
+	local _users="/etc/vsftpd/ftpusers"
+	local _conf="/etc/vsftpd/vsftpd.conf"
+
+	cvw_rpm -i vsftpd
+	cvw_rpm -i ftp
+
+	cvw_file -b $_users
+	echo "# Users that are not allowed to login via ftp" >$_users.tmp_VW
+	cat /etc/passwd | cut -d: -f1 | grep -v ftp >>$_users.tmp_VW
+	cvw_file -v $_users vsftpd
+
+	cvw_file -b $_conf
+	cvw_file -e $_conf "/^anonymous_enable=/s/=.*/=NO/"   vsftpd
+	cvw_file -e $_conf "/^xferlog_std_format=/s/=.*/=NO/" vsftpd
+	cvw_file -e $_conf "/^local_umask=/s/=.*/=002/"       vsftpd
+	if ! grep -q log_ftp_protocol $_conf ; then
+		cvw_file -e $_conf "s/^xferlog_std_format.*/&\nlog_ftp_protocol=YES/" vsftpd
+	fi
+
+	cvw_xml -r software/$_slug/password | passwd --stdin ftp >/dev/null
+
+	cvw_service -s vsftpd
+	cvw_firewall -s ftp
+
+	cvw_say -o "$_slug"
+}
+
+
+function vsftpd_remove
+{
+	set +e
+
+	if cvw_rpm -c vsftpd ; then
+		cvw_say -h "Removing $_name"
+		cvw_service -d vsftpd
+		cvw_rpm -e vsftpd
+		rm -rf /etc/vsftpd
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				vsftpd_install
+			else
+				vsftpd_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

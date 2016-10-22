@@ -1,0 +1,205 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_service - Initd service handling
+######               (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Do not exit on error
+set +e
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+_restart="/tmp/cvw/service.restart"
+_reload="/tmp/cvw/service.reload"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -c svc   Check if service is running
+		    or: $_prog -d svc   Stop and disable service
+		    or: $_prog -e svc   Enable service (even if not active)
+		    or: $_prog -l svc   Add reload for service
+		    or: $_prog -r svc   Add restart for service
+		    or: $_prog -R svc   Restart service immediately
+		    or: $_prog -s svc   Start service at end of run
+		    or: $_prog -S svc   Start service immediately
+		    or: $_prog -x       Execute and cleanup
+		    or: $_prog -z svc   Zap service (delete all traces)
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function is_enabled
+{
+	local _service=$1
+
+	systemctl -t service -p UnitFileState show $_service | grep -q "=enabled"
+}
+
+
+function is_loaded
+{
+	local _service=$1
+
+	systemctl -t service -p LoadState show $_service | grep -q "=loaded"
+}
+
+
+function is_active
+{
+	local _service=$1
+
+	systemctl -t service -p ActiveState show $_service | grep -q "=active"
+}
+
+
+function do_action
+{
+	local _service=$1
+	local _action=$2
+
+	systemctl -q -t service $_action $_service
+}
+
+
+while getopts ":c:d:e:l:r:R:s:S:xz:" opt ; do
+	case $opt in
+		c)
+			is_active $OPTARG
+			exit
+		;;
+
+		d)
+			is_loaded  $OPTARG || exit 0
+			is_enabled $OPTARG && do_action $OPTARG disable
+			is_active  $OPTARG && do_action $OPTARG stop
+			exit 0
+		;;
+
+		e)
+			is_loaded  $OPTARG || exit 0
+			is_enabled $OPTARG || do_action $OPTARG enable
+			exit 0
+		;;
+
+		l)
+			is_loaded  $OPTARG || exit 0
+			is_enabled $OPTARG || do_action $OPTARG enable
+			echo "$OPTARG" >>$_reload
+			exit 0
+		;;
+
+		r)
+			is_loaded  $OPTARG || exit 0
+			is_enabled $OPTARG || do_action $OPTARG enable
+			echo "$OPTARG" >>$_restart
+			exit 0
+		;;
+
+		R)
+			is_loaded  $OPTARG || exit 0
+			is_enabled $OPTARG || do_action $OPTARG enable
+			is_active  $OPTARG && exit 0
+			cvw_say -s "restarting $OPTARG immediately"
+			do_action  $OPTARG restart
+			exit 0
+		;;
+
+		s)
+			is_loaded  $OPTARG || exit 0
+			is_enabled $OPTARG || do_action $OPTARG enable
+			is_active  $OPTARG && exit 0
+			echo "$OPTARG" >>$_restart
+			exit 0
+		;;
+
+		S)
+			is_loaded  $OPTARG || exit 0
+			is_enabled $OPTARG || do_action $OPTARG enable
+			is_active  $OPTARG && exit 0
+			cvw_say -s "starting $OPTARG immediately"
+			do_action  $OPTARG start
+			exit 0
+		;;
+
+		x)
+			cvw_say -h "Updating services"
+			if [[ -s $_restart ]] ; then
+				systemctl daemon-reload
+				for _service in $(sort -u $_restart) ; do
+					if is_active $_service ; then
+						cvw_say -s "restarting $_service"
+						do_action $_service stop
+						sleep 3
+					else
+						cvw_say -s "starting $_service"
+					fi
+					do_action $_service start
+					sleep 2
+					is_active $_service && continue
+					do_action $_service status >>/tmp/cvw/error
+					exit 1
+				done
+				rm -f $_restart
+			fi
+			if [[ -s $_reload ]] ; then
+				systemctl daemon-reload
+				for _service in $(sort -u $_reload) ; do
+					if is_active $_service ; then
+						cvw_say -s "reloading $_service"
+						do_action $_service reload
+					else
+						cvw_say -s "starting $_service"
+						do_action $_service start
+					fi
+					sleep 2
+					is_active $_service && continue
+					do_action $_service status >>/tmp/cvw/error
+					exit 1
+				done
+				rm -f $_reload
+			fi
+			cvw_say -o "services"
+			exit 0
+		;;
+
+		z)
+			is_loaded  $OPTARG || exit 0
+			is_enabled $OPTARG && do_action $OPTARG disable
+			is_active  $OPTARG && do_action $OPTARG stop
+			cvw_file -r /usr/lib/systemd/system/$OPTARG.service
+			cvw_file -r /etc/sysconfig/$OPTARG
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
