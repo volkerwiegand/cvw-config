@@ -1,0 +1,173 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_postfix - Install or remove Postfix and Dovecot
+######               http://www.postfix.org/
+######               http://www.dovecot.org/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Postfix and Dovecot"
+_slug="postfix"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function postfix_install
+{
+	cvw_say -h "Installing $_name"
+	local _fqdn=$(cvw_xml -r software/$_slug/fqdn)
+	local _admin=$(cvw_xml -r host/admin)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _domain=${_fqdn#*.}
+	local _cert="/etc/letsencrypt/live/$_fqdn"
+	local _dir _file _diff _restrictions _mydest _var _dest
+
+	cvw_rpm -i certbot
+	cvw_say -s "servers for certbot: $_fqdn"
+	if cvw_service -c web ; then
+		cvw_say -s "installing certificate (webroot)"
+		certbot certonly --webroot -w /var/www/html \
+				--agree-tos --email "$_admin" \
+				--keep --non-interactive -d $_fqdn
+	else
+		cvw_say -s "installing certificate (standalone)"
+		certbot certonly --standalone \
+				--agree-tos --email "$_admin" \
+				--keep --non-interactive -d $_fqdn
+	fi
+
+	cvw_rpm -i postfix
+	cvw_service -d sendmail
+	cvw_service -s postfix
+	alternatives --set mta /usr/sbin/sendmail.postfix
+	cvw_rpm -i dovecot
+	cvw_service -s dovecot
+
+	_restrictions="permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination"
+	_mydest="\$myhostname, localhost, localhost.\$mydomain, \$mydomain"
+	for _dest in $(cvw_xml -l software/$_slug/destination | sort) ; do
+		_mydest="$_mydest, $_dest"
+	done
+
+	_file="/etc/postfix/postgrey_whitelist_clients.local"
+	if cvw_xml -t software/$_slug/postgrey ; then
+		cvw_say -s "enabling postgrey"
+		cvw_rpm -i postgrey
+		cvw_service -s postgrey
+		_restrictions="$_restrictions, check_policy_service unix:postgrey/socket"
+		cp /var/local/cfg/files/misc/postgrey.common $_file.tmp_VW 2>>/tmp/cvw/error
+		cvw_file -v $_file postgrey
+	else
+		set +e
+		cvw_say -s "disabling postgrey"
+		cvw_service -d postgrey
+		rm -f $_file
+		set -e
+	fi
+
+	_dir="/etc/postfix"
+	[[ -d $_dir.old ]] || cp -r -p $_dir $_dir.old
+	_diff="/var/local/cfg/files/diffs/postfix.diff"
+	[[ -s $_diff ]] || cvw_say -f "$_prog: missing '$_diff'"
+	if [[ ! -f $_dir/cvw.patched ]] ; then
+		patch -d $_dir -i $_diff -N -r -
+		touch $_dir/cvw.patched
+	fi
+	_file="$_dir/main.cf"
+	cvw_file -e $_file "/^myhostname /s/= .*/= $_fqdn/" postfix
+	cvw_file -e $_file "/^mydomain /s/= .*/= $_domain/" postfix
+	cvw_file -e $_file "/^mydestination /s/= .*/= $_mydest/" postfix
+	cvw_file -e $_file "/^smtpd_recipient_restrictions /s%= .*%= $_restrictions%" postfix
+	cvw_file -e $_file "/^smtpd_tls_cert_file /s%= .*%= $_cert/fullchain.pem%" postfix
+	cvw_file -e $_file "/^smtpd_tls_key_file /s%= .*%= $_cert/privkey.pem%" postfix
+
+	_dir="/etc/dovecot/conf.d"
+	[[ -d $_dir.old ]] || cp -r -p $_dir $_dir.old
+	_diff="/var/local/cfg/files/diffs/dovecot.diff"
+	[[ -s $_diff ]] || cvw_say -f "$_prog: missing '$_diff'"
+	if [[ ! -f $_dir/cvw.patched ]] ; then
+		patch -d $_dir -i $_diff -N -r -
+		touch $_dir/cvw.patched
+	fi
+	cvw_file -e $_dir/10-ssl.conf "/^ssl_cert /s%= .*%= <$_cert/fullchain.pem%" dovecot
+	cvw_file -e $_dir/10-ssl.conf "/^ssl_key /s%= .*%= <$_cert/privkey.pem%" dovecot
+	cvw_file -e $_dir/15-lda.conf "/^postmaster_address /s/= .*/= postmaster@$_domain/" dovecot
+
+	for _dest in pop3 pop3s imap imaps smtp submission ; do
+		cvw_firewall -s $_dest
+	done
+
+	cvw_say -o "$_slug"
+}
+
+
+function postfix_remove
+{
+	if cvw_service -c postfix ; then
+		cvw_say -h "Removing $_name"
+
+		cvw_service -d dovecot
+		cvw_rpm -e dovecot
+		rm -rf /etc/dovecot
+		
+		cvw_service -d postfix
+		cvw_service -S sendmail
+		alternatives --set mta /usr/sbin/sendmail.sendmail
+		cvw_rpm -e postfix
+		rm -rf /etc/postfix
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				postfix_install
+			else
+				postfix_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
