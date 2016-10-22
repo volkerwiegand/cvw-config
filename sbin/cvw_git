@@ -1,0 +1,99 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_git - Git cloning and updating
+######           (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i id [-d dir] [-u user]  Clone or pull a Git repo
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+while getopts ":d:i:u:" opt ; do
+	case $opt in
+		d)
+			_dir=$OPTARG
+		;;
+
+		i)
+			_id=$OPTARG
+		;;
+
+		u)
+			_user=$OPTARG
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+if [[ $_id ]] ; then
+	_repo=$(cvw_xml -r common/git:$_id/url)
+	if [[ -z $_dir ]] ; then
+		_dir=$(cvw_xml -r common/git:$_id/dir)
+	fi
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	cvw_say -d "id.....: $_id"
+	cvw_say -d "repo...: $_repo"
+	cvw_say -d "dir....: $_dir"
+
+	if [[ $_user ]] ; then
+		cvw_say -d "user...: $_user"
+		if [[ -d $_dir/.git ]] ; then
+			if [[ -s /tmp/cvw/updating ]] ; then
+				cvw_user -r $_user "cd $_dir && git pull"
+			fi
+		else
+			cvw_user -r $_user "git clone $_repo $_dir"
+		fi
+	else
+		cvw_say -d "user...: <none>"
+		if [[ -d $_dir/.git ]] ; then
+			if [[ -s /tmp/cvw/updating ]] ; then
+				cd $_dir && git pull
+			fi
+		else
+			git clone $_repo $_dir
+		fi
+	fi
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	exit 0
+fi
+
+usage
+

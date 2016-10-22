@@ -1,0 +1,116 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_boot - System config master - running on remote
+######            (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Do not exit on error
+set +e
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	cat >&2 <<-EOF
+		Syntax: $_prog [-d] [-u]   Run CVW Config [debug] [upgrade]
+		Called with: '$_prog $_args'
+	EOF
+	exit 1
+}
+
+
+function error_check
+{
+	if [[ -s /tmp/cvw/error ]] ; then
+		echo "=== Error ========" >&2
+		cat /tmp/cvw/error >&2
+		echo "==================" >&2
+		exit 1
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+_d=""
+_m="-i"
+
+while getopts ":du" opt ; do
+	case $opt in
+		d)
+			_d="-d"
+		;;
+
+		u)
+			_m="-u"
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+cvw_init $_m $_d
+error_check
+
+cvw_yum          -i ; error_check
+cvw_docker       -i ; error_check
+cvw_user         -i ; error_check
+cvw_haproxy      -i ; error_check
+cvw_nginx        -i ; error_check
+cvw_apache       -i ; error_check
+cvw_mysql        -i ; error_check
+cvw_postfix      -i ; error_check
+cvw_postgresql   -i ; error_check
+cvw_redis        -i ; error_check
+cvw_memcache     -i ; error_check
+cvw_openldap     -i ; error_check
+cvw_php          -i ; error_check
+cvw_serendipity  -i ; error_check
+cvw_wordpress    -i ; error_check
+cvw_b2evolution  -i ; error_check
+cvw_sqlbuddy     -i ; error_check
+cvw_nodejs       -i ; error_check
+cvw_gogs         -i ; error_check
+cvw_rails        -i ; error_check
+cvw_kivitendo    -i ; error_check
+cvw_piwik        -i ; error_check
+cvw_owncloud     -i ; error_check
+cvw_webdav       -i ; error_check
+cvw_shariff      -i ; error_check
+cvw_roundcube    -i ; error_check
+cvw_squirrelmail -i ; error_check
+cvw_mantis       -i ; error_check
+cvw_dokuwiki     -i ; error_check
+cvw_opencart     -i ; error_check
+cvw_piwigo       -i ; error_check
+cvw_vsftpd       -i ; error_check
+
+cvw_mysql        -x ; error_check
+cvw_apache       -x ; error_check
+cvw_nginx        -x ; error_check
+cvw_service      -x ; error_check
+cvw_firewall     -x ; error_check
+cvw_certbot      -i ; error_check
+
+cvw_backup       -s ; error_check
+cvw_url          -s ; error_check
+
+rm -rf /var/local/cfg /tmp/cvw
+echo "<<< All done, exiting."
+echo ""
+exit 0
+

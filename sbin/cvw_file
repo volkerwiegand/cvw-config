@@ -1,0 +1,180 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_file - File handling
+######            (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Do not exit on error
+set +e
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -b file                             Backup file
+		    or: $_prog -e file sed-cmnd [opts] [svc ...]   Edit file
+		    or: $_prog -f file sed-file [opts] [svc ...]   Edit file
+		    or: $_prog -r file [svc ...]                   Remove file
+		    or: $_prog -v file [opts] [svc ...]            Verify file
+		Options for -e and -v:
+		    -m mode   Set file mode
+		    -u user   Set ownership to user[:group]
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+while getopts ":b:e:f:m:r:u:v:" opt ; do
+	case $opt in
+		b)
+			[[ -f $OPTARG.bak_VW ]] && exit 0
+			cvw_say -s "backing up $OPTARG"
+			cp -p $OPTARG $OPTARG.bak_VW 2>>/tmp/cvw/error
+			exit
+		;;
+
+		e)
+			_file=$OPTARG
+			_edit_cmnd=1
+		;;
+
+		f)
+			_file=$OPTARG
+			_edit_file=1
+		;;
+
+		m)
+			_mode=$OPTARG
+		;;
+
+		r)
+			rm -f /tmp/cvw/changed
+			[[ -f $OPTARG ]] || exit 0
+			cvw_say -s "removing $OPTARG"
+			rm -f $OPTARG
+			echo "$OPTARG" >/tmp/cvw/changed
+			_action=1
+		;;
+
+		u)
+			_user=$OPTARG
+		;;
+
+		v)
+			_file=$OPTARG
+			_verify=1
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+if [[ $_edit_cmnd ]] ; then
+	[[ $# -ge 1 ]] || usage
+	_cmnd=$1
+	shift
+	rm -f /tmp/cvw/changed
+	sed -e "$_cmnd" $_file >$_file.tmp_VW
+	if [[ $? -ne 0 ]] ; then
+		echo "$_prog edit: '$_file'" >>/tmp/cvw/error
+		echo "$_prog cmnd: >$_cmnd<" >>/tmp/cvw/error
+		exit 1
+	fi
+	if cmp -s $_file.tmp_VW $_file ; then
+		rm -f $_file.tmp_VW
+		[[ $_mode ]] && chmod $_mode $_file
+		[[ $_user ]] && chown $_user $_file
+		exit 0
+	fi
+	cvw_say -s "updating $_file"
+	mv -f $_file.tmp_VW $_file 2>>/tmp/cvw/error
+	echo "$_file" >/tmp/cvw/changed
+	_action=1
+fi
+
+if [[ $_edit_file ]] ; then
+	[[ $# -ge 1 ]] || usage
+	_cmnd="/var/local/cfg/files/sed/$1"
+	shift
+	rm -f /tmp/cvw/changed
+	sed -f $_cmnd $_file >$_file.tmp_VW
+	if [[ $? -ne 0 ]] ; then
+		echo "$_prog edit: '$_file'" >>/tmp/cvw/error
+		echo "$_prog file: >$_cmnd<" >>/tmp/cvw/error
+		exit 1
+	fi
+	if cmp -s $_file.tmp_VW $_file ; then
+		rm -f $_file.tmp_VW
+		[[ $_mode ]] && chmod $_mode $_file
+		[[ $_user ]] && chown $_user $_file
+		exit 0
+	fi
+	cvw_say -s "updating $_file"
+	mv -f $_file.tmp_VW $_file 2>>/tmp/cvw/error
+	echo "$_file" >/tmp/cvw/changed
+	_action=1
+fi
+
+if [[ $_verify ]] ; then
+	rm -f /tmp/cvw/changed
+	[[ -f $_file.tmp_VW ]] || exit 0
+	if [[ -f $_file ]] ; then
+		if cmp -s $_file.tmp_VW $_file ; then
+			rm -f $_file.tmp_VW
+			[[ $_mode ]] && chmod $_mode $_file
+			[[ $_user ]] && chown $_user $_file
+			exit 0
+		fi
+		cvw_say -s "replacing $_file"
+	else
+		cvw_say -s "installing $_file"
+	fi
+	mv -f $_file.tmp_VW $_file 2>>/tmp/cvw/error
+	echo "$_file" >/tmp/cvw/changed
+	_action=1
+fi
+
+if [[ $_file ]] ; then
+	if [[ $_user ]] ; then
+		chown $_user $_file 2>>/tmp/cvw/error
+	fi
+	if [[ $_mode ]] ; then
+		chmod $_mode $_file 2>>/tmp/cvw/error
+	fi
+fi
+
+if [[ $_action ]] ; then
+	while [[ $1 ]] ; do
+		_svc="$1"
+		shift
+		cvw_service -r $_svc
+	done
+fi
+
+exit 0
+

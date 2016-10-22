@@ -1,0 +1,154 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_download - Download file
+######                (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i id dir   Download id into dir
+		    or: $_prog -f id       Return filename for id
+		    or: $_prog -v id       Return version for id
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+_id=""
+_url=""
+_file=""
+_rename=""
+_md5=""
+_sha1=""
+_sha256=""
+_dir=""
+_version=""
+
+function get_data
+{
+	_id=$1
+	_url=$(cvw_xml -r common/download:$_id/url)
+
+	if cvw_xml -c common/download:$_id/name ; then
+		_file=$(cvw_xml -r common/download:$_id/name)
+		_rename=yes
+	else
+		_file=${_url##*/}
+	fi
+
+	if cvw_xml -c common/download:$_id/md5 ; then
+		_md5=$(cvw_xml -r common/download:$_id/md5)
+	fi
+	if cvw_xml -c common/download:$_id/sha1 ; then
+		_sha1=$(cvw_xml -r common/download:$_id/sha1)
+	fi
+	if cvw_xml -c common/download:$_id/sha256 ; then
+		_sha256=$(cvw_xml -r common/download:$_id/sha256)
+	fi
+	if cvw_xml -c common/download:$_id/version ; then
+		_version=$(cvw_xml -r common/download:$_id/version)
+	fi
+
+	[[ -s /tmp/cvw/error ]] && exit 1
+	return 0
+}
+
+
+while getopts ":i:f:v:" opt ; do
+	case $opt in
+		i)
+			get_data $OPTARG
+		;;
+
+		f)
+			get_data $OPTARG
+			echo -n $_file
+			exit 0
+		;;
+
+		v)
+			get_data $OPTARG
+			echo -n $_version
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+[[ $# -eq 1 ]] || usage
+_dir=$1
+
+if [[ ! -d $_dir ]] ; then
+	cvw_say -s "creating $_dir"
+	mkdir -p $_dir 2>>/tmp/cvw/error
+fi
+
+if [[ ! -s $_dir/$_file ]] ; then
+	cvw_say -s "downloading $_file"
+	if [[ $_rename ]] ; then
+		wget -q -O $_dir/$_file $_url 2>>/tmp/cvw/error
+	else
+		wget -q -P $_dir $_url 2>>/tmp/cvw/error
+	fi
+fi
+
+if [[ $_md5 ]] ; then
+	cvw_say -s "md5 $_file"
+	_sum=$(md5sum $_dir/$_file | awk '{ print $1 }')
+	if [[ $_sum != $_md5 ]] ; then
+		echo "$_prog: bad MD5 checksum for $_file" >>/tmp/cvw/error
+		exit 1
+	fi
+fi
+
+if [[ $_sha1 ]] ; then
+	cvw_say -s "sha1 $_file"
+	_sum=$(sha1sum $_dir/$_file | awk '{ print $1 }')
+	if [[ $_sum != $_sha1 ]] ; then
+		echo "$_prog: bad SHA1 checksum for $_file" >>/tmp/cvw/error
+		exit 1
+	fi
+fi
+
+if [[ $_sha256 ]] ; then
+	cvw_say -s "sha256 $_file"
+	_sum=$(sha256sum $_dir/$_file | awk '{ print $1 }')
+	if [[ $_sum != $_sha256 ]] ; then
+		echo "$_prog: bad SHA256 checksum for $_file" >>/tmp/cvw/error
+		exit 1
+	fi
+fi
+
+exit 0
+
