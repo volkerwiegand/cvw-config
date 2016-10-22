@@ -1,0 +1,268 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_apache - Install or disable Apache httpd
+######              http://httpd.apache.org/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Apache httpd"
+_slug="apache"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i        Install or disable $_name
+		    or: $_prog -e file   Enable conf.d/file.conf
+		    or: $_prog -x        Execute and cleanup
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function apache_initial
+{
+	cvw_say -h "Installing $_name"
+	local _canon=$(cvw_xml -r host/fqdn)
+	local _domain=${_canon#*.}
+	local _hstnam=${_canon%%.*}
+	local _web=$(cvw_xml -r system/web/server)
+	local _loglvl=$(cvw_xml -r software/$_slug/loglevel)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _cert="/etc/letsencrypt/live/$_canon"
+	local _conf="/etc/httpd/conf.d/vhost.conf"
+	local _ip _port _ssl_port _file _alias
+
+	cvw_rpm -i httpd
+	cvw_rpm -i httpd-devel
+	cvw_service -s httpd
+	cvw_apache -e welcome
+	cvw_apache -e autoindex
+	cvw_apache -e userdir
+
+	if [[ $_web == $_slug ]] ; then
+		_ip="0.0.0.0"
+		_port=$(cvw_xml -r system/web/port)
+		_ssl_port=$(cvw_xml -r system/web/ssl_port)
+	else
+		_ip="127.0.0.1"
+		_port=$(cvw_xml -R software/$_slug/port 8000)
+		if [ $_port -eq $(cvw_xml -r system/web/port) ] ; then
+			cvw_say -f "conflicting port $_port"
+		fi
+		_ssl_port=$(cvw_xml -R software/$_slug/ssl_port 8443)
+		if [ $_ssl_port -eq $(cvw_xml -r system/web/ssl_port) ] ; then
+			cvw_say -f "conflicting ssl port $_ssl_port"
+		fi
+	fi
+
+	_file="/etc/httpd/conf/httpd.conf"
+	cvw_file -e $_file "s/^\(Listen\).*/\1 $_ip:$_port/" httpd
+	cvw_file -e $_file "s/^\(ServerAdmin\).*/\1 webmaster@$_domain/" httpd
+	cvw_file -e $_file "s/^#ServerName/ServerName/" httpd
+	cvw_file -e $_file "s/^\(ServerName\).*/\1 $_canon:$_port/" httpd
+
+	cvw_rpm -i mod_ssl
+	_file="/etc/httpd/conf.d/ssl.conf"
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		#
+		# Common SSL settings
+		#
+		# ssl_module loaded in conf.modules.d/00-ssl.conf
+		Listen $_ssl_port https
+
+		$(grep "^SSLPassPhraseDialog" $_file.bak_VW | sort)
+		$(grep "^SSLSessionCache"     $_file.bak_VW | sort)
+		$(grep "^SSLMutex"            $_file.bak_VW | sort)
+		$(grep "^SSLRandomSeed"       $_file.bak_VW | sort)
+		$(grep "^SSLCryptoDevice"     $_file.bak_VW | sort)
+	EOF
+	cvw_file -v $_file httpd
+	cvw_apache -e ssl
+
+	if cvw_xml -a software/php ; then
+		if cvw_xml -t software/$_slug/php ; then
+			cvw_apache -e php
+		fi
+	fi
+	cvw_rpm -i mod_wsgi
+	cvw_rpm -i mod_perl  && cvw_apache -e perl
+	cvw_rpm -i mod_fcgid && cvw_apache -e fcgid
+
+	_file="/tmp/cvw/apache.names"
+	echo "ServerName       $_canon" >$_file
+	if [[ $_hstnam == "www" ]] ; then
+		echo "   ServerAlias      $_domain" >>$_file
+	fi
+	for _alias in $(cvw_xml -l software/$_slug/alias | sort) ; do
+		echo "   ServerAlias      $_alias" >>$_file
+		if [[ $_alias =~ ^www\. ]] ; then
+			echo "   ServerAlias      ${_alias#*.}" >>$_file
+		fi
+	done
+
+	_file="/tmp/cvw/apache.certbot"
+	cat >$_file <<-EOF
+		   <IfModule mod_headers.c>
+		      <LocationMatch "/.well-known/acme-challenge/*">
+		         Header set Content-Type "application/jose+json"
+		         Require all granted
+		      </LocationMatch>
+		   </IfModule>
+	EOF
+
+	if [[ -s $_cert/cert.pem ]] ; then
+		cat >$_conf.tmp_VW <<-EOF
+			<VirtualHost *:$_port>
+			   $(cat /tmp/cvw/apache.names)
+			   UseCanonicalName Off
+			   ErrorLog         logs/error_log
+			   TransferLog      logs/transfer_log
+			   LogLevel         $_loglvl
+			   RewriteEngine    On
+			   RewriteCond      %{HTTPS} off
+			   RewriteRule      ^ https://%{HTTP_HOST}%{REQUEST_URI}
+			</VirtualHost>
+
+			<VirtualHost _default_:443>
+			   $(cat /tmp/cvw/apache.names)
+			   UseCanonicalName Off
+			   ErrorLog         logs/ssl_error_log
+			   TransferLog      logs/ssl_transfer_log
+			   LogLevel         $_loglvl
+			   DocumentRoot     /var/www/html
+
+			   SSLEngine             on
+			   SSLCertificateFile    $_cert/cert.pem
+			   SSLCertificateKeyFile $_cert/privkey.pem
+			   SSLCACertificateFile  $_cert/chain.pem
+			   $(grep "^SSLProtocol" /etc/httpd/conf.d/ssl.conf.bak_VW)
+			   $(grep "^SSLCipherSuite" /etc/httpd/conf.d/ssl.conf.bak_VW)
+
+			   <Files ~ "\\.(cgi|shtml|phtml|php3?)\$">
+			      SSLOptions +StdEnvVars
+			   </Files>
+			   <Directory "/var/www/cgi-bin">
+			      SSLOptions +StdEnvVars
+			   </Directory>
+
+			   $(cat /tmp/cvw/apache.certbot)
+
+			   BrowserMatch "MSIE [2-5]" \\
+			      nokeepalive ssl-unclean-shutdown \\
+			      downgrade-1.0 force-response-1.0
+		EOF
+	else
+		cat >$_conf.tmp_VW <<-EOF
+			<VirtualHost *:$_port>
+			   $(cat /tmp/cvw/apache.names)
+			   UseCanonicalName Off
+			   ErrorLog         logs/error_log
+			   TransferLog      logs/transfer_log
+			   LogLevel         $_loglvl
+			   DocumentRoot     /var/www/html
+
+			   $(cat /tmp/cvw/apache.certbot)
+		EOF
+	fi
+
+	rm -f /tmp/cvw/apache.names /tmp/cvw/apache.certbot
+
+	cvw_say -o "$_slug:initial"
+}
+
+
+function apache_finish
+{
+	cvw_say -h "Finishing $_name"
+	local _canon=$(cvw_xml -r host/fqdn)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _conf="/etc/httpd/conf.d/vhost.conf"
+	local _file
+
+	echo "</VirtualHost>" >>$_conf.tmp_VW
+	cvw_file -v $_conf httpd
+	cvw_apache -e vhost
+
+	find /etc/httpd/conf.d -maxdepth 1 -name "*.conf" | while read _file ; do
+		grep -q -s "$_file" /tmp/cvw/apache.enabled && continue
+		cvw_say -s "disabling $_file (not in list)"
+		mv $_file $_file.disabled
+		cvw_service -r httpd
+	done
+
+	cvw_say -o "$_slug:finish"
+}
+
+
+function apache_disable
+{
+	if cvw_service -c httpd ; then
+		cvw_say -h "Disabling $_name"
+
+		cvw_service -d httpd
+
+		cvw_say -o "$_slug:disable"
+	fi
+}
+
+
+while getopts ":e:ix" opt ; do
+	case $opt in
+		e)
+			cvw_xml -a software/$_slug || exit 0
+			cvw_say -s "conf.d: $OPTARG"
+			rm -f /etc/httpd/conf.d/$OPTARG.conf.disabled
+			echo "/etc/httpd/conf.d/$OPTARG.conf" >>/tmp/cvw/apache.enabled
+			exit 0
+		;;
+
+		i)
+			if cvw_xml -a software/$_slug ; then
+				apache_initial
+			else
+				apache_disable
+			fi
+			exit 0
+		;;
+
+		x)
+			if cvw_xml -a software/$_slug ; then
+				apache_finish
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

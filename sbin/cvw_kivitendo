@@ -1,0 +1,254 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_kivitendo - Install or remove kivitendo ERP
+######                 http://www.kivitendo.de/
+######                 https://www.kivitendo.de/doc/html/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+######          TODO backup postgresql databases for kivitendo, not entire dir
+######          TODO use kivitendo with nginx
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="kivitendo ERP"
+_slug="kivitendo"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function kivitendo_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/postgresql || cvw_say -f "$_prog: requires postgresql"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _mail=$(cvw_xml -r software/$_slug/mail/method)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _html
+	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
+	local _conf _file _subdir
+
+	cvw_postgresql -u $_slug $_pass
+
+	cvw_rpm -i gcc
+	cvw_rpm -i perl-DBD-Pg
+	cvw_rpm -i perl-GD
+	curl -fsL http://cpanmin.us | perl - --self-upgrade
+	cpanm --quiet parent Algorithm::CheckDigits Archive::Zip CGI Clone \
+		Config::Std DateTime DateTime::Format::Strptime DBI \
+		Digest::MD5 Digest::SHA Email::Address Email::MIME FCGI \
+		File::Copy::Recursive HTML::Parser HTML::Restrict \
+		Image::Info JSON List::MoreUtils List::UtilsBy \
+		Net::SMTP::SSL Net::SSLGlue Params::Validate PBKDF2::Tiny \
+		PDF::API2 Rose::Object Rose::DB Rose::DB::Object \
+		String::ShellQuote Sort::Naturally Test::Harness \
+		Test::Moose Template Text::CSV_XS Text::Iconv URI \
+		XML::Writer YAML
+
+	cvw_backup $_slug $_html $(cvw_postgresql -d)
+	cvw_unpack -i $_slug $_html VERSION
+
+	_file=/tmp/cvw/$_slug.check
+	(cd $_html && ./scripts/installation_check.pl >$_file 2>&1)
+	if ! grep -q -s "OK" $_file ; then
+		cat $_file >>/tmp/cvw/error
+		exit 1
+	fi
+
+	for _subdir in spool templates users webdav ; do
+		mkdir -p $_html/$_subdir
+		chown -R apache $_html/$_subdir
+	done
+
+	if [[ -d /var/local/backup/$_slug/last/dirs && \
+	      -x /usr/local/bin/bkup.$_slug         && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+
+	_file="/tmp/cvw/kivitendo.mail_delivery"
+	if [[ $_mail == "smtp" ]] ; then
+		cat >$_file <<-EOF
+			[mail_delivery]
+			method = smtp
+			host = $(cvw_xml -r software/$_slug/mail/host)
+			port = $(cvw_xml -r software/$_slug/mail/port)
+			security = $(cvw_xml -r software/$_slug/mail/security)
+			login = $(cvw_xml -r software/$_slug/mail/login)
+			password = $(cvw_xml -r software/$_slug/mail/password)
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	else
+		cvw_say -f "invalid mail_delivery method '$_mail'"
+	fi
+
+	_file=$_html/config/$_slug.conf
+	cat >$_file.tmp_VW <<-EOF
+		[authentication]
+		admin_password = $_pass
+		module = DB
+		cookie_name = kivitendo_session_id
+		session_timeout = 480
+		failed_login_penalty = 5
+
+		[authentication/database]
+		host     = localhost
+		port     = 5432
+		db       = kivitendo_auth
+		user     = $_slug
+		password = $_pass
+
+		#
+		# Other settings
+		#
+		[system]
+		language = de
+		default_manager = german
+
+		[paths]
+		userspath = users
+		spool = spool
+		templates = templates
+		memberfile = users/members
+
+		$(cat /tmp/cvw/kivitendo.mail_delivery)
+
+		[applications]
+		openofficeorg_writer = oowriter
+		xvfb = Xvfb
+		html2ps = html2ps
+		ghostscript = gs
+		latex = pdflatex
+		python_uno = python
+		aqbanking = /usr/bin/aqbanking-cli
+
+		[environment]
+		path = /usr/local/bin:/usr/bin:/bin
+
+		[task_server]
+		debug = 0
+		run_as = apache
+	EOF
+	cvw_file -v $_dest httpd nginx php-fpm
+	rm -f /tmp/cvw/kivitendo.mail_delivery
+
+	if cvw_xml -a software/nginx ; then
+		_file="/tmp/cvw/nginx.options"
+		cat >$_file <<-EOF
+			root $_html;
+			    location ~ /(data|conf|bin|inc)/ {
+			      deny all;
+			    }
+		EOF
+		cvw_nginx -p software/$_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
+		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
+		cat >>$_conf <<-EOF
+
+			   AddHandler fcgid-script .fpl
+		EOF
+		if [[ $_uri == "/" ]] ; then
+			cat >>$_conf <<-EOF
+				   AliasMatch ^/[^/]+\\.pl $_html/dispatcher.fpl
+			EOF
+		else
+			cat >>$_conf <<-EOF
+				   AliasMatch ^$_uri/[^/]+\\.pl $_html/dispatcher.fpl
+				   Alias $_uri $_html
+			EOF
+		fi
+		cat >>$_conf <<-EOF
+			   FcgidMaxRequestLen 10485760
+			   <Directory $_html>
+			      AllowOverride All
+			      Options ExecCGI Includes FollowSymlinks
+			      Require all granted
+			   </Directory>
+			   <Directory $_html/users>
+			      Require all denied
+			   </Directory>
+		EOF
+		cvw_url -a "$_name" $_uri
+	fi
+
+	cvw_say -o "$_slug"
+}
+
+
+function kivitendo_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _html
+	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
+
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		cvw_backup -z $_slug
+		# cvw_postgresql -z $_slug
+		if [[ $_uri == "/" ]] ; then
+			rm -rf /var/www/html
+			mkdir -p /var/www/html
+		fi
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				kivitendo_install
+			else
+				kivitendo_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

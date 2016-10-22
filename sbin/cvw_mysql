@@ -1,0 +1,230 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_mysql - Install MySQL (actually MariaDB) server
+######             https://mariadb.org/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i                       Install MySQL (MariaDB) server
+		    or: $_prog -c name user pass coll   Create database
+		    or: $_prog -f file user pass db     Execute SQL file as user
+		    or: $_prog -e cmd                   Execute SQL as root
+		    or: $_prog -s                       Return socket path (or port)
+		    or: $_prog -z name [user]           Zap (drop) database
+		    or: $_prog -x                       Execute and cleanup
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function mysql_check
+{
+	if cvw_xml -a software/mysql ; then
+		return 0
+	else
+		cvw_say -f "$_prog: MySQL (MariaDB) not active"
+		exit 1
+	fi
+}
+
+
+function mysql_socket
+{
+	local _pswd=$(cvw_xml -r software/mysql/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	mysqladmin -uroot -p$_pswd version | awk '/^UNIX socket/ { print $NF }'
+}
+
+
+function mysql_initial
+{
+	cvw_say -h "Installing MySQL (MariaDB)"
+	local _pswd=$(cvw_xml -r software/mysql/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file _list
+
+	cvw_rpm -i mariadb-server
+	cvw_rpm -i mariadb-devel
+	cvw_service -S mariadb
+
+	set +e
+	mysql -uroot -p$_pswd -e "SHOW DATABASES" >/dev/null 2>&1
+	if [[ $? -ne 0 ]] ; then
+		cvw_say -s "setting MySQL root password"
+		mysqladmin -uroot password $_pswd
+		if [[ $? -ne 0 ]] ; then
+			cvw_say -f "$_prog: can't set MySQL password"
+			exit 1
+		fi
+	fi
+	set -e
+
+	cvw_mysql -e "DELETE FROM mysql.user WHERE User=''"
+	cvw_mysql -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost')"
+	cvw_mysql -e "DROP DATABASE IF EXISTS test"
+	cvw_mysql -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%'"
+	cvw_mysql -e "FLUSH PRIVILEGES"
+
+	_file="/tmp/cvw/mysql.users"
+	cvw_mysql -e "SELECT host,user,password FROM mysql.user" >$_file.beg
+
+	cvw_say -o "mysql:initial"
+}
+
+
+function mysql_finish
+{
+	cvw_say -h "Finishing mysql"
+	local _file
+
+	_file="/tmp/cvw/mysql.users"
+	cvw_mysql -e "SELECT host,user,password FROM mysql.user" >$_file.end
+	if ! cmp -s $_file.beg $_file.end ; then
+		cat $_file.end | awk '{ printf "    -- %-12s %-12s %s\n", $1, $2, $3 }'
+	fi
+	rm -f $_file.beg $_file.end
+
+	cvw_say -o "mysql:finish"
+}
+
+
+function mysql_disable
+{
+	if cvw_service -c mariadb ; then
+		cvw_say -h "Disabling MySQL (MariaDB)"
+
+		cvw_service -d mariadb
+
+		cvw_say -o "mysql:disable"
+	fi
+}
+
+
+while getopts ":c:e:f:isxz:" opt ; do
+	case $opt in
+		c)
+			mysql_check
+			_create=$OPTARG
+		;;
+
+		e)
+			rm -f /tmp/cvw/error
+			mysql_check
+			_pswd=$(cvw_xml -r software/mysql/password)
+			[[ -s /tmp/cvw/error ]] && exit 1
+			cvw_say -d "mysql ($_pswd) -> '$OPTARG'"
+			mysql -uroot -p$_pswd -e "$OPTARG" 2>>/tmp/cvw/error
+			exit
+		;;
+
+		f)
+			mysql_check
+			_script=$OPTARG
+		;;
+
+		i)
+			if cvw_xml -a software/mysql ; then
+				mysql_initial
+			else
+				mysql_disable
+			fi
+			exit 0
+		;;
+
+		s)
+			mysql_check
+			mysql_socket
+			exit 0
+		;;
+
+		x)
+			cvw_xml -a software/mysql || exit 0
+			mysql_finish
+			exit 0
+		;;
+
+		z)
+			cvw_xml -a software/mysql || exit 0
+			_delete=$OPTARG
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+if [[ $_create ]] ; then
+	[[ $# -eq 3 ]] || usage
+	_dbuser=$1
+	_dbpass=$2
+	_collate=$3
+
+	if [[ ${#_dbuser} -gt 15 ]] ; then
+		cvw_say -f "MySQL name too long (${#_dbuser} > 15)"
+	fi
+
+	if [[ $_collate =~ latin ]] ; then
+		_charset="latin1"
+	else
+		_charset="utf8"
+	fi
+
+	cvw_say -s "database: '$_create'"
+	cvw_mysql -e "CREATE DATABASE IF NOT EXISTS $_create CHARACTER SET $_charset COLLATE $_collate"
+	cvw_mysql -e "GRANT ALL PRIVILEGES ON $_create.* TO '$_dbuser'@'localhost' IDENTIFIED BY '$_dbpass'"
+	cvw_mysql -e "FLUSH PRIVILEGES"
+	exit 0
+fi
+
+if [[ $_script ]] ; then
+	[[ $# -eq 3 ]] || usage
+	_dbuser=$1
+	_dbpass=$2
+	_dbname=$3
+	cat $_script | mysql -u$_dbuser -p$_dbpass $_dbname 2>>/tmp/cvw/error
+	exit
+fi
+
+if [[ $_delete ]] ; then
+	_dbuser=$1
+	cvw_mysql -e "DROP DATABASE IF EXISTS $_delete"
+	if [[ $_dbuser ]] ; then
+		cvw_mysql -e "DELETE FROM mysql.user WHERE User='$_dbuser'"
+		cvw_mysql -e "FLUSH PRIVILEGES"
+	fi
+	exit 0
+fi
+
+usage
+

@@ -1,0 +1,208 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_backup - Backup handling
+######              (internal service functions)
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+######          TODO handle backup and restore for PostgreSQL
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+# Prepare for backup
+_mynames=""
+_pgnames=""
+_dbpass=""
+_dbuser=""
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog [options] app dir ...  Install backup
+		    or: $_prog -s                     Print summary
+		    or: $_prog -z app                 Remove scripts for app
+		Options:
+		    -m name   MySQL database name (multiple allowed)
+		    -g name   PostgreSQL database name (multiple allowed)
+		    -p pass   Password for database (one for all)
+		    -u user   Username for database (one for all)
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+while getopts ":g:m:p:su:z:" opt ; do
+	case $opt in
+		g)
+			_pgnames="$_pgnames $OPTARG"
+		;;
+
+		m)
+			_mynames="$_mynames $OPTARG"
+		;;
+
+		p)
+			_dbpass=$OPTARG
+		;;
+
+		s)
+			cvw_say -h "Backup summary"
+			for _cmd in $(find /usr/local/bin -name "bkup.*") ; do
+				cvw_say -s "cvw -l $_cmd -v"
+			done
+			exit
+		;;
+
+		u)
+			_dbuser=$OPTARG
+		;;
+
+		z)
+			rm -f /usr/local/bin/bkup.$OPTARG
+			rm -f /etc/cron.daily/bkup.$OPTARG
+			rm -f /usr/local/bin/rstr.$OPTARG
+			rm -f /etc/logrotate.d/$OPTARG
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+_app=$1
+[[ $_app ]] || usage
+shift
+
+[[ -n $_mynames && -z $_dbuser ]] && cvw_say -f "$_app bkup: missing database username"
+[[ -n $_pgnames && -z $_dbuser ]] && cvw_say -f "$_app bkup: missing database username"
+[[ -n $_mynames && -z $_dbpass ]] && cvw_say -f "$_app bkup: missing database password"
+[[ -n $_pgnames && -z $_dbpass ]] && cvw_say -f "$_app bkup: missing database password"
+
+_bkup="/var/local/backup/$_app"
+_file="/etc/cron.daily/bkup.$_app"
+
+cat >$_file.tmp_VW <<-EOF
+	#!/bin/bash
+
+	if [[ \$1 == -v ]] ; then
+	    _verbose=1
+	    shift
+	fi
+
+	_day=\$(LANG=C /bin/date +%A)
+	/bin/mkdir -p $_bkup/\$_day/dirs
+	_result=\$?
+	if [[ \$_result -ne 0 ]] ; then
+	    /usr/bin/logger -t $_app "ALERT mkdir exited with \$_result"
+	    exit 1
+	fi
+
+EOF
+
+for _myname in $_mynames ; do
+	cat >>$_file.tmp_VW <<-EOF
+		/bin/mkdir -p $_bkup/\$_day/mysql
+		_file="$_bkup/\$_day/mysql/$_myname.sql.gz"
+		/usr/bin/mysqldump -u$_dbuser -p$_dbpass $_myname | /bin/gzip -9 >\$_file
+		_result=\$?
+		[[ \$_verbose ]] && echo "Finished database $_myname (\$_result)"
+		if [[ \$_result -ne 0 ]] ; then
+		    /usr/bin/logger -t $_app "ALERT mysqldump $_myname exited with \$_result"
+		    exit 1
+		fi
+
+	EOF
+done
+
+for _entry in $* ; do
+	cat >>$_file.tmp_VW <<-EOF
+		if [[ -d $_entry ]] ; then
+		    /usr/bin/rsync -aqz --delete $_entry/ $_bkup/\$_day/dirs/${_entry##*/}
+		    _result=\$?
+		    [[ \$_verbose ]] && echo "Finished dir ${_entry##*/} (\$_result)"
+		    if [[ \$_result -ne 0 ]]; then
+		        /usr/bin/logger -t $_app "ALERT rsync ${_entry##*/} exited with \$_result"
+		        exit 1
+		    fi
+		fi
+
+	EOF
+done
+
+cat >>$_file.tmp_VW <<-EOF
+	cd $_bkup && ln -nfs \$_day last
+	exit 0
+EOF
+cvw_file -m 0775 -v $_file
+ln -nfs $_file /usr/local/bin/bkup.$_app
+
+
+_file="/usr/local/bin/rstr.$_app"
+cat >$_file.tmp_VW <<-EOF
+	#!/bin/bash
+
+	_day=\${1:-last}
+
+EOF
+
+for _myname in $_mynames ; do
+	cat >>$_file.tmp_VW <<-EOF
+		_file="$_bkup/\$_day/mysql/$_myname.sql.gz"
+		if [[ -s \$_file ]] ; then
+		    echo "Restoring \$_day $_myname database"
+		    cat \$_file | /usr/bin/gunzip | /usr/bin/mysql -u$_dbuser -p$_dbpass $_myname
+		    _result=\$?
+		    echo "Finished database $_myname (\$_result)"
+		    sleep 5
+		fi
+
+	EOF
+done
+
+for _entry in $* ; do
+	cat >>$_file.tmp_VW <<-EOF
+		if [[ -d $_bkup/\$_day/dirs/${_entry##*/} ]] ; then
+		    echo "Restoring \$_day dir ${_entry##*/}"
+		    /usr/bin/rsync -aqz --delete $_bkup/\$_day/dirs/${_entry##*/}/ $_entry
+		    _result=\$?
+		    echo "Finished dir ${_entry##*/} (\$_result)"
+		    sleep 5
+		fi
+
+	EOF
+done
+
+cat >>$_file.tmp_VW <<-EOF
+	exit 0
+EOF
+cvw_file -m 0775 -v $_file
+
+exit 0
+

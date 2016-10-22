@@ -1,0 +1,121 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_certbot - Install or remove Let's encrypt certbot
+######               http://certbot.eff.org/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Let's encrypt certbot"
+_slug="certbot"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function certbot_install
+{
+	cvw_say -h "Installing $_name"
+	local _canon=$(cvw_xml -r host/fqdn)
+	local _admin=$(cvw_xml -r host/admin)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _live="/etc/letsencrypt/live/$_canon"
+	local _file _list _san _args
+
+	cvw_rpm -i certbot
+
+	_file="/var/local/cfg/files/misc/letsencrypt.tar.gz"
+	if [[ -s $_file ]] ; then
+		cvw_say -s "extracting letsencrypt.tar.gz"
+		tar -x -z -C /etc -f $_file
+	fi
+
+	if [[ -d $_live ]] ; then
+		cvw_say -s "updating web certificate"
+		certbot renew
+	else
+		_list="-d $_canon"
+		[[ $_canon =~ ^www\. ]] && _list="$_list -d ${_canon#*.}"
+		for _san in $(cvw_xml -l software/$_slug/san) ; do
+			_list="$_list -d $_san"
+			[[ $_san =~ ^www\. ]] && _list="$_list -d ${_san#*.}"
+		done
+		if cvw_service -c nginx ; then
+			_args="--webroot -w $(cvw_xml -r system/app_root)/nginx"
+		elif cvw_service -c httpd ; then
+			_args="--webroot -w /var/www/html"
+		else
+			_args="--standalone"
+		fi
+		_args="$_args --agree-tos --email '$_admin'"
+		_args="$_args --keep --text --non-interactive"
+		cvw_say -a "certbot certonly $_args $_list"
+		certbot certonly $_args $_list
+	fi
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	find /etc/letsencrypt -type d -exec chmod 0755 {} \;
+	find /etc/letsencrypt -type f -exec chmod 0644 {} \;
+
+	cvw_say -o "$_slug"
+}
+
+
+function certbot_remove
+{
+	if cvw_rpm -c certbot ; then
+		cvw_say -h "Removing $_name"
+		cvw_rpm -e certbot
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				certbot_install
+			else
+				certbot_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

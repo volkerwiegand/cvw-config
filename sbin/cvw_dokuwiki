@@ -1,0 +1,245 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_dokuwiki - Install or remove DokuWiki
+######                https://www.dokuwiki.org/dokuwiki
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="DokuWiki"
+_slug="dokuwiki"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function dokuwiki_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/php || cvw_say -f "$_prog: requires php"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _html
+	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
+	local _conf _file _subdir
+
+	cvw_backup $_slug $_html/conf $_html/data
+
+	cvw_unpack -i $_slug $_html index.php
+	for _subdir in conf data ; do
+		mkdir -p $_html/$_subdir
+		chown -R apache $_html/$_subdir
+	done
+
+	if [[ -d /var/local/backup/$_slug/last/dirs && \
+	      -x /usr/local/bin/bkup.$_slug         && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+
+	_file="$_html/.htaccess"
+	cat >$_file.tmp_VW <<-EOF
+		## Enable this to restrict editing to logged in users only
+
+		## You should disable Indexes and MultiViews either here or in the
+		## global config. Symlinks maybe needed for URL rewriting.
+		Options -Indexes -MultiViews +FollowSymLinks
+
+		## make sure nobody gets the htaccess, README, COPYING or VERSION files
+		<Files ~ "^([\\._]ht|README$|VERSION$|COPYING$)">
+		   Require all denied
+		</Files>
+
+		## Don't allow access to git directories
+		<IfModule alias_module>
+		   RedirectMatch 404 /\\.git
+		</IfModule>
+
+		## Uncomment these rules if you want to have nice URLs using
+		## \$conf['userewrite'] = 1 - not needed for rewrite mode 2
+		RewriteEngine on
+		#
+		RewriteRule ^_media/(.*)              lib/exe/fetch.php?media=\$1  [QSA,L]
+		RewriteRule ^_detail/(.*)             lib/exe/detail.php?media=\$1  [QSA,L]
+		RewriteRule ^_export/([^/]+)/(.*)     doku.php?do=export_\$1&id=\$2  [QSA,L]
+		RewriteRule ^\$                        doku.php  [L]
+		RewriteCond %{REQUEST_FILENAME}       !-f
+		RewriteCond %{REQUEST_FILENAME}       !-d
+		RewriteRule (.*)                      doku.php?id=\$1  [QSA,L]
+		RewriteRule ^index.php\$               doku.php
+		#
+		## Not all installations will require the following line.  If you do,
+		## change "/dokuwiki" to the path to your dokuwiki directory relative
+		## to your document root.
+		RewriteBase $_uri
+		#
+		## If you enable DokuWikis XML-RPC interface, you should consider to
+		## restrict access to it over HTTPS only! Uncomment the following two
+		## rules if your server setup allows HTTPS.
+		#RewriteCond %{HTTPS} !=on
+		#RewriteRule ^lib/exe/xmlrpc.php$      https://%{SERVER_NAME}%{REQUEST_URI} [L,R=301]
+	EOF
+	cvw_file -v $_dest httpd nginx php-fpm
+
+	_file="$_html/conf/local.php"
+	cat >$_file.tmp_VW <<-EOF
+		<?php
+		\$conf['title']       = 'Railduino Wiki';
+		\$conf['lang']        = 'de';
+		\$conf['tagline']     = 'Preiswerte Modellbahnsteuerung mit Arduino und Browser';
+		\$conf['useacl']      = 1;
+		\$conf['superuser']   = 'volker';
+	EOF
+	if [[ -s $_file ]] ; then
+		if [[ -r $_html/install.php ]] ; then
+			cvw_say -s "hiding install.php"
+			rm -rf $_root/install.php # just in case
+			mv $_html/install.php $_root/install.php
+		fi
+	else
+		cvw_say -s "waiting for installation"
+	fi
+	cvw_file -v $_dest httpd nginx php-fpm
+
+	_file="$_html/conf/acl.auth.php"
+	cat >$_file.tmp_VW <<-EOF
+		# acl.auth.php
+		# <?php exit()?>
+		# Don't modify the lines above
+		#
+		# Access Control Lists
+		#
+		# Editing this file by hand shouldn't be necessary. Use the ACL
+		# Manager interface instead.
+		#
+		# If your auth backend allows special char like spaces in groups
+		# or user names you need to urlencode them (only chars <128, leave
+		# UTF-8 multibyte chars as is)
+		#
+		# none   0
+		# read   1
+		# edit   2
+		# create 4
+		# upload 8
+		# delete 16
+
+		*               @ALL        8
+	EOF
+	cvw_file -v $_dest httpd nginx php-fpm
+
+	_file="$_html/conf/users.auth.php"
+	cat >$_file.tmp_VW <<-EOF
+		# users.auth.php
+		# <?php exit()?>
+		# Don't modify the lines above
+		#
+		# Userfile
+		#
+		# Format:
+		#
+		# login:passwordhash:Real Name:email:groups,comma,seperated
+
+	EOF
+	cvw_file -v $_dest httpd nginx php-fpm
+
+	if cvw_xml -a software/nginx ; then
+		_file="/tmp/cvw/nginx.options"
+		cat >$_file <<-EOF
+			root $_html;
+			    location ~ /(data|conf|bin|inc)/ {
+			      deny all;
+			    }
+		EOF
+		cvw_nginx -p software/$_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
+		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
+		echo "" >>$_conf
+		[[ $_uri != "/" ]] && echo "   Alias $_uri $_html" >>$_conf
+		cat >>$_conf <<-EOF
+			   <Directory $_html>
+			      AllowOverride All
+			      Require all granted
+			   </Directory>
+		EOF
+		cvw_url -a "$_name" $_uri
+	fi
+
+	cvw_say -o "$_slug"
+}
+
+
+function dokuwiki_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _html
+	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
+
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		cvw_backup -z $_slug
+		if [[ $_uri == "/" ]] ; then
+			rm -rf /var/www/html
+			mkdir -p /var/www/html
+		fi
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				dokuwiki_install
+			else
+				dokuwiki_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

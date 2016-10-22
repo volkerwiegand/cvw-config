@@ -1,0 +1,220 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_init - Config initialisation
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+
+function usage
+{
+	cat >&2 <<-EOF
+		Syntax: $_prog -i [-d]   Prepare normal run [debug]
+		    or: $_prog -u [-d]   Prepare upgrade run [debug]
+		Called with: '$_prog $_args'
+	EOF
+	exit 1
+}
+
+function failure
+{
+	echo "$_prog: $*" >&2
+	exit 1
+}
+
+
+function init_init
+{
+	local _mode=$1
+	local _fqdn _addr _lang _web _curr _want _file _host _cert _src_dst
+
+	rm -rf /tmp/cvw
+	test -e /tmp/cvw && failure "pre-existing /tmp/cvw"
+	test -d /var/local/cfg || failure "non-existing /var/local/cfg"
+	mkdir -p -m 0700 /tmp/cvw /var/local/backup
+
+	cvw_say
+
+	if [[ $_debug ]] ; then
+		echo "debug" >/tmp/cvw/debug
+	fi
+
+	cvw_say -h "Checking coldstart"
+
+	_curr=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
+	if cvw_xml -t host/ipv6 ; then
+		_want=0
+	else
+		_want=1
+	fi
+	if [[ $_want -ne $_curr ]] ; then
+		cvw_say -s "setting ipv6 disable to $_want"
+		sysctl -w net.ipv6.conf.all.disable_ipv6=$_want
+		sysctl -w net.ipv6.conf.default.disable_ipv6=$_want
+	fi
+	_file="/etc/sysctl.d/50-disable_ipv6.conf"
+	cat >$_file.tmp_VW <<-EOF
+		net.ipv6.conf.all.disable_ipv6 = $_want
+		net.ipv6.conf.default.disable_ipv6 = $_want
+	EOF
+	cvw_file -v $_file
+
+	cvw_rpm -L
+	cvw_say -o "coldstart"
+
+	cvw_say -h "Configuring / verifying basics"
+	_fqdn=$(cvw_xml -r host/fqdn)
+	_addr=$(cvw_xml -r host/addr)
+	_lang=$(cvw_xml -r system/language)
+	_zone=$(cvw_xml -r system/timezone)
+	_root=$(cvw_xml -r system/app_root)
+	_port=$(cvw_xml -r system/web/port)
+	_ssl_port=$(cvw_xml  -r system/web/ssl_port)
+	_web=$(cvw_xml  -r system/web/server)
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	_src="/var/local/cfg/files/keys"
+	_dst="/etc/pki/tls/dhparam.pem"
+	if [[ -s $_src/dh4096_param.pem ]] ; then
+		cvw_say -s "copying 4096 bit DH group"
+		cp $_src/dh4096_param.pem $_dst
+	elif [[ -s $_src/dh2048_param.pem ]] ; then
+		cvw_say -s "copying 2048 bit DH group"
+		cp $_src/dh2048_param.pem $_dst
+	elif [[ -s $_src/dh1024_param.pem ]] ; then
+		cvw_say -s "copying 1024 bit DH group"
+		cp $_src/dh1024_param.pem $_dst
+	elif [[ -x /usr/bin/openssl ]] ; then
+		cvw_say -s "generating 1024 bit DH group"
+		openssl dhparam -out $_dst 1024
+	else
+		cvw_say -s "no DH group file yet"
+	fi
+
+	if cvw_xml -t host/hostname ; then
+		cvw_say -s "setting hostname"
+		hostnamectl set-hostname $_fqdn
+		cvw_file -e /etc/hosts "s/^$_addr.*/$_addr $_fqdn ${_fqdn%%.*}/"
+	fi
+
+	if cvw_xml -t host/firewall ; then
+		cvw_say -s "enabling firewall"
+		cvw_rpm -i firewalld
+		cvw_service -S firewalld
+		cvw_firewall -s dhcpv6-client
+	else
+		cvw_say -s "disabling firewall"
+		cvw_service -d firewalld
+		cvw_rpm -e firewalld
+	fi
+
+	if cvw_xml -t host/ntp ; then
+		cvw_say -s "enabling NTP"
+		cvw_rpm -i ntp
+		cvw_firewall -s ntp
+		cvw_service -s ntpd
+	else
+		cvw_say -s "TODO disabling ntp"
+	fi
+
+	if cvw_xml -c host/ssh_port ; then
+		_ssh_port=$(cvw_xml -r host/ssh_port)
+		cvw_say -s "SSH port is $_ssh_port"
+		cvw_firewall -t $_ssh_port
+		cvw_file -e /etc/ssh/sshd_config "s/^[# ]*Port.*/Port $_ssh_port/" sshd
+	else
+		cvw_firewall -s ssh
+	fi
+
+	if cvw_xml -a software/iredmail ; then
+		cvw_firewall -s http
+		cvw_firewall -s https
+	else
+		cvw_say -s "webserver is $_web ($_port / $_ssl_port)"
+		cvw_firewall -t $_port
+		cvw_firewall -t $_ssl_port
+	fi
+
+	cvw_say -s "language is $_lang"
+	cvw_say -s "timezone is $_zone"
+
+	cvw_say -o "basics"
+
+	if [[ $_upgrade ]] ; then
+		echo "upgrade" >/tmp/cvw/updating
+		cvw_say -h "Starting the upgrade"
+	else
+		cvw_say -h "Starting the update"
+	fi
+
+	cvw_rpm -l general
+
+	if cvw_xml -t software/development ; then
+		cvw_rpm -g "libtool:Development Tools"
+		cvw_rpm -l development
+	fi
+
+	if cvw_xml -t software/go ; then
+		cvw_rpm -i golang
+		_file=/etc/profile.d/go.sh
+		cat >$_file.tmp_VW <<-EOF
+			#
+			# Set path for go language
+			#
+			export GOPATH=/usr/local/gocode
+			mkdir -p \$GOPATH
+
+			#
+			# Add go binaries to search path
+			#
+			if ! echo \$PATH | grep -q gocode.bin ; then
+			    export PATH=\$PATH:/usr/local/gocode/bin
+			fi
+		EOF
+		cvw_file -v $_file
+		source $_file
+		go get github.com/constabulary/gb/...
+	fi
+
+	test $_upgrade && cvw_rpm -u
+
+	cvw_say -o "startup"
+}
+
+
+while getopts ":diu" opt ; do
+	case $opt in
+		d)
+			_debug=1
+		;;
+
+		i)
+			_update=1
+		;;
+
+		u)
+			_upgrade=1
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+init_init
+
