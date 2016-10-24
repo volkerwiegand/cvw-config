@@ -55,6 +55,7 @@ function owncloud_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _html
 	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
+	local _data=$_root/data
 	local _conf _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
@@ -62,13 +63,17 @@ function owncloud_install
 			$_html/apps \
 			$_html/assets \
 			$_html/config \
-			$_html/data \
+			$_root/data \
 			$_html/themes
 
 	cvw_unpack -i $_slug $_html index.php
-	for _subdir in apps assets config data ; do
+	for _subdir in apps assets config ; do
 		mkdir -p $_html/$_subdir
 		chown -R apache $_html/$_subdir
+	done
+	for _subdir in data ; do
+		mkdir -p $_root/$_subdir
+		chown -R apache $_root/$_subdir
 	done
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
@@ -113,6 +118,7 @@ function owncloud_install
 			      Options +FollowSymlinks
 			      AllowOverride All
 			      Satisfy Any
+			      Require all granted
 			      <IfModule mod_dav.c>
 			         Dav off
 			      </IfModule>
@@ -140,9 +146,11 @@ function owncloud_remove
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
 		if [[ $_web == "apache" && $_uri == "/" ]] ; then
+			cvw_say -s "clearing /var/www/html"
 			rm -rf /var/www/html
 			mkdir -p /var/www/html
 		fi
+		cvw_say -s "deleting $_root"
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi
