@@ -127,16 +127,17 @@ function roundcube_install
 
 function roundcube_remove
 {
+	local _web=$(cvw_xml -r system/web/server)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _html
 	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 
+	cvw_backup -z $_slug
+	cvw_mysql -z $_slug $_slug
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
-		cvw_mysql -z $_slug $_slug
-		if [[ $_uri == "/" ]] ; then
+		if [[ $_web == "apache" && $_uri == "/" ]] ; then
 			rm -rf /var/www/html
 			mkdir -p /var/www/html
 		fi

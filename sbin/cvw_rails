@@ -230,10 +230,7 @@ function rails_delete_app
 	local _dir
 
 	cvw_service -z $_id
-	rm -f /usr/local/bin/bkup.$_id
-	rm -f /etc/cron.daily/bkup.$_id
-	rm -f /usr/local/bin/rstr.$_id
-	rm -f /etc/logrotate.d/$_id
+	cvw_backup -z $_id
 	cvw_mysql -z $_id $_id
 
 	if id rails >/dev/null 2>&1 ; then
