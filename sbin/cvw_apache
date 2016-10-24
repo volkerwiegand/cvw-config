@@ -114,7 +114,7 @@ function apache_initial
 	cvw_rpm -i mod_fcgid && cvw_apache -e fcgid
 
 	_file="/tmp/cvw/apache.names"
-	echo "ServerName       $_canon" >$_file
+	echo "   ServerName       $_canon" >$_file
 	if [[ $_hstnam == "www" ]] ; then
 		echo "   ServerAlias      $_domain" >>$_file
 	fi
@@ -136,9 +136,10 @@ function apache_initial
 	EOF
 
 	if [[ -s $_cert/cert.pem ]] ; then
+		cvw_say -s "found SSL config $_cert"
 		cat >$_conf.tmp_VW <<-EOF
 			<VirtualHost *:$_port>
-			   $(cat /tmp/cvw/apache.names)
+			$(cat /tmp/cvw/apache.names)
 			   UseCanonicalName Off
 			   ErrorLog         logs/error_log
 			   TransferLog      logs/transfer_log
@@ -149,7 +150,7 @@ function apache_initial
 			</VirtualHost>
 
 			<VirtualHost _default_:443>
-			   $(cat /tmp/cvw/apache.names)
+			$(cat /tmp/cvw/apache.names)
 			   UseCanonicalName Off
 			   ErrorLog         logs/ssl_error_log
 			   TransferLog      logs/ssl_transfer_log
@@ -170,23 +171,24 @@ function apache_initial
 			      SSLOptions +StdEnvVars
 			   </Directory>
 
-			   $(cat /tmp/cvw/apache.certbot)
+			$(cat /tmp/cvw/apache.certbot)
 
 			   BrowserMatch "MSIE [2-5]" \\
 			      nokeepalive ssl-unclean-shutdown \\
 			      downgrade-1.0 force-response-1.0
 		EOF
 	else
+		cvw_say -s "missing SSL config"
 		cat >$_conf.tmp_VW <<-EOF
 			<VirtualHost *:$_port>
-			   $(cat /tmp/cvw/apache.names)
+			$(cat /tmp/cvw/apache.names)
 			   UseCanonicalName Off
 			   ErrorLog         logs/error_log
 			   TransferLog      logs/transfer_log
 			   LogLevel         $_loglvl
 			   DocumentRoot     /var/www/html
 
-			   $(cat /tmp/cvw/apache.certbot)
+			$(cat /tmp/cvw/apache.certbot)
 		EOF
 	fi
 
