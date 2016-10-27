@@ -100,7 +100,7 @@ function opencart_install
 		RewriteCond %{REQUEST_URI} !.*\\.(ico|gif|jpg|jpeg|png|js|css)
 		RewriteRule ^([^?]*) index.php?_route_=\$1 [L,QSA]
 	EOF
-	cvw_file -v $_file httpd nginx php-fpm
+	cvw_file -v $_file $(cvw_php -s)
 	_file=$_html/.htaccess.txt
 	[[ -r $_file ]] && mv $_file $_root/htaccess.txt
 
@@ -137,7 +137,7 @@ function opencart_install
 		define('DB_PREFIX', 'oc_');
 	EOF
 	if [[ -s $_file ]] ; then
-		cvw_file -v $_file -u root httpd nginx php-fpm
+		cvw_file -v $_file -u root $(cvw_php -s)
 		[[ -e $_dist ]] && mv $_dist $_root/config-dist.php
 	elif [[ -e $_dist ]] ; then
 		# pristine install
@@ -180,7 +180,7 @@ function opencart_install
 		define('DB_PREFIX', 'oc_');
 	EOF
 	if [[ -s $_file ]] ; then
-		cvw_file -v $_file -u root httpd nginx php-fpm
+		cvw_file -v $_file -u root $(cvw_php -s)
 		[[ -e $_dist ]] && mv $_dist $_root/admin-dist.php
 		if [[ -d $_html/install ]] ; then
 			cvw_say -s "hiding install directory"

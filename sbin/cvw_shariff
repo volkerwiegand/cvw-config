@@ -65,7 +65,7 @@ function shariff_install
 		  ]
 		}
 	EOF
-	cvw_file -v $_file httpd nginx php-fpm
+	cvw_file -v $_file $(cvw_php -s)
 
 	cvw_say -o "$_slug"
 }

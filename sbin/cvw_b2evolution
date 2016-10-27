@@ -78,7 +78,7 @@ function b2evolution_install
 		_dest="${_file%sample.htaccess}.htaccess"
 		if [[ ! -s $_dest ]] ; then
 			cp $_file $_dest.tmp_VW
-			cvw_file -v $_dest httpd nginx php-fpm
+			cvw_file -v $_dest $(cvw_php -s)
 		fi
 	done
 
@@ -95,7 +95,7 @@ function b2evolution_install
 		cvw_say -s "waiting for installation"
 		chown apache $_html/conf
 	fi
-	cvw_file -v $_file -u root httpd nginx php-fpm
+	cvw_file -v $_file -u root $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p software/$_slug

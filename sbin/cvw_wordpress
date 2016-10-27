@@ -109,7 +109,7 @@ function wordpress_install
 		require_once(ABSPATH . 'wp-settings.php');
 	EOF
 	[[ -s /tmp/cvw/error ]] && exit 1
-	cvw_file -v $_file httpd nginx php-fpm
+	cvw_file -v $_file $(cvw_php -s)
 
 	_file="$_html/.htaccess"
 	cat >$_file.tmp_VW <<-EOF
@@ -125,7 +125,7 @@ function wordpress_install
 		# END WordPress
 	EOF
 	[[ -s /tmp/cvw/error ]] && exit 1
-	cvw_file -v $_file httpd nginx php-fpm
+	cvw_file -v $_file $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p software/$_slug

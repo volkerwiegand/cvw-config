@@ -109,7 +109,7 @@ function dokuwiki_install
 		#RewriteCond %{HTTPS} !=on
 		#RewriteRule ^lib/exe/xmlrpc.php$      https://%{SERVER_NAME}%{REQUEST_URI} [L,R=301]
 	EOF
-	cvw_file -v $_dest httpd nginx php-fpm
+	cvw_file -v $_dest $(cvw_php -s)
 
 	_file="$_html/conf/local.php"
 	cat >$_file.tmp_VW <<-EOF
@@ -129,7 +129,7 @@ function dokuwiki_install
 	else
 		cvw_say -s "waiting for installation"
 	fi
-	cvw_file -v $_dest httpd nginx php-fpm
+	cvw_file -v $_dest $(cvw_php -s)
 
 	_file="$_html/conf/acl.auth.php"
 	cat >$_file.tmp_VW <<-EOF
@@ -155,7 +155,7 @@ function dokuwiki_install
 
 		*               @ALL        8
 	EOF
-	cvw_file -v $_dest httpd nginx php-fpm
+	cvw_file -v $_dest $(cvw_php -s)
 
 	_file="$_html/conf/users.auth.php"
 	cat >$_file.tmp_VW <<-EOF
@@ -170,7 +170,7 @@ function dokuwiki_install
 		# login:passwordhash:Real Name:email:groups,comma,seperated
 
 	EOF
-	cvw_file -v $_dest httpd nginx php-fpm
+	cvw_file -v $_dest $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
 		_file="/tmp/cvw/nginx.options"

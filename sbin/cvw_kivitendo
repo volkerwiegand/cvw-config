@@ -160,7 +160,7 @@ function kivitendo_install
 		debug = 0
 		run_as = apache
 	EOF
-	cvw_file -v $_dest httpd nginx php-fpm
+	cvw_file -v $_dest $(cvw_php -s)
 	rm -f /tmp/cvw/kivitendo.mail_delivery
 
 	if cvw_xml -a software/nginx ; then

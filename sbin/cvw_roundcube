@@ -100,7 +100,7 @@ function roundcube_install
 		\$config['spellcheck_engine'] = 'googie';
 		\$config['enable_installer'] = $_installer;
 	EOF
-	cvw_file -v $_file httpd nginx php-fpm
+	cvw_file -v $_file $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p software/$_slug
