@@ -28,6 +28,7 @@ function usage
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i        Install or disable $_name
 		    or: $_prog -e file   Enable conf.d/file.conf
+		    or: $_prog -p slug   Add standard PHP block
 		    or: $_prog -x        Execute and cleanup
 		Called with: '$_prog $_args'
 	EOF
@@ -40,6 +41,47 @@ function usage
 	rm -f /tmp/cvw_error
 
 	exit 1
+}
+
+
+function apache_add_php
+{
+	local _slug=$1
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
+	[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
+	local _home=$(cat /tmp/cvw/apache.home)
+	local _opts="/tmp/cvw/apache.options"
+	local _html
+
+	echo "" >>$_conf
+
+	if [[ $_uri == "/" ]] ; then
+		if [[ $_home != $_slug ]] ; then
+			cvw_say -f "apache wants $_home as root"
+		fi
+		_html="/var/www/html"
+	else
+		if [[ $_home == $_slug ]] ; then
+			cvw_say -f "apache wants $_slug as root"
+		fi
+		_html="$_root$_uri"
+		echo "   Alias $_uri $_html" >>$_conf
+	fi
+
+	if [[ -s $_opts ]] ; then
+		cat $_opts >>$_conf
+		rm -f $_opts
+	else
+		cat >>$_conf <<-EOF
+			   <Directory $_html>
+			      AllowOverride All
+			      Require all granted
+			   </Directory>
+		EOF
+	fi
 }
 
 
@@ -241,7 +283,7 @@ function apache_disable
 }
 
 
-while getopts ":e:ix" opt ; do
+while getopts ":e:ip:x" opt ; do
 	case $opt in
 		e)
 			cvw_xml -a software/$_slug || exit 0
@@ -257,6 +299,11 @@ while getopts ":e:ix" opt ; do
 			else
 				apache_disable
 			fi
+			exit 0
+		;;
+
+		p)
+			apache_add_php $OPTARG
 			exit 0
 		;;
 

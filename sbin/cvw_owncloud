@@ -56,7 +56,7 @@ function owncloud_install
 	local _html
 	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 	local _data=$_root/data
-	local _conf _home _file _subdir _patt
+	local _conf _file _subdir _patt
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \

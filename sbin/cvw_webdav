@@ -52,7 +52,7 @@ function webdav_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _html
 	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
-	local _conf _home _file _subdir
+	local _conf _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
@@ -114,21 +114,8 @@ function webdav_install
 	fi
 
 	if cvw_xml -a software/apache ; then
-		_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
-		_home=$(cat /tmp/cvw/apache.home)
-		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
-		echo "" >>$_conf
-		if [[ $_uri == "/" ]] ; then
-			if [[ $_home != $_slug ]] ; then
-				cvw_say -f "apache wants $_home as root"
-			fi
-		else
-			if [[ $_home == $_slug ]] ; then
-				cvw_say -f "apache wants $_slug as root"
-			fi
-			echo "   Alias $_uri $_html" >>$_conf
-		fi
-		cat >>$_conf <<-EOF
+		_conf="/tmp/cvw/apache.options"
+		cat >$_conf <<-EOF
 			   <IfModule mod_dav.c>
 			      <Directory $_html>
 			         Dav On
@@ -137,16 +124,18 @@ function webdav_install
 			         AddDefaultCharset UTF-8
 			         AuthType Basic
 			         AuthName "$_name Server"
-			         AuthUserFile /etc/httpd/$_slug.users.pwd
+			         AuthUserFile /etc/httpd/webdav.users.pwd
 			         <Limit GET PUT POST DELETE PROPFIND PROPPATCH MKCOL COPY MOVE LOCK UNLOCK>
 			           Require valid-user
 			         </Limit>
 			      </Directory>
 			   </IfModule>
 		EOF
-		htpasswd -b -c /etc/httpd/$_slug.users.pwd $_user $_pass 2>/dev/null
-		cvw_url -a "$_name" $_uri
+		cvw_apache -p $_slug
+		htpasswd -b -c /etc/httpd/webdav.users.pwd $_user $_pass 2>/dev/null
 	fi
+
+	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
 }

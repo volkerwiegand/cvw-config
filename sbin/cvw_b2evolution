@@ -52,7 +52,7 @@ function b2evolution_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _html
 	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
-	local _conf _home _file _subdir _dest
+	local _conf _file _subdir _dest
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
@@ -87,6 +87,7 @@ function b2evolution_install
 		chown root $_html/conf
 		if [[ -d $_html/install ]] ; then
 			cvw_say -s "hiding install directory"
+			mkdir -p $_root 2>>/tmp/cvw/error
 			rm -rf $_root/install # just in case
 			mv $_html/install $_root/install
 		fi
@@ -101,28 +102,10 @@ function b2evolution_install
 	fi
 
 	if cvw_xml -a software/apache ; then
-		_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
-		_home=$(cat /tmp/cvw/apache.home)
-		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
-		echo "" >>$_conf
-		if [[ $_uri == "/" ]] ; then
-			if [[ $_home != $_slug ]] ; then
-				cvw_say -f "apache wants $_home as root"
-			fi
-		else
-			if [[ $_home == $_slug ]] ; then
-				cvw_say -f "apache wants $_slug as root"
-			fi
-			echo "   Alias $_uri $_html" >>$_conf
-		fi
-		cat >>$_conf <<-EOF
-			   <Directory $_html>
-			      AllowOverride All
-			      Require all granted
-			   </Directory>
-		EOF
-		cvw_url -a "$_name" $_uri
+		cvw_apache -p $_slug
 	fi
+
+	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
 }
