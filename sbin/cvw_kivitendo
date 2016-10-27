@@ -56,7 +56,7 @@ function kivitendo_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _html
 	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
-	local _conf _file _subdir
+	local _conf _home _file _subdir
 
 	cvw_postgresql -u $_slug $_pass
 
@@ -176,16 +176,23 @@ function kivitendo_install
 
 	if cvw_xml -a software/apache ; then
 		_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
+		_home=$(cat /tmp/cvw/apache.home)
 		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
 		cat >>$_conf <<-EOF
 
 			   AddHandler fcgid-script .fpl
 		EOF
 		if [[ $_uri == "/" ]] ; then
+			if [[ $_home != $_slug ]] ; then
+				cvw_say -f "apache wants $_home as root"
+			fi
 			cat >>$_conf <<-EOF
 				   AliasMatch ^/[^/]+\\.pl $_html/dispatcher.fpl
 			EOF
 		else
+			if [[ $_home == $_slug ]] ; then
+				cvw_say -f "apache wants $_slug as root"
+			fi
 			cat >>$_conf <<-EOF
 				   AliasMatch ^$_uri/[^/]+\\.pl $_html/dispatcher.fpl
 				   Alias $_uri $_html

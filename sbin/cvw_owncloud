@@ -56,12 +56,10 @@ function owncloud_install
 	local _html
 	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 	local _data=$_root/data
-	local _conf _file _subdir
+	local _conf _home _file _subdir _patt
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_html/apps \
-			$_html/assets \
 			$_html/config \
 			$_root/data \
 			$_html/themes
@@ -82,6 +80,16 @@ function owncloud_install
 	      -x /usr/local/bin/rstr.$_slug ]] ; then
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
+	fi
+
+	_file=$_html/config/config.php
+	_conf=/var/local/cfg/files/misc/owncloud.config.php
+	if [[ -s $_conf ]] ; then
+		cvw_file -b $_file
+		cp $_conf $_file.tmp_VW
+		cvw_file -v $_file $(cvw_php -s)
+		chown apache:root $_html/config/*
+		chmod 0644 $_html/config/*
 	fi
 
 	if cvw_xml -a software/nginx ; then
@@ -110,9 +118,19 @@ function owncloud_install
 
 	if cvw_xml -a software/apache ; then
 		_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
+		_home=$(cat /tmp/cvw/apache.home)
 		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
 		echo "" >>$_conf
-		[[ $_uri != "/" ]] && echo "   Alias $_uri $_html" >>$_conf
+		if [[ $_uri == "/" ]] ; then
+			if [[ $_home != $_slug ]] ; then
+				cvw_say -f "apache wants $_home as root"
+			fi
+		else
+			if [[ $_home == $_slug ]] ; then
+				cvw_say -f "apache wants $_slug as root"
+			fi
+			echo "   Alias $_uri $_html" >>$_conf
+		fi
 		cat >>$_conf <<-EOF
 			   <Directory $_html>
 			      Options +FollowSymlinks

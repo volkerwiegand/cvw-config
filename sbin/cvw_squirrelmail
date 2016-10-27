@@ -9,6 +9,8 @@
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
+######          TODO add nginx support for SquirrelMail
+######
 #################################################################################
 
 # Exit on error

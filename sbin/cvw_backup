@@ -141,6 +141,8 @@ for _myname in $_mynames ; do
 	EOF
 done
 
+# PGPASSWORD="password" pg_dump [db_name] -h [server] -U [username] -f owncloud-dbbackup_`date +"%Y%m%d"`.bak
+
 for _entry in $* ; do
 	cat >>$_file.tmp_VW <<-EOF
 		if [[ -d $_entry ]] ; then

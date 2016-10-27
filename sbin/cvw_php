@@ -47,10 +47,12 @@ function usage
 function php_install
 {
 	cvw_say -h "Installing $_name"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _timezone=$(cvw_xml -r system/timezone)
 	local _filesize=$(cvw_xml -R software/$_slug/filesize "2000M")
+	local _info=$(cvw_xml -R software/$_slug/info "")
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _file _base
+	local _file
 
 	cvw_yum -a ius
 	cvw_rpm -l $_slug
@@ -77,6 +79,33 @@ function php_install
 	_file="/etc/php.d/apcu.ini"
 	if [[ -s $_file ]] ; then
 		cvw_file -e $_file "/^apc.enable_cli/s/=0/=1/" $(cvw_php -s)
+	fi
+
+	if [[ -n $_info ]] ; then
+		mkdir -p $_root 2>>/tmp/cvw/error
+		_file=$_root/phpinfo.php
+		cat >$_file.tmp_VW <<-EOF
+			<?php phpinfo(); ?>
+		EOF
+		cvw_file -v $_file
+
+		if cvw_xml -a software/apache ; then
+			_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
+			[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
+			cat >>$_conf <<-EOF
+
+				   Alias $_info $_root
+				   <Directory $_root>
+				      AllowOverride None
+				      Require all granted
+				   </Directory>
+			EOF
+			cvw_url -a "$_name" $_info/phpinfo.php
+		fi
+		cvw_say -s "phpinfo is enabled"
+	elif [[ -d $_root ]] ; then
+		cvw_say -s "removing $_root, no phpinfo"
+		rm -rf $_root
 	fi
 
 	cvw_say -o "$_slug"

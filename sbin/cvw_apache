@@ -49,6 +49,7 @@ function apache_initial
 	local _canon=$(cvw_xml -r host/fqdn)
 	local _domain=${_canon#*.}
 	local _hstnam=${_canon%%.*}
+	local _home=$(cvw_xml -r software/$_slug/home)
 	local _web=$(cvw_xml -r system/web/server)
 	local _loglvl=$(cvw_xml -r software/$_slug/loglevel)
 	[[ -s /tmp/cvw/error ]] && exit 1
@@ -62,6 +63,13 @@ function apache_initial
 	cvw_apache -e welcome
 	cvw_apache -e autoindex
 	cvw_apache -e userdir
+
+	# prepare for consistency check
+	if cvw_xml -a software/$_home ; then
+		echo $_home >/tmp/cvw/apache.home
+	else
+		cvw_say -f "$_slug wants $_home as root"
+	fi
 
 	if [[ $_web == $_slug ]] ; then
 		_ip="0.0.0.0"

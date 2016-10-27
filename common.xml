@@ -310,6 +310,7 @@
       <rpm>php56u-opcache</rpm>
       <rpm>php56u-pdo</rpm>
       <rpm>php56u-pecl-apcu</rpm>
+      <rpm>php56u-pecl-redis</rpm>
       <rpm>php56u-xml</rpm>
     </rpm_list>
   </common>
