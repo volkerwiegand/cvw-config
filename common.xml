@@ -3,6 +3,10 @@
       <link>http://b2evolution.net/downloads/</link>
       <url>https://github.com/b2evolution/b2evolution/archive/6.7.7.zip</url>
     </download>
+    <download id="bitnami_ruby">
+      <link>https://bitnami.com/stack/ruby/installer#linux</link>
+      <url>https://bitnami.com/redirect/to/132233/bitnami-rubystack-2.3.1-6-linux-x64-installer.run</url>
+    </download>
     <download id="cloudstore">
       <link>http://cloudstore.codewizards.co/latest-stable/download/index.html</link>
       <url>http://cloudstore.codewizards.co/latest-stable/download/co.codewizards.cloudstore.server-0.9.11-bin.tar.gz</url>
@@ -57,6 +61,7 @@
     </download>
     <download id="passenger_repo">
       <url>https://oss-binaries.phusionpassenger.com/yum/definitions/el-passenger.repo</url>
+      <name>passenger.repo</name>
     </download>
     <download id="piwigo">
       <url>http://piwigo.org/download/dlcounter.php?code=2.8.2</url>
@@ -162,6 +167,11 @@
       <rpm>https://centos7.iuscommunity.org/ius-release.rpm</rpm>
       <key>/etc/pki/rpm-gpg/IUS-COMMUNITY-GPG-KEY</key>
     </repo>
+    <repo id="passenger">
+      <link>https://www.phusionpassenger.com/library/install/apache/install/oss/el7/</link>
+      <file>passenger</file>
+      <prio>25</prio>
+    </repo>
     <repo id="epel">
       <file>epel</file>
       <prio>51</prio>
@@ -205,6 +215,18 @@
       <rpm>libtool</rpm>
       <rpm>make</rpm>
       <rpm>openssl-devel</rpm>
+    </rpm_list>
+    <rpm_list id="rbenv">
+      <rpm>automake</rpm>
+      <rpm>gcc</rpm>
+      <rpm>gdbm-devel</rpm>
+      <rpm>libffi-devel</rpm>
+      <rpm>libyaml-devel</rpm>
+      <rpm>ncurses-devel</rpm>
+      <rpm>openssl-devel</rpm>
+      <rpm>readline-devel</rpm>
+      <rpm>zlib-devel</rpm>
+      <rpm>v8-devel</rpm>
     </rpm_list>
     <rpm_list id="development">
       <rpm>gcc-go</rpm>

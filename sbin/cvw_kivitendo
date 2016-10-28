@@ -193,6 +193,9 @@ function kivitendo_install
 			      AllowOverride All
 			      Options ExecCGI Includes FollowSymlinks
 			      Require all granted
+			      <IfModule mod_passenger.c>
+			         PassengerEnabled off
+			      </IfModule>
 			   </Directory>
 			   <Directory $_html/users>
 			      Require all denied

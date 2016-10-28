@@ -77,6 +77,9 @@ function apache_add_php
 	else
 		cat >>$_conf <<-EOF
 			   <Directory $_html>
+			      <IfModule mod_passenger.c>
+			         PassengerEnabled off
+			      </IfModule>
 			      AllowOverride All
 			      Require all granted
 			   </Directory>

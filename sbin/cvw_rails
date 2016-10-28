@@ -58,7 +58,7 @@ function rails_gem_install
 }
 
 
-function rails_install_app
+function rails_app_install
 {
 	local _id=$1
 	local _base="software/$_slug/app:$_id"
@@ -223,7 +223,7 @@ function rails_install_app
 }
 
 
-function rails_delete_app
+function rails_app_delete
 {
 	local _id=$1
 	local _base="software/$_slug/app:$_id"
@@ -249,11 +249,11 @@ function rails_install
 	local _ruby=$(cvw_xml -r software/$_slug/ruby)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_user -s rails
-	local _ssh_dir="$(cvw_user -h rails)/.ssh"
-	local _ssh_port _file _version
+	local _home=$(cvw_user -h rails)
+	local _ssh_port _file _version _gem
 
-	install -o rails -g rails -m 0700 -d $_ssh_dir
-	_file="$_ssh_dir/config"
+	install -o rails -g rails -m 0700 -d $_home/.ssh
+	_file="$_home/.ssh/config"
 	if cvw_xml -c host/ssh_port ; then
 		_ssh_port=$(cvw_xml -r host/ssh_port)
 		cvw_say -s "SSH port is $_ssh_port"
@@ -266,10 +266,7 @@ function rails_install
 		rm -f $_file
 	fi
 
-	cvw_rpm -l development
-	cvw_rpm -i libyaml
-	cvw_rpm -i v8-devel
-
+	cvw_rpm -l rbenv
 	cvw_git -i ruby_rbenv -d $_RBENV_ROOT
 	cvw_git -i ruby_build -d $_RBENV_ROOT/plugins/ruby-build
 
@@ -289,6 +286,13 @@ function rails_install
 	cvw_file -v $_file
 	source $_file
 
+	_file="$_home/.gemrc"
+	cat >$_file.tmp_VW <<-EOF
+		install: --no-document
+		update: --no-document
+	EOF
+	cvw_file -v $_file
+
 	_version=$(rbenv version | awk -e '{ print $1 }')
 	if [[ "$_version" != "$_ruby" ]] ; then
 		rbenv install $_ruby
@@ -297,21 +301,22 @@ function rails_install
 	fi
 	chown -R rails:rails $_RBENV_ROOT
 
-	rails_gem_install bundler
-	rails_gem_install rails
-	rails_gem_install thin
+	cvw_say -s "installing Gems"
+	for _gem in $(cvw_xml -l software/rails/gem) ; do
+		rails_gem_install $_gem
+	done
 
-	if [ -s /tmp/cvw/updating ] ; then
+	if [[ -s /tmp/cvw/updating ]] ; then
 		cvw_say -s "updating Gems"
 		cvw_user -r rails "gem update --system"
 		cvw_user -r rails "gem update --force"
 	fi
 
 	for _id in $(cvw_xml -u software/$_slug/app) ; do
-		rails_delete_app $_id
+		rails_app_delete $_id
 	done
 	for _id in $(cvw_xml -i software/$_slug/app) ; do
-		rails_install_app $_id
+		rails_app_install $_id
 	done
 
 	cvw_say -o "$_slug"
@@ -327,7 +332,7 @@ function rails_remove
 		cvw_say -h "Removing Rails"
 
 		for _id in $(cvw_xml -x software/$_slug/app) ; do
-			rails_delete_app $_id
+			rails_app_delete $_id
 		done
 		cvw_user -z rails
 		cvw_say -o "$_slug:remove"

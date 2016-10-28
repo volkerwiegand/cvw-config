@@ -121,6 +121,9 @@ function webdav_install
 			         Dav On
 			         Options +Indexes
 			         IndexOptions FancyIndexing
+			         <IfModule mod_passenger.c>
+			            PassengerEnabled off
+			         </IfModule>
 			         AddDefaultCharset UTF-8
 			         AuthType Basic
 			         AuthName "$_name Server"

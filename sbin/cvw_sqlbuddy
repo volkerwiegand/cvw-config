@@ -64,6 +64,9 @@ function sqlbuddy_install
 		cat >$_conf <<-EOF
 			   <Directory $_html>
 			      Options Indexes FollowSymLinks MultiViews
+			      <IfModule mod_passenger.c>
+			         PassengerEnabled off
+			      </IfModule>
 			      AllowOverride none
 			      Require all granted
 			   </Directory>
