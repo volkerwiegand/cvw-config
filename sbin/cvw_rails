@@ -12,6 +12,8 @@
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
+######          TODO apache is currently not proxying to puma or thin
+######
 #################################################################################
 
 # Exit on error
@@ -66,13 +68,20 @@ function rails_app_install
 	local _dir=$(cvw_user -h rails)/$_id
 	local _uri=$(cvw_xml -r $_base/uri)
 	local _port=$(cvw_xml -r $_base/port)
-	local _secret1=$(cvw_xml -r $_base/secret1)
-	local _secret2=$(cvw_xml -r $_base/secret2)
+	local _secret=$(cvw_xml -r $_base/secret)
+	local _server=$(cvw_xml -r software/$_slug/server)
+	local _threads=$(cvw_xml -R $_base/threads 5)
+	local _workers=$(cvw_xml -R $_base/workers 2)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_say -s "app: $_id -> $_uri ($_port)"
 	local _config=$_dir/shared/config
 	local _current=$_dir/current
+	local _systemd="/usr/lib/systemd/system/$_id.service"
 	local _file _host _conf _restart _root
+
+	if [[ $_server != "thin" && $_server != "puma" && $_server != "passenger" ]] ; then
+		cvw_say -f "unknown server type $_server"
+	fi
 
 	cvw_mysql -c $_id $_id $_pass utf8_general_ci
 	cvw_backup -m $_id -u $_id -p $_pass $_id \
@@ -95,7 +104,7 @@ function rails_app_install
 	_file=$_config/secrets.yml
 	cat >$_file.tmp_VW <<-EOF
 		production:
-		  secret_key_base: $_secret1$_secret2
+		  secret_key_base: $_secret
 	EOF
 	cvw_file -m 0644 -v $_file $_restart
 
@@ -104,7 +113,6 @@ function rails_app_install
 		production:
 		  adapter:  mysql2
 		  encoding: utf8
-		  host:     localhost
 		  socket:   $(cvw_mysql -s)
 		  username: $_id
 		  password: $_pass
@@ -112,6 +120,20 @@ function rails_app_install
 		  pool:     5
 	EOF
 	cvw_file -m 0644 -v $_file $_restart
+
+	_file="/etc/sudoers.d/$_id"
+	cat >$_file.tmp_VW <<-EOF
+		rails ALL = NOPASSWD: /usr/bin/systemctl
+	EOF
+	cvw_file -m 0440 -v $_file
+
+	_file=/etc/sysconfig/$_id
+	cat >$_file.tmp_VW <<-EOF
+		RAILS_ENV=production
+		RACK_ENV=production
+		RAILS_RELATIVE_URL_ROOT=$_uri
+	EOF
+	cvw_file -v $_file $_restart
 
 	_file="/etc/logrotate.d/$_id"
 	cat >$_file.tmp_VW <<-EOF
@@ -129,7 +151,7 @@ function rails_app_install
 	EOF
 	cvw_file -m 0775 -v $_file
 
-	_file="$_config/thin.yml"
+	_file=$_config/thin.yml
 	cat >$_file.tmp_VW <<-EOF
 		--- 
 		chdir: $_current
@@ -154,66 +176,149 @@ function rails_app_install
 	EOF
 	cvw_file -m 0644 -v $_file $_restart
 
-	_file="/etc/sysconfig/$_id"
+	_file=$_config/puma.rb
 	cat >$_file.tmp_VW <<-EOF
-		RAILS_ENV=production
-		RAILS_RELATIVE_URL_ROOT=$_uri
+		workers Integer(ENV['WEB_CONCURRENCY'] || $_workers)
+		threads_count = Integer(ENV['RAILS_MAX_THREADS'] || $_threads)
+		threads threads_count, threads_count
+
+		preload_app!
+
+		rackup      DefaultRackup
+		port        ENV['PORT']     || $_port
+		environment ENV['RACK_ENV'] || 'production'
+
+		on_worker_boot do
+		  # Worker specific setup for Rails 4.1+
+		  ActiveRecord::Base.establish_connection
+		end
+
+		plugin      :tmp_restart
 	EOF
-	cvw_file -v $_file $_restart
+	cvw_file -m 0644 -v $_file $_restart
 
-	_file="/usr/lib/systemd/system/$_id.service"
-	cat >$_file.tmp_VW <<-EOF
-		[Unit]
-		Description=thin server for $_id
-		Requires=mariadb.service
-		After=mariadb.service
+	if grep -q -s "Thin server" $_systemd ; then
+		if [[ $_server != "thin" ]] ; then
+			cvw_service -z $_id
+		fi
+	fi
+	if grep -q -s "Puma server" $_systemd ; then
+		if [[ $_server != "puma" ]] ; then
+			cvw_service -z $_id
+		fi
+	fi
 
-		[Service]
-		Type=forking
-		PIDFile=$_current/tmp/pids/thin.$_port.pid
-		WorkingDirectory=$_current
-		EnvironmentFile=/etc/sysconfig/$_id
-		ExecStart=/usr/local/rbenv/shims/thin --config $_current/config/thin.yml start
+	if [[ $_server == "thin" ]] ; then
+		cat >$_systemd.tmp_VW <<-EOF
+			[Unit]
+			Description=Thin server for $_id
+			Requires=mariadb.service
+			After=mariadb.service
 
-		[Install]
-		WantedBy=multi-user.target
-	EOF
-	cvw_file -v $_file $_restart
+			[Service]
+			Type=forking
+			PIDFile=$_current/tmp/pids/thin.$_port.pid
+			WorkingDirectory=$_current
+			EnvironmentFile=/etc/sysconfig/$_id
+			ExecStart=$_RBENV_ROOT/shims/thin --config $_current/config/thin.yml start
 
-	_file="/etc/sudoers.d/$_id"
-	cat >$_file.tmp_VW <<-EOF
-		rails ALL = NOPASSWD: /usr/bin/systemctl
-	EOF
-	cvw_file -m 0440 -v $_file
+			[Install]
+			WantedBy=multi-user.target
+		EOF
+		cvw_file -v $_systemd $_restart
+	fi
 
-	for _host in $(cvw_web -i $_base) ; do
-		if cvw_web -n ; then
-			# this is for static files (assets e.g.)
-			_root=$(cvw_web -r $_host)
-			[[ -d $_root ]] || cvw_say -f "$_base: missing $_conf"
-			_link="$_root$_uri"
-			[[ -d $_link ]] && rm -rf $_link
-			ln -nfs $_current/public $_link 2>>/tmp/cvw/error
+	if [[ $_server == "puma" ]] ; then
+		cat >$_systemd.tmp_VW <<-EOF
+			[Unit]
+			Description=Puma server for $_id
+			Requires=mariadb.service
+			After=mariadb.service
 
-			# this is for the RESTful application routes
-			_conf="/etc/nginx/conf.d/$_host.conf"
-			[[ -s $_conf.tmp_VW ]] || cvw_say -f "$_base: missing $_conf"
-			cat >>$_conf.tmp_VW <<-EOF
+			[Service]
+			Type=simple
+			User=rails
+			Group=rails
+			WorkingDirectory=$_current
+			EnvironmentFile=/etc/sysconfig/$_id
+			ExecStart=$_RBENV_ROOT/shims/puma --config $_current/config/puma.rb
+			Restart=always
 
-				  location ^~ $_uri {
-				    try_files \$uri @app_$_id;
-				  }
-				  location @app_$_id {
-				    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-				    proxy_set_header X-Forwarded-Proto \$scheme;
-				    proxy_set_header Host \$host;
-				    proxy_redirect off;
-				    proxy_pass http://127.0.0.1:$_port;
-				  }
+			[Install]
+			WantedBy=multi-user.target
+		EOF
+		cvw_file -v $_systemd $_restart
+	fi
+
+	if [[ $_server == "passenger" ]] ; then
+		if [[ ! -x $_RBENV_ROOT/shims/passenger ]] ; then
+			passenger-install-apache2-module --auto --languages ruby
+		fi
+	fi
+
+	if cvw_xml -a software/nginx ; then
+		# this is for static files (assets e.g.)
+		_root=$(cvw_xml -r system/app_root)/nginx
+		[[ -d $_root ]] || cvw_say -f "$_base: missing $_root"
+		_link="$_root$_uri"
+		[[ -d $_link ]] && rm -rf $_link
+		ln -nfs $_current/public $_link 2>>/tmp/cvw/error
+
+		# this is for the RESTful application routes
+		_conf="/etc/nginx/conf.d/server.conf"
+		[[ -s $_conf.tmp_VW ]] || cvw_say -f "$_base: missing $_conf"
+		cat >>$_conf.tmp_VW <<-EOF
+
+			  location ^~ $_uri {
+			    try_files \$uri @app_$_id;
+			  }
+			  location @app_$_id {
+			    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+			    proxy_set_header X-Forwarded-Proto \$scheme;
+			    proxy_set_header Host \$host;
+			    proxy_redirect off;
+			    proxy_pass http://127.0.0.1:$_port;
+			  }
+		EOF
+	fi
+
+	if cvw_xml -a software/apache ; then
+		if [[ $_server == "passenger" ]] ; then
+			_conf="/etc/httpd/conf.d/passenger.conf"
+			passenger-install-apache2-module --snippet >$_conf.tmp_VW 2>>/tmp/cvw/error
+			[[ -s /tmp/cvw/error ]] && exit 1
+			cvw_file -v $_conf httpd
+			cvw_apache -e passenger
+			_conf="/tmp/cvw/apache.options"
+			cat >$_conf <<-EOF
+			   Alias $_uri $_dir/current/public
+			   <Location $_uri>
+			      PassengerEnabled on
+			      PassengerBaseURI $_uri
+			      PassengerAppRoot $_dir/current
+			   </Location>
+			   <Directory $_dir/current/public>
+			      Options -MultiViews
+			      Require all granted
+			   </Directory>
+			EOF
+		else
+			rm -f "/etc/httpd/conf.d/passenger.conf*"
+			_conf="/tmp/cvw/apache.options"
+			cat >$_conf <<-EOF
+			   Alias $_uri $_dir/current/public
+			   <Location $_dir/current/public>
+			      ProxyPass "http://127.0.0.1:$_port/"
+			      ProxyPassReverse "http://127.0.0.1:$_port/"
+			      Options -MultiViews
+			      Require all granted
+			   </Location>
 			EOF
 		fi
-		cvw_url -a "$_id" $_uri
-	done
+		cvw_apache -p $_slug/app:$_id
+	fi
+
+	cvw_url -a "$_slug/app:$_id" $_uri
 
 	if [[ -h $_current ]] ; then
 		cvw_service -s $_id
@@ -247,6 +352,7 @@ function rails_install
 {
 	cvw_say -h "Installing $_name"
 	local _ruby=$(cvw_xml -r software/$_slug/ruby)
+	local _server=$(cvw_xml -r software/$_slug/server)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_user -s rails
 	local _home=$(cvw_user -h rails)
@@ -264,6 +370,13 @@ function rails_install
 		cvw_file -u rails:rails -m 0600 -v $_file
 	else
 		rm -f $_file
+	fi
+
+	_file="/var/local/cfg/files/keys/rails.id_rsa"
+	if [[ -s $_file && -s $_file.pub ]] ; then
+		cvw_say -s "installing SSH deploy key"
+		install -o rails -g rails -m 0600 $_file     $_home/.ssh/id_rsa
+		install -o rails -g rails -m 0644 $_file.pub $_home/.ssh/id_rsa.pub
 	fi
 
 	cvw_rpm -l rbenv
@@ -302,7 +415,7 @@ function rails_install
 	chown -R rails:rails $_RBENV_ROOT
 
 	cvw_say -s "installing Gems"
-	for _gem in $(cvw_xml -l software/rails/gem) ; do
+	for _gem in $(cvw_xml -l software/rails/gem) $_server ; do
 		rails_gem_install $_gem
 	done
 

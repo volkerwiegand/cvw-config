@@ -68,7 +68,9 @@ function apache_add_php
 			cvw_say -f "apache wants $_slug as root"
 		fi
 		_html="$_root$_uri"
-		echo "   Alias $_uri $_html" >>$_conf
+		if ! grep -q -s "Alias" $_opts ; then
+			echo "   Alias $_uri $_html" >>$_conf
+		fi
 	fi
 
 	if [[ -s $_opts ]] ; then

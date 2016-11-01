@@ -50,7 +50,7 @@ function nginx_initial
 	cvw_say -h "Installing $_name"
 	local _canon=$(cvw_xml -r host/fqdn)
 	local _web=$(cvw_xml -r system/web/server)
-	local _root="$(cvw_xml -r system/app_root)/$_slug"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _cert="/etc/letsencrypt/live/$_canon"
 	local _conf="/etc/nginx/conf.d/server.conf"

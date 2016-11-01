@@ -220,11 +220,13 @@
       <rpm>automake</rpm>
       <rpm>gcc</rpm>
       <rpm>gdbm-devel</rpm>
+      <rpm>libcurl-devel</rpm>
       <rpm>libffi-devel</rpm>
       <rpm>libyaml-devel</rpm>
       <rpm>ncurses-devel</rpm>
       <rpm>openssl-devel</rpm>
       <rpm>readline-devel</rpm>
+      <rpm>sqlite-devel</rpm>
       <rpm>zlib-devel</rpm>
       <rpm>v8-devel</rpm>
     </rpm_list>
