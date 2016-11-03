@@ -73,13 +73,16 @@ function rails_app_install
 	local _threads=$(cvw_xml -R $_base/threads 5)
 	local _workers=$(cvw_xml -R $_base/workers 2)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	cvw_say -s "app: $_id -> $_uri ($_port)"
 	local _config=$_dir/shared/config
 	local _current=$_dir/current
 	local _systemd="/usr/lib/systemd/system/$_id.service"
 	local _file _host _conf _restart _root
 
-	if [[ $_server != "thin" && $_server != "puma" && $_server != "passenger" ]] ; then
+	if [[ $_server == "thin" || $_server == "puma" ]] ; then
+		cvw_say -s "app: $_id -> $_uri ($_server / $_port)"
+	elif [[ $_server == "passenger" ]] ; then
+		cvw_say -s "app: $_id -> $_uri (passenger)"
+	else
 		cvw_say -f "unknown server type $_server"
 	fi
 
@@ -96,11 +99,16 @@ function rails_app_install
 	install -d -o rails -g rails  -m 0755 $_dir/releases
 
 	if [[ -h $_current ]] ; then
-		_restart=$_id
+		if [[ $_server == "passenger" ]] ; then
+			_restart="$(cvw_php -s)"
+		else
+			_restart=$_id
+		fi
 	else
 		cvw_say -s "application not yet loaded"
 		_restart=""
 	fi
+
 	_file=$_config/secrets.yml
 	cat >$_file.tmp_VW <<-EOF
 		production:
@@ -121,20 +129,6 @@ function rails_app_install
 	EOF
 	cvw_file -m 0644 -v $_file $_restart
 
-	_file="/etc/sudoers.d/$_id"
-	cat >$_file.tmp_VW <<-EOF
-		rails ALL = NOPASSWD: /usr/bin/systemctl
-	EOF
-	cvw_file -m 0440 -v $_file
-
-	_file=/etc/sysconfig/$_id
-	cat >$_file.tmp_VW <<-EOF
-		RAILS_ENV=production
-		RACK_ENV=production
-		RAILS_RELATIVE_URL_ROOT=$_uri
-	EOF
-	cvw_file -v $_file $_restart
-
 	_file="/etc/logrotate.d/$_id"
 	cat >$_file.tmp_VW <<-EOF
 		# Rotate Rails application logs based on file size
@@ -151,64 +145,55 @@ function rails_app_install
 	EOF
 	cvw_file -m 0775 -v $_file
 
+	_file="/etc/sudoers.d/$_id"
+	if [[ $_server == "thin" || $_server == "puma" ]] ; then
+		cat >$_file.tmp_VW <<-EOF
+			rails ALL = NOPASSWD: /usr/bin/systemctl
+		EOF
+		cvw_file -m 0440 -v $_file
+	else
+		cvw_service -z $_id
+		cvw_file -r $_file
+	fi
+
+	_file=/etc/sysconfig/$_id
+	if [[ $_server == "thin" || $_server == "puma" ]] ; then
+		cat >$_file.tmp_VW <<-EOF
+			RAILS_ENV=production
+			RACK_ENV=production
+			RAILS_RELATIVE_URL_ROOT=$_uri
+		EOF
+		cvw_file -v $_file $_restart
+	else
+		cvw_file -r $_file
+	fi
+
 	_file=$_config/thin.yml
-	cat >$_file.tmp_VW <<-EOF
-		--- 
-		chdir: $_current
-		prefix: $_uri
-		user: rails
-		group: rails
-		pid: tmp/pids/thin.pid
-		port: $_port
-		address: 127.0.0.1
-		environment: production
-		timeout: 30
-		wait: 30
-		log: log/thin.log
-		max_conns: 1024
-		max_persistent_conns: 512
-		require: []
-		servers: 1
-		threaded: true
-		no-epoll: true
-		daemonize: false
-		tag: $_id
-	EOF
-	cvw_file -m 0644 -v $_file $_restart
-
-	_file=$_config/puma.rb
-	cat >$_file.tmp_VW <<-EOF
-		workers Integer(ENV['WEB_CONCURRENCY'] || $_workers)
-		threads_count = Integer(ENV['RAILS_MAX_THREADS'] || $_threads)
-		threads threads_count, threads_count
-
-		preload_app!
-
-		rackup      DefaultRackup
-		port        ENV['PORT']     || $_port
-		environment ENV['RACK_ENV'] || 'production'
-
-		on_worker_boot do
-		  # Worker specific setup for Rails 4.1+
-		  ActiveRecord::Base.establish_connection
-		end
-
-		plugin      :tmp_restart
-	EOF
-	cvw_file -m 0644 -v $_file $_restart
-
-	if grep -q -s "Thin server" $_systemd ; then
-		if [[ $_server != "thin" ]] ; then
-			cvw_service -z $_id
-		fi
-	fi
-	if grep -q -s "Puma server" $_systemd ; then
-		if [[ $_server != "puma" ]] ; then
-			cvw_service -z $_id
-		fi
-	fi
-
 	if [[ $_server == "thin" ]] ; then
+		cat >$_file.tmp_VW <<-EOF
+			--- 
+			chdir: $_current
+			prefix: $_uri
+			user: rails
+			group: rails
+			pid: tmp/pids/thin.pid
+			port: $_port
+			address: 127.0.0.1
+			environment: production
+			timeout: 30
+			wait: 30
+			log: log/thin.log
+			max_conns: 1024
+			max_persistent_conns: 512
+			require: []
+			servers: 1
+			threaded: true
+			no-epoll: true
+			daemonize: false
+			tag: $_id
+		EOF
+		cvw_file -m 0644 -v $_file $_restart
+
 		cat >$_systemd.tmp_VW <<-EOF
 			[Unit]
 			Description=Thin server for $_id
@@ -226,9 +211,32 @@ function rails_app_install
 			WantedBy=multi-user.target
 		EOF
 		cvw_file -v $_systemd $_restart
+	else
+		cvw_file -r $_file
 	fi
 
+	_file=$_config/puma.rb
 	if [[ $_server == "puma" ]] ; then
+		cat >$_file.tmp_VW <<-EOF
+			workers Integer(ENV['WEB_CONCURRENCY'] || $_workers)
+			threads_count = Integer(ENV['RAILS_MAX_THREADS'] || $_threads)
+			threads threads_count, threads_count
+
+			preload_app!
+
+			rackup      DefaultRackup
+			port        ENV['PORT']     || $_port
+			environment ENV['RACK_ENV'] || 'production'
+
+			on_worker_boot do
+			  # Worker specific setup for Rails 4.1+
+			  ActiveRecord::Base.establish_connection
+			end
+
+			plugin      :tmp_restart
+		EOF
+		cvw_file -m 0644 -v $_file $_restart
+
 		cat >$_systemd.tmp_VW <<-EOF
 			[Unit]
 			Description=Puma server for $_id
@@ -248,12 +256,17 @@ function rails_app_install
 			WantedBy=multi-user.target
 		EOF
 		cvw_file -v $_systemd $_restart
+	else
+		cvw_file -r $_file
 	fi
 
 	if [[ $_server == "passenger" ]] ; then
 		if [[ ! -x $_RBENV_ROOT/shims/passenger ]] ; then
 			passenger-install-apache2-module --auto --languages ruby
 		fi
+	else
+		cvw_file -r /etc/httpd/conf.d/passenger.conf
+		rm -f /etc/httpd/conf.d/passenger.conf.disabled
 	fi
 
 	if cvw_xml -a software/nginx ; then
@@ -270,12 +283,13 @@ function rails_app_install
 		cat >>$_conf.tmp_VW <<-EOF
 
 			  location ^~ $_uri {
-			    try_files \$uri @app_$_id;
+			    try_files \$uri @rails_$_id;
 			  }
-			  location @app_$_id {
+			  location @rails_$_id {
+			    proxy_set_header Host \$host;
+			    proxy_set_header X-Real-IP \$remote_addr;
 			    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
 			    proxy_set_header X-Forwarded-Proto \$scheme;
-			    proxy_set_header Host \$host;
 			    proxy_redirect off;
 			    proxy_pass http://127.0.0.1:$_port;
 			  }
@@ -289,33 +303,33 @@ function rails_app_install
 			[[ -s /tmp/cvw/error ]] && exit 1
 			cvw_file -v $_conf httpd
 			cvw_apache -e passenger
-			_conf="/tmp/cvw/apache.options"
-			cat >$_conf <<-EOF
-			   Alias $_uri $_dir/current/public
-			   <Location $_uri>
-			      PassengerEnabled on
-			      PassengerBaseURI $_uri
-			      PassengerAppRoot $_dir/current
-			   </Location>
-			   <Directory $_dir/current/public>
-			      Options -MultiViews
-			      Require all granted
-			   </Directory>
+
+			_conf=$(cvw_apache -c)
+			cat >>$_conf.tmp_VW <<-EOF
+
+				   Alias $_uri $_dir/current/public
+				   <Location $_uri>
+				      PassengerEnabled on
+				      PassengerBaseURI $_uri
+				      PassengerAppRoot $_dir/current
+				   </Location>
+				   <Directory $_dir/current/public>
+				      Options -MultiViews
+				      Require all granted
+				   </Directory>
 			EOF
 		else
-			rm -f "/etc/httpd/conf.d/passenger.conf*"
-			_conf="/tmp/cvw/apache.options"
-			cat >$_conf <<-EOF
-			   Alias $_uri $_dir/current/public
-			   <Location $_dir/current/public>
-			      ProxyPass "http://127.0.0.1:$_port/"
-			      ProxyPassReverse "http://127.0.0.1:$_port/"
-			      Options -MultiViews
-			      Require all granted
-			   </Location>
+			_conf=$(cvw_apache -c)
+			cat >>$_conf.tmp_VW <<-EOF
+
+				   ProxyPass $_uri/assets  !
+				   ProxyPass $_uri/        http://127.0.0.1:$_port/
+				   ProxyPassReverse $_uri/ http://127.0.0.1:$_port/
+				   <Directory $_dir/current/public/assets>
+				      Require all granted
+				   </Directory>
 			EOF
 		fi
-		cvw_apache -p $_slug/app:$_id
 	fi
 
 	cvw_url -a "$_slug/app:$_id" $_uri

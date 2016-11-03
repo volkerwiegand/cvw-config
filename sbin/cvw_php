@@ -87,12 +87,11 @@ function php_install
 		cat >$_file.tmp_VW <<-EOF
 			<?php phpinfo(); ?>
 		EOF
-		cvw_file -v $_file
+		cvw_file -v $_file $(cvw_php -s)
 
 		if cvw_xml -a software/apache ; then
-			_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
-			[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
-			cat >>$_conf <<-EOF
+			_conf=$(cvw_apache -c)
+			cat >>$_conf.tmp_VW <<-EOF
 
 				   Alias $_info $_root
 				   <Directory $_root>
@@ -100,8 +99,8 @@ function php_install
 				      Require all granted
 				   </Directory>
 			EOF
-			cvw_url -a "$_name" $_info/phpinfo.php
 		fi
+		cvw_url -a "$_name" $_info/phpinfo.php
 		cvw_say -s "phpinfo is enabled"
 	elif [[ -d $_root ]] ; then
 		cvw_say -s "removing $_root, no phpinfo"

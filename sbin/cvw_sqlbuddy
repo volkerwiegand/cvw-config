@@ -49,20 +49,20 @@ function sqlbuddy_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 	local _conf
 
-	cvw_unpack -i $_slug $_html index.php
+	cvw_unpack -i $_slug $_root/app index.php
 
 	if cvw_xml -a software/nginx ; then
-		cvw_nginx -p software/$_slug
+		cvw_nginx -p $_slug
 	fi
 
 	if cvw_xml -a software/apache ; then
-		_conf="/tmp/cvw/apache.options"
-		cat >$_conf <<-EOF
-			   <Directory $_html>
+		_conf=$(cvw_apache -c)
+		cat >>$_conf.tmp_VW <<-EOF
+
+			   Alias $_uri $_root/app
+			   <Directory $_root/app>
 			      Options Indexes FollowSymLinks MultiViews
 			      <IfModule mod_passenger.c>
 			         PassengerEnabled off
@@ -71,7 +71,6 @@ function sqlbuddy_install
 			      Require all granted
 			   </Directory>
 		EOF
-		cvw_apache -p $_slug
 	fi
 
 	cvw_url -a "$_name" $_uri
@@ -84,15 +83,9 @@ function sqlbuddy_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		if [[ $_uri == "/" ]] ; then
-			rm -rf /var/www/html
-			mkdir -p /var/www/html
-		fi
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

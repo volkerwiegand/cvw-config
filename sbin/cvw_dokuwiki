@@ -48,16 +48,14 @@ function dokuwiki_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 	local _conf _file _subdir
 
-	cvw_backup $_slug $_html/conf $_html/data
+	cvw_backup $_slug $_root/app/conf $_root/app/data
 
-	cvw_unpack -i $_slug $_html index.php
+	cvw_unpack -i $_slug $_root/app index.php
 	for _subdir in conf data ; do
-		mkdir -p $_html/$_subdir
-		chown -R apache $_html/$_subdir
+		mkdir -p $_root/app/$_subdir
+		chown -R apache $_root/app/$_subdir
 	done
 
 	if [[ -d /var/local/backup/$_slug/last/dirs && \
@@ -67,7 +65,7 @@ function dokuwiki_install
 		/usr/local/bin/bkup.$_slug
 	fi
 
-	_file="$_html/.htaccess"
+	_file="$_root/app/.htaccess"
 	cat >$_file.tmp_VW <<-EOF
 		## Enable this to restrict editing to logged in users only
 
@@ -111,7 +109,7 @@ function dokuwiki_install
 	EOF
 	cvw_file -v $_dest $(cvw_php -s)
 
-	_file="$_html/conf/local.php"
+	_file="$_root/app/conf/local.php"
 	cat >$_file.tmp_VW <<-EOF
 		<?php
 		\$conf['title']       = 'Railduino Wiki';
@@ -121,17 +119,17 @@ function dokuwiki_install
 		\$conf['superuser']   = 'volker';
 	EOF
 	if [[ -s $_file ]] ; then
-		if [[ -r $_html/install.php ]] ; then
+		if [[ -r $_root/app/install.php ]] ; then
 			cvw_say -s "hiding install.php"
 			rm -rf $_root/install.php # just in case
-			mv $_html/install.php $_root/install.php
+			mv $_root/app/install.php $_root/install.php
 		fi
 	else
 		cvw_say -s "waiting for installation"
 	fi
 	cvw_file -v $_dest $(cvw_php -s)
 
-	_file="$_html/conf/acl.auth.php"
+	_file="$_root/app/conf/acl.auth.php"
 	cat >$_file.tmp_VW <<-EOF
 		# acl.auth.php
 		# <?php exit()?>
@@ -157,7 +155,7 @@ function dokuwiki_install
 	EOF
 	cvw_file -v $_dest $(cvw_php -s)
 
-	_file="$_html/conf/users.auth.php"
+	_file="$_root/app/conf/users.auth.php"
 	cat >$_file.tmp_VW <<-EOF
 		# users.auth.php
 		# <?php exit()?>
@@ -175,16 +173,17 @@ function dokuwiki_install
 	if cvw_xml -a software/nginx ; then
 		_file="/tmp/cvw/nginx.options"
 		cat >$_file <<-EOF
-			root $_html;
 			    location ~ /(data|conf|bin|inc)/ {
 			      deny all;
 			    }
 		EOF
-		cvw_nginx -p software/$_slug
+		cvw_nginx -p $_slug
 	fi
+
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
 	fi
+
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
@@ -194,17 +193,10 @@ function dokuwiki_install
 function dokuwiki_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 
+	cvw_backup -z $_slug
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
-		if [[ $_uri == "/" ]] ; then
-			rm -rf /var/www/html
-			mkdir -p /var/www/html
-		fi
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

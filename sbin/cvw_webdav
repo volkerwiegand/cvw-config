@@ -50,19 +50,17 @@ function webdav_install
 	local _user=$(cvw_xml -r software/$_slug/username)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 	local _conf _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_html/data \
-			$_html/public
+			$_root/app/data \
+			$_root/app/public
 
-	cvw_unpack -i $_slug $_html LICENSE
+	cvw_unpack -i $_slug $_root/app LICENSE
 	for _subdir in data public ; do
-		mkdir -p $_html/$_subdir
-		chown -R apache $_html/$_subdir
+		mkdir -p $_root/app/$_subdir
+		chown -R apache $_root/app/$_subdir
 	done
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
@@ -73,7 +71,7 @@ function webdav_install
 		/usr/local/bin/bkup.$_slug
 	fi
 
-	_file=$_html/server.php
+	_file=$_root/app/server.php
 	cat >$_file.tmp_VW <<-EOF
 		<?php
 
@@ -110,14 +108,15 @@ function webdav_install
 	cvw_file -v $_file $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
-		cvw_nginx -p software/$_slug
+		cvw_nginx -p $_slug
 	fi
 
 	if cvw_xml -a software/apache ; then
-		_conf="/tmp/cvw/apache.options"
-		cat >$_conf <<-EOF
+		_conf=$(cvw_apache -c)
+		cat >>$_conf.tmp_VW <<-EOF
+
 			   <IfModule mod_dav.c>
-			      <Directory $_html>
+			      <Directory $_root/app>
 			         Dav On
 			         Options +Indexes
 			         IndexOptions FancyIndexing
@@ -134,7 +133,7 @@ function webdav_install
 			      </Directory>
 			   </IfModule>
 		EOF
-		cvw_apache -p $_slug
+
 		htpasswd -b -c /etc/httpd/webdav.users.pwd $_user $_pass 2>/dev/null
 	fi
 
@@ -146,20 +145,12 @@ function webdav_install
 
 function webdav_remove
 {
-	local _web=$(cvw_xml -r system/web/server)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 
 	cvw_backup -z $_slug
 	cvw_mysql -z $_slug $_slug
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		if [[ $_web == "apache" && $_uri == "/" ]] ; then
-			rm -rf /var/www/html
-			mkdir -p /var/www/html
-		fi
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

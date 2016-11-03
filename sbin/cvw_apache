@@ -22,11 +22,15 @@ _name="Apache httpd"
 _slug="apache"
 
 
+_CONF_FILE="/etc/httpd/conf.d/vhost.conf"
+
+
 function usage
 {
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i        Install or disable $_name
+		    or: $_prog -c        Return config file path
 		    or: $_prog -e file   Enable conf.d/file.conf
 		    or: $_prog -p slug   Add standard PHP block
 		    or: $_prog -x        Execute and cleanup
@@ -46,47 +50,43 @@ function usage
 
 function apache_add_php
 {
-	local _slug=$1
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _base=$1
+	local _root=$(cvw_xml -r system/app_root)/$_base
+	local _uri=$(cvw_xml -r software/$_base/uri)
+	local _conf=$(cvw_apache -c)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
-	[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
-	local _home=$(cat /tmp/cvw/apache.home)
-	local _opts="/tmp/cvw/apache.options"
-	local _html
-
-	echo "" >>$_conf
+	local _rails
 
 	if [[ $_uri == "/" ]] ; then
-		if [[ $_home != $_slug ]] ; then
-			cvw_say -f "apache wants $_home as root"
-		fi
-		_html="/var/www/html"
+		cat >>$_conf.tmp_VW <<-EOF
+
+		   <Directory /var/www/html>
+		EOF
+		echo "$_root/app" >/tmp/cvw/apache.link
 	else
-		if [[ $_home == $_slug ]] ; then
-			cvw_say -f "apache wants $_slug as root"
-		fi
-		_html="$_root$_uri"
-		if ! grep -q -s "Alias" $_opts ; then
-			echo "   Alias $_uri $_html" >>$_conf
-		fi
+		cat >>$_conf.tmp_VW <<-EOF
+
+		   Alias $_uri $_root/app
+		   <Directory $_root/app>
+		EOF
 	fi
 
-	if [[ -s $_opts ]] ; then
-		cat $_opts >>$_conf
-		rm -f $_opts
-	else
-		cat >>$_conf <<-EOF
-			   <Directory $_html>
+	if cvw_xml -a software/rails ; then
+		_rails=$(cvw_xml -r software/rails/server)
+		if [[ $_rails == "passenger" ]] ; then
+			cat >>$_conf.tmp_VW <<-EOF
 			      <IfModule mod_passenger.c>
 			         PassengerEnabled off
 			      </IfModule>
-			      AllowOverride All
-			      Require all granted
-			   </Directory>
-		EOF
+			EOF
+		fi
 	fi
+
+	cat >>$_conf.tmp_VW <<-EOF
+	      AllowOverride all
+	      Require all granted
+	   </Directory>
+	EOF
 }
 
 
@@ -96,12 +96,10 @@ function apache_initial
 	local _canon=$(cvw_xml -r host/fqdn)
 	local _domain=${_canon#*.}
 	local _hstnam=${_canon%%.*}
-	local _home=$(cvw_xml -r software/$_slug/home)
 	local _web=$(cvw_xml -r system/web/server)
 	local _loglvl=$(cvw_xml -r software/$_slug/loglevel)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _cert="/etc/letsencrypt/live/$_canon"
-	local _conf="/etc/httpd/conf.d/vhost.conf"
 	local _ip _port _ssl_port _file _alias
 
 	cvw_rpm -i httpd
@@ -111,26 +109,19 @@ function apache_initial
 	cvw_apache -e autoindex
 	cvw_apache -e userdir
 
-	# prepare for consistency check
-	if cvw_xml -a software/$_home ; then
-		echo $_home >/tmp/cvw/apache.home
-	else
-		cvw_say -f "$_slug wants $_home as root"
-	fi
-
 	if [[ $_web == $_slug ]] ; then
 		_ip="0.0.0.0"
 		_port=$(cvw_xml -r system/web/port)
 		_ssl_port=$(cvw_xml -r system/web/ssl_port)
 	else
 		_ip="127.0.0.1"
-		_port=$(cvw_xml -R software/$_slug/port 8000)
+		_port=$(cvw_xml -R software/$_slug/port 8080)
 		if [ $_port -eq $(cvw_xml -r system/web/port) ] ; then
-			cvw_say -f "conflicting port $_port"
+			cvw_say -f "$_slug: conflicting port $_port"
 		fi
 		_ssl_port=$(cvw_xml -R software/$_slug/ssl_port 8443)
 		if [ $_ssl_port -eq $(cvw_xml -r system/web/ssl_port) ] ; then
-			cvw_say -f "conflicting ssl port $_ssl_port"
+			cvw_say -f "$_slug: conflicting ssl port $_ssl_port"
 		fi
 	fi
 
@@ -192,7 +183,7 @@ function apache_initial
 
 	if [[ -s $_cert/cert.pem ]] ; then
 		cvw_say -s "found SSL config $_cert"
-		cat >$_conf.tmp_VW <<-EOF
+		cat >$_CONF_FILE.tmp_VW <<-EOF
 			<VirtualHost *:$_port>
 			$(cat /tmp/cvw/apache.names)
 			   UseCanonicalName Off
@@ -234,7 +225,7 @@ function apache_initial
 		EOF
 	else
 		cvw_say -s "missing SSL config"
-		cat >$_conf.tmp_VW <<-EOF
+		cat >$_CONF_FILE.tmp_VW <<-EOF
 			<VirtualHost *:$_port>
 			$(cat /tmp/cvw/apache.names)
 			   UseCanonicalName Off
@@ -247,8 +238,6 @@ function apache_initial
 		EOF
 	fi
 
-	rm -f /tmp/cvw/apache.names /tmp/cvw/apache.certbot
-
 	cvw_say -o "$_slug:initial"
 }
 
@@ -258,12 +247,21 @@ function apache_finish
 	cvw_say -h "Finishing $_name"
 	local _canon=$(cvw_xml -r host/fqdn)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _conf="/etc/httpd/conf.d/vhost.conf"
-	local _file
+	local _cnt _base _root _uri _file
 
-	echo "</VirtualHost>" >>$_conf.tmp_VW
-	cvw_file -v $_conf httpd
-	cvw_apache -e vhost
+	echo "</VirtualHost>" >>$_CONF_FILE.tmp_VW
+	cvw_file -v $_CONF_FILE httpd
+	cvw_apache -e $_CONF_FILE
+
+	_file="/tmp/cvw/apache.link"
+	if [[ -s $_file ]] ; then
+		[[ -h /var/www/html ]] && rm  -f /var/www/html
+		[[ -d /var/www/html ]] && rm -rf /var/www/html
+		ln -nfs $(cat $_file) /var/www/html
+	else
+		[[ -h /var/www/html ]] && rm -f /var/www/html
+		mkdir -p /var/www/html
+	fi
 
 	find /etc/httpd/conf.d -maxdepth 1 -name "*.conf" | while read _file ; do
 		grep -q -s "$_file" /tmp/cvw/apache.enabled && continue
@@ -288,10 +286,21 @@ function apache_disable
 }
 
 
-while getopts ":e:ip:x" opt ; do
+while getopts ":ce:ip:x" opt ; do
 	case $opt in
+		c)
+			if [[ -s $_CONF_FILE.tmp_VW ]] ; then
+				echo -n $_CONF_FILE
+			else
+				cvw_say -f "$_prog: missing $_CONF_FILE.tmp_VW"
+			fi
+			exit 0
+		;;
+
 		e)
 			cvw_xml -a software/$_slug || exit 0
+			OPTARG=${OPTARG%.conf}
+			OPTARG=${OPTARG##*/}
 			cvw_say -s "conf.d: $OPTARG"
 			rm -f /etc/httpd/conf.d/$OPTARG.conf.disabled
 			echo "/etc/httpd/conf.d/$OPTARG.conf" >>/tmp/cvw/apache.enabled

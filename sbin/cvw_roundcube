@@ -53,19 +53,17 @@ function roundcube_install
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	local _key=$(cvw_xml -r software/$_slug/key)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 	local _conf _file _installer _plugin _plugins
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_html/logs \
-			$_html/temp
+			$_root/app/logs \
+			$_root/app/temp
 
-	cvw_unpack -i $_slug $_html index.php
+	cvw_unpack -i $_slug $_root/app index.php
 	for _subdir in temp logs ; do
-		mkdir -p $_html/$_subdir
-		chown -R apache $_html/$_subdir
+		mkdir -p $_root/app/$_subdir
+		chown -R apache $_root/app/$_subdir
 	done
 
 	if [[ -s /var/local/backup/$_slug/last/mysql && \
@@ -74,7 +72,7 @@ function roundcube_install
 	      -x /usr/local/bin/rstr.$_slug ]] ; then
 		cvw_say -s "updating backup"
 		/usr/local/bin/bkup.$_slug
-		chmod 0700 $_html/installer
+		chmod 0700 $_root/app/installer
 		_installer="false"
 	else
 		_installer="true"
@@ -87,7 +85,7 @@ function roundcube_install
 		fi
 			_plugins="$_plugins'$_plugin'"
 	done
-	_file=$_html/config/config.inc.php
+	_file=$_root/app/config/config.inc.php
 	cat >$_file.tmp_VW <<-EOF
 		<?php
 		\$config['db_dsnw'] = 'mysql://$_slug:$_pass@localhost/$_slug';
@@ -103,33 +101,26 @@ function roundcube_install
 	cvw_file -v $_file $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
-		cvw_nginx -p software/$_slug
+		cvw_nginx -p $_slug
 	fi
 
 	if cvw_xml -a software/apache ; then
-		_conf="/etc/httpd/conf.d/vhost.conf.tmp_VW"
-		_home=$(cat /tmp/cvw/apache.home)
-		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
-		echo "" >>$_conf
-		if [[ $_uri == "/" ]] ; then
-			if [[ $_home != $_slug ]] ; then
-				cvw_say -f "apache wants $_home as root"
-			fi
-		else
-			if [[ $_home == $_slug ]] ; then
-				cvw_say -f "apache wants $_slug as root"
-			fi
-			echo "   Alias $_uri $_html" >>$_conf
-		fi
-		cat >>$_conf <<-EOF
-			   <Directory $_html>
+		_conf=$(cvw_apache -c)
+		cat >>$_conf.tmp_VW <<-EOF
+
+			   Alias $_uri $_root/app/
+			   <Directory $_root/app>
 			      Options Indexes FollowSymLinks MultiViews
-			      AllowOverride All
+			      <IfModule mod_passenger.c>
+			         PassengerEnabled off
+			      </IfModule>
+			      AllowOverride all
 			      Require all granted
 			   </Directory>
 		EOF
-		cvw_url -a "$_name" $_uri
 	fi
+
+	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
 }
@@ -137,20 +128,12 @@ function roundcube_install
 
 function roundcube_remove
 {
-	local _web=$(cvw_xml -r system/web/server)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 
 	cvw_backup -z $_slug
 	cvw_mysql -z $_slug $_slug
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		if [[ $_web == "apache" && $_uri == "/" ]] ; then
-			rm -rf /var/www/html
-			mkdir -p /var/www/html
-		fi
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

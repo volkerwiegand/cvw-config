@@ -50,20 +50,18 @@ function b2evolution_install
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 	local _conf _file _subdir _dest
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_html/conf \
-			$_html/media \
-			$_html/plugins
+			$_root/app/conf \
+			$_root/app/media \
+			$_root/app/plugins
 
-	cvw_unpack -i $_slug $_html index.php
+	cvw_unpack -i $_slug $_root/app index.php
 	for _subdir in _cache media ; do
-		mkdir -p $_html/$_subdir
-		chown -R apache $_html/$_subdir
+		mkdir -p $_root/app/$_subdir
+		chown -R apache $_root/app/$_subdir
 	done
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
@@ -74,7 +72,7 @@ function b2evolution_install
 		/usr/local/bin/bkup.$_slug
 	fi
 
-	find $_html -name sample.htaccess -print | while read _file ; do
+	find $_root/app -name sample.htaccess -print | while read _file ; do
 		_dest="${_file%sample.htaccess}.htaccess"
 		if [[ ! -s $_dest ]] ; then
 			cp $_file $_dest.tmp_VW
@@ -82,23 +80,23 @@ function b2evolution_install
 		fi
 	done
 
-	_file=$_html/conf/_basic_config.php
+	_file=$_root/app/conf/_basic_config.php
 	if [[ -s $_file ]] ; then
-		chown root $_html/conf
-		if [[ -d $_html/install ]] ; then
+		chown root $_root/app/conf
+		if [[ -d $_root/app/install ]] ; then
 			cvw_say -s "hiding install directory"
 			mkdir -p $_root 2>>/tmp/cvw/error
 			rm -rf $_root/install # just in case
-			mv $_html/install $_root/install
+			mv $_root/app/install $_root/install
 		fi
 	else
 		cvw_say -s "waiting for installation"
-		chown apache $_html/conf
+		chown apache $_root/app/conf
 	fi
 	cvw_file -v $_file -u root $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
-		cvw_nginx -p software/$_slug
+		cvw_nginx -p $_slug
 	fi
 
 	if cvw_xml -a software/apache ; then
@@ -113,20 +111,12 @@ function b2evolution_install
 
 function b2evolution_remove
 {
-	local _web=$(cvw_xml -r system/web/server)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 
 	cvw_backup -z $_slug
 	cvw_mysql -z $_slug $_slug
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		if [[ $_web == "apache" && $_uri == "/" ]] ; then
-			rm -rf /var/www/html
-			mkdir -p /var/www/html
-		fi
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

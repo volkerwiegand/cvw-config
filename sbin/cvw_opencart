@@ -51,27 +51,25 @@ function opencart_install
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 	local _conf _file _subdir _dist
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_html/image \
-			$_html/system/storage
+			$_root/app/image \
+			$_root/app/system/storage
 
 	_file="/var/local/cvw/files/2.3.0.2-compiled.zip"
-	cvw_unpack -f $_file $_html index.php
+	cvw_unpack -f $_file $_root/app index.php
 	for _subdir in phpcs phpmod phpunit setup readme.md ; do
-		rm -rf $_html/$_subdir
+		rm -rf $_root/app/$_subdir
 	done
 
 	_file="/var/local/cvw/files/Translation-German-deDE-Completev.2.0.0-OpenCart-2.x-by-OSWorX.net.ocmod.zip"
-	cvw_unpack -f $_file $_html admin/language/de-DE.xml
+	cvw_unpack -f $_file $_root/app admin/language/de-DE.xml
 
 	for _subdir in image system/storage ; do
-		mkdir -p $_html/$_subdir
-		chown -R apache $_html/$_subdir
+		mkdir -p $_root/app/$_subdir
+		chown -R apache $_root/app/$_subdir
 	done
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
@@ -82,7 +80,7 @@ function opencart_install
 		/usr/local/bin/bkup.$_slug
 	fi
 
-	_file=$_html/.htaccess
+	_file=$_root/app/.htaccess
 	cat >$_file.tmp_VW <<-EOF
 		Options +FollowSymlinks
 		Options -Indexes
@@ -101,11 +99,11 @@ function opencart_install
 		RewriteRule ^([^?]*) index.php?_route_=\$1 [L,QSA]
 	EOF
 	cvw_file -v $_file $(cvw_php -s)
-	_file=$_html/.htaccess.txt
+	_file=$_root/app/.htaccess.txt
 	[[ -r $_file ]] && mv $_file $_root/htaccess.txt
 
-	_file=$_html/config.php
-	_dist=$_html/config-dist.php
+	_file=$_root/app/config.php
+	_dist=$_root/app/config-dist.php
 	cat >$_file.tmp_VW <<-EOF
 		<?php
 		// HTTP
@@ -115,17 +113,17 @@ function opencart_install
 		define('HTTPS_SERVER', 'https://$_canon${_uri%/}/');
 
 		// DIR
-		define('DIR_APPLICATION', '$_html/catalog/');
-		define('DIR_SYSTEM', '$_html/system/');
-		define('DIR_IMAGE', '$_html/image/');
-		define('DIR_LANGUAGE', '$_html/catalog/language/');
-		define('DIR_TEMPLATE', '$_html/catalog/view/theme/');
-		define('DIR_CONFIG', '$_html/system/config/');
-		define('DIR_CACHE', '$_html/system/storage/cache/');
-		define('DIR_DOWNLOAD', '$_html/system/storage/download/');
-		define('DIR_LOGS', '$_html/system/storage/logs/');
-		define('DIR_MODIFICATION', '$_html/system/storage/modification/');
-		define('DIR_UPLOAD', '$_html/system/storage/upload/');
+		define('DIR_APPLICATION', '$_root/app/catalog/');
+		define('DIR_SYSTEM', '$_root/app/system/');
+		define('DIR_IMAGE', '$_root/app/image/');
+		define('DIR_LANGUAGE', '$_root/app/catalog/language/');
+		define('DIR_TEMPLATE', '$_root/app/catalog/view/theme/');
+		define('DIR_CONFIG', '$_root/app/system/config/');
+		define('DIR_CACHE', '$_root/app/system/storage/cache/');
+		define('DIR_DOWNLOAD', '$_root/app/system/storage/download/');
+		define('DIR_LOGS', '$_root/app/system/storage/logs/');
+		define('DIR_MODIFICATION', '$_root/app/system/storage/modification/');
+		define('DIR_UPLOAD', '$_root/app/system/storage/upload/');
 
 		// DB
 		define('DB_DRIVER', 'mysqli');
@@ -144,8 +142,8 @@ function opencart_install
 		install -o apache -m 0644 /dev/null $_file
 	fi
 
-	_file=$_html/admin/config.php
-	_dist=$_html/admin/config-dist.php
+	_file=$_root/app/admin/config.php
+	_dist=$_root/app/admin/config-dist.php
 	cat >$_file.tmp_VW <<-EOF
 		<?php
 		// HTTP
@@ -157,18 +155,18 @@ function opencart_install
 		define('HTTPS_CATALOG', 'https://$_canon${_uri%/}/');
 
 		// DIR
-		define('DIR_APPLICATION', '$_html/admin/');
-		define('DIR_SYSTEM', '$_html/system/');
-		define('DIR_IMAGE', '$_html/image/');
-		define('DIR_LANGUAGE', '$_html/admin/language/');
-		define('DIR_TEMPLATE', '$_html/admin/view/template/');
-		define('DIR_CONFIG', '$_html/system/config/');
-		define('DIR_CACHE', '$_html/system/storage/cache/');
-		define('DIR_DOWNLOAD', '$_html/system/storage/download/');
-		define('DIR_LOGS', '$_html/system/storage/logs/');
-		define('DIR_MODIFICATION', '$_html/system/storage/modification/');
-		define('DIR_UPLOAD', '$_html/system/storage/upload/');
-		define('DIR_CATALOG', '$_html/catalog/');
+		define('DIR_APPLICATION', '$_root/app/admin/');
+		define('DIR_SYSTEM', '$_root/app/system/');
+		define('DIR_IMAGE', '$_root/app/image/');
+		define('DIR_LANGUAGE', '$_root/app/admin/language/');
+		define('DIR_TEMPLATE', '$_root/app/admin/view/template/');
+		define('DIR_CONFIG', '$_root/app/system/config/');
+		define('DIR_CACHE', '$_root/app/system/storage/cache/');
+		define('DIR_DOWNLOAD', '$_root/app/system/storage/download/');
+		define('DIR_LOGS', '$_root/app/system/storage/logs/');
+		define('DIR_MODIFICATION', '$_root/app/system/storage/modification/');
+		define('DIR_UPLOAD', '$_root/app/system/storage/upload/');
+		define('DIR_CATALOG', '$_root/app/catalog/');
 
 		// DB
 		define('DB_DRIVER', 'mysqli');
@@ -182,10 +180,10 @@ function opencart_install
 	if [[ -s $_file ]] ; then
 		cvw_file -v $_file -u root $(cvw_php -s)
 		[[ -e $_dist ]] && mv $_dist $_root/admin-dist.php
-		if [[ -d $_html/install ]] ; then
+		if [[ -d $_root/app/install ]] ; then
 			cvw_say -s "hiding install directory"
 			rm -rf $_root/install # just in case
-			mv $_html/install $_root/install
+			mv $_root/app/install $_root/install
 		fi
 	elif [[ -e $_dist ]] ; then
 		# pristine install
@@ -193,7 +191,7 @@ function opencart_install
 	fi
 
 	if cvw_xml -a software/nginx ; then
-		cvw_nginx -p software/$_slug
+		cvw_nginx -p $_slug
 	fi
 
 	if cvw_xml -a software/apache ; then
@@ -208,20 +206,12 @@ function opencart_install
 
 function opencart_remove
 {
-	local _web=$(cvw_xml -r system/web/server)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 
 	cvw_backup -z $_slug
 	cvw_mysql -z $_slug $_slug
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		if [[ $_web == "apache" && $_uri == "/" ]] ; then
-			rm -rf /var/www/html
-			mkdir -p /var/www/html
-		fi
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

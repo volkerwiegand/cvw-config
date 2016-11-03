@@ -50,23 +50,21 @@ function serendipity_install
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 	local _conf _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_html/archives \
-			$_html/plugins \
-			$_html/templates_c \
-			$_html/uploads \
-			$_html/spamblock
+			$_root/app/archives \
+			$_root/app/plugins \
+			$_root/app/templates_c \
+			$_root/app/uploads \
+			$_root/app/spamblock
 
-	cvw_unpack -i $_slug $_html index.php
-	chmod -R go-w $_html
+	cvw_unpack -i $_slug $_root/app index.php
+	chmod -R go-w $_root/app
 	for _subdir in archives plugins templates_c uploads spamblock ; do
-		mkdir -p $_html/$_subdir
-		chown -R apache $_html/$_subdir
+		mkdir -p $_root/app/$_subdir
+		chown -R apache $_root/app/$_subdir
 	done
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
@@ -78,21 +76,21 @@ function serendipity_install
 	fi
 
 	_file="serendipity_config_local.inc.php"
-	if [[ -s $_html/.htaccess ]] ; then
-		chown apache:root $_html/.htaccess
-		chmod 0644 $_html/.htaccess
-		chown root:root $_html/$_file
-		chmod 0644 $_html/$_file
-		chmod 0755 $_html
-		cp $_html/.htaccess $_root/htaccess
-		cp $_html/$_file $_root/$_file
+	if [[ -s $_root/app/.htaccess ]] ; then
+		chown apache:root $_root/app/.htaccess
+		chmod 0644 $_root/app/.htaccess
+		chown root:root $_root/app/$_file
+		chmod 0644 $_root/app/$_file
+		chmod 0755 $_root/app
+		cp $_root/app/.htaccess $_root/htaccess
+		cp $_root/app/$_file $_root/$_file
 	else
 		cvw_say -s "waiting for installation"
-		chmod 0777 $_html
+		chmod 0777 $_root/app
 	fi
 
 	if cvw_xml -a software/nginx ; then
-		cvw_nginx -p software/$_slug
+		cvw_nginx -p $_slug
 	fi
 
 	if cvw_xml -a software/apache ; then
@@ -107,20 +105,12 @@ function serendipity_install
 
 function serendipity_remove
 {
-	local _web=$(cvw_xml -r system/web/server)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _html
-	[[ $_uri == "/" ]] && _html="/var/www/html" || _html="$_root$_uri"
 
 	cvw_backup -z $_slug
 	cvw_mysql -z $_slug $_slug
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		if [[ $_web == "apache" && $_uri == "/" ]] ; then
-			rm -rf /var/www/html
-			mkdir -p /var/www/html
-		fi
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

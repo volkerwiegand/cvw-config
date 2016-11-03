@@ -25,12 +25,18 @@ _name="Nginx"
 _slug="nginx"
 
 
+_CONF_FILE="/etc/nginx/conf.d/server.conf"
+
+
 function usage
 {
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
-		Syntax: $_prog -i   Install or remove $_name
-		    or: $_prog -x   Execute and cleanup
+		Syntax: $_prog -i             Install or remove $_name
+		    or: $_prog -e file        Enable conf.d/file.conf
+		    or: $_prog -p base        Add PHP block for (XML) base
+		    or: $_prog -x             Execute and cleanup
+		    or: $_prog -y base port   Add proxy block for (XML) base
 		Called with: '$_prog $_args'
 	EOF
 
@@ -45,26 +51,87 @@ function usage
 }
 
 
+function nginx_add_php
+{
+	local _base=$1
+	local _root=$(cvw_xml -r system/app_root)/$_base
+	local _uri=$(cvw_xml -r software/$_base/uri)
+	local _nginx=$(cvw_xml -r system/app_root)/$_slug
+	[[ -s /tmp/cvw/error ]] && exit 1
+	[[ -s $_CONF_FILE.tmp_VW ]] || cvw_say -f "$_prog: missing $_CONF_FILE.tmp_VW"
+	local _opts="/tmp/cvw/nginx.options"
+
+	[[ $_uri != "/" ]] && ln -nfs $_root $_nginx$_uri
+
+	cat >>$_CONF_FILE.tmp_VW <<-EOF
+
+		  location ^~ $_uri {
+	EOF
+
+	if [[ -s $_opts ]] ; then
+		cat $_opts >>$_CONF_FILE.tmp_VW
+	fi
+
+	cat >>$_CONF_FILE.tmp_VW <<-EOF
+		    try_files \$uri \$uri/ \$uri/index.php;
+		    location ~* \\.php {
+		      fastcgi_split_path_info ^(.+?\\.php)(/.+)?\$;
+		      include        fastcgi_params;
+		      fastcgi_index  index.php;
+		      fastcgi_param  SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+		      fastcgi_param  modHeadersAvailable true;
+		      fastcgi_pass   127.0.0.1:9000;
+		    }
+		  }
+	EOF
+
+	rm -f $_opts
+}
+
+
+function nginx_add_proxy
+{
+	local _base=$1
+	local _port=$2
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_base/uri)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	[[ -s $_CONF_FILE.tmp_VW ]] || cvw_say -f "$_prog: missing $_CONF_FILE.tmp_VW"
+
+	cat >>$_CONF_FILE.tmp_VW <<-EOF
+
+		  location $_uri {
+		    proxy_set_header Host \$host;
+		    proxy_set_header X-Real-IP \$remote_addr;
+		    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+		    proxy_set_header X-Forwarded-Proto \$scheme;
+		    proxy_pass       http://127.0.0.1:$_port;
+		  }
+	EOF
+}
+
+
 function nginx_initial
 {
 	cvw_say -h "Installing $_name"
 	local _canon=$(cvw_xml -r host/fqdn)
+	local _home=$(cvw_xml -r software/$_slug/home)
 	local _web=$(cvw_xml -r system/web/server)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _cert="/etc/letsencrypt/live/$_canon"
-	local _conf="/etc/nginx/conf.d/server.conf"
-	local _ip _port _ssl_port _file
+	local _root _ip _port _ssl_port _file
 	local _container _base _uri _path _cport
-
-	if [[ $(cvw_xml -i software/$_slug/container | wc -l) -lt 1 ]] ; then
-		cvw_say -f "nginx needs at least one container"
-	fi
-	mkdir -p $_root 2>>/tmp/cvw/error
 
 	cvw_yum -a nginx
 	cvw_rpm -i nginx
 	cvw_service -s nginx
+
+	cvw_xml -a software/$_home || cvw_say -f "$_slug wants $_home as root"
+	_uri=$(cvw_xml -r software/$_home/uri)
+	[[ $_uri == "/" ]] || cvw_say -f "$_slug wants $_home as /"
+	echo $_home >/tmp/cvw/nginx.home
+	ln -nfs $(cvw_xml -r system/app_root)/$_home $_root 2>>/tmp/cvw/error
 
 	if [[ $_web == $_slug ]] ; then
 		_ip="0.0.0.0"
@@ -72,11 +139,11 @@ function nginx_initial
 		_ssl_port=$(cvw_xml -r system/web/ssl_port)
 	else
 		_ip="127.0.0.1"
-		_port=$(cvw_xml -R software/$_slug/port 8040)
+		_port=$(cvw_xml -R software/$_slug/port 8880)
 		if [ $_port -eq $(cvw_xml -r system/web/port) ] ; then
 			cvw_say -f "conflicting port $_port"
 		fi
-		_ssl_port=$(cvw_xml -R software/$_slug/ssl_port 8043)
+		_ssl_port=$(cvw_xml -R software/$_slug/ssl_port 8843)
 		if [ $_ssl_port -eq $(cvw_xml -r system/web/ssl_port) ] ; then
 			cvw_say -f "conflicting ssl port $_ssl_port"
 		fi
@@ -85,12 +152,12 @@ function nginx_initial
 	_file="/etc/nginx/nginx.conf"
 	cvw_file -e $_file "s/\(worker_processes\).*/\1 auto;/" nginx
 
-	cat >$_conf.tmp_VW <<-EOF
+	cat >$_CONF_FILE.tmp_VW <<-EOF
 		server {
 		  listen              $_port default_server;
 	EOF
 	if [[ -d $_cert ]] ; then
-		cat >>$_conf.tmp_VW <<-EOF
+		cat >>$_CONF_FILE.tmp_VW <<-EOF
 			  listen              $_ssl_port ssl default_server;
 			  ssl_certificate     $_cert/fullchain.pem;
 			  ssl_certificate_key $_cert/privkey.pem;
@@ -102,7 +169,7 @@ function nginx_initial
 			  ssl_ciphers         ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-RSA-DES-CBC3-SHA:ECDHE-ECDSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA;
 		EOF
 	fi
-	cat >>$_conf.tmp_VW <<-EOF
+	cat >>$_CONF_FILE.tmp_VW <<-EOF
 
 		  server_name         _;
 		  root                $_root;
@@ -110,14 +177,10 @@ function nginx_initial
 		  fastcgi_buffers     64 4K;
 		  client_max_body_size 2G;
 
-		  location = /robots.txt  { access_log off; log_not_found off; allow all; }
-		  location = /favicon.ico { access_log off; log_not_found off; allow all; }	
-		  location ~ /\\.ht        { access_log off; log_not_found off; deny  all; }
-
-		  location ~ /\\.well-known {
-		    root $_root;
-		    allow all;
-		  }
+		  location = /robots.txt    { allow all; access_log off; log_not_found off; }
+		  location = /favicon.ico   { allow all; access_log off; log_not_found off; }	
+		  location ~ /\\.ht          { deny  all; access_log off; log_not_found off; }
+		  location ~ ^/\\.well-known { allow all; }
 	EOF
 
 	for _container in $(cvw_xml -i software/$_slug/container) ; do
@@ -128,13 +191,13 @@ function nginx_initial
 		[[ -s /tmp/cvw/error ]] && exit 1
 
 		if [[ $_uri == "/" ]] ; then
-			echo '' >>$_conf.tmp_VW
+			echo '' >>$_CONF_FILE.tmp_VW
 			_path=""
 		elif [[ ${_uri%/} == $_uri ]] ; then
-			echo '' >>$_conf.tmp_VW
+			echo '' >>$_CONF_FILE.tmp_VW
 			_path=""
 		else
-			cat >>$_conf.tmp_VW <<-EOF
+			cat >>$_CONF_FILE.tmp_VW <<-EOF
 
 				  location = $_uri {
 				    return 302 $_uri/;
@@ -142,8 +205,8 @@ function nginx_initial
 			EOF
 			_path="$_uri/"
 		fi
-		cat >>$_conf.tmp_VW <<-EOF
-			  location $_uri$_slash {
+		cat >>$_CONF_FILE.tmp_VW <<-EOF
+			  location $_uri {
 			    proxy_set_header Host \$host;
 			    proxy_set_header X-Real-IP \$remote_addr;
 			    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -155,7 +218,6 @@ function nginx_initial
 	done
 
 	[[ -s /tmp/cvw/error ]] && exit 1
-	echo $_conf >>/tmp/cvw/nginx.enabled
 
 	cvw_say -o "$_slug:initial"
 }
@@ -164,11 +226,11 @@ function nginx_initial
 function nginx_finish
 {
 	cvw_say -h "Finishing Nginx"
-	local _conf="/etc/nginx/conf.d/server.conf"
 	local _file
 
-	echo "}" >>$_conf.tmp_VW
-	cvw_file -v $_conf nginx
+	echo "}" >>$_CONF_FILE.tmp_VW
+	cvw_file -v $_CONF_FILE nginx
+	echo $_CONF_FILE >>/tmp/cvw/nginx.enabled
 
 	find /etc/nginx/conf.d -maxdepth 1 -name "*.conf" | while read _file ; do
 		grep -q "^$_file" /tmp/cvw/nginx.enabled && continue
@@ -190,7 +252,7 @@ function nginx_finish
 
 function nginx_remove
 {
-	local _root="$(cvw_xml -r system/app_root)/$_slug"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
 
 	if cvw_service -c nginx ; then
 		cvw_say -h "Removing Nginx"
@@ -206,14 +268,27 @@ function nginx_remove
 }
 
 
-while getopts ":ixy:" opt ; do
+while getopts ":e:ip:xy:" opt ; do
 	case $opt in
+		e)
+			cvw_xml -a software/$_slug || exit 0
+			cvw_say -s "conf.d: $OPTARG"
+			rm -f /etc/nginx/conf.d/$OPTARG.conf.disabled
+			echo "/etc/nginx/conf.d/$OPTARG.conf" >>/tmp/cvw/nginx.enabled
+			exit 0
+		;;
+
 		i)
 			if cvw_xml -a software/$_slug ; then
 				nginx_initial
 			else
 				nginx_remove
 			fi
+			exit 0
+		;;
+
+		p)
+			nginx_add_php $OPTARG
 			exit 0
 		;;
 
@@ -224,12 +299,22 @@ while getopts ":ixy:" opt ; do
 			exit 0
 		;;
 
+		y)
+			_proxy=$OPTARG
+		;;
+
 		\?)
 			usage
 		;;
 	esac
 done
 shift $(($OPTIND-1))
+
+if [[ $_proxy ]] ; then
+	[[ $# -eq 1 ]] || usage
+	nginx_add_proxy $_proxy $1
+	exit
+fi
 
 usage
 

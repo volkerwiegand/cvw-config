@@ -52,6 +52,7 @@ function usage
 		    or: $_prog -t                Compile and test config.xml
 		    or: $_prog -x flag cmd       Run cvw_xml -flag cmd (verbose)
 		    or: $_prog -X flag cmd       Run cvw_xml -flag cmd (only output)
+		    or: $_prog -Y                Archive and fetch /etc/letsencrypt
 		    or: $_prog -z                Zap (delete) remote cvw_... commands
 		Called with: '$_prog $_args'
 	EOF
@@ -205,7 +206,7 @@ function wipe_config
 }
 
 
-while getopts ":bBcdDeEf:h:kKlL:p:Pr:tx:X:yz" opt ; do
+while getopts ":bBcdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		b)
@@ -304,6 +305,10 @@ while getopts ":bBcdDeEf:h:kKlL:p:Pr:tx:X:yz" opt ; do
 
 		y)
 			_copy_key=1
+		;;
+
+		Y)
+			_lets_encrypt=1
 		;;
 
 		z)
@@ -497,6 +502,18 @@ if [[ $_run_XML ]] ; then
 	cvw_xml -$_run_XML $@
 	exit
 fi
+
+
+if [[ $_lets_encrypt ]] ; then
+	setup_config
+	copy_config
+	cvw_say -a "securing letsencrypt files"
+	ssh -t root@$_fqdn "tar -c -v -z -f /tmp/cvw/letsencrypt.tar.gz -C /etc letsencrypt"
+	scp root@$_fqdn:/tmp/cvw/letsencrypt.tar.gz cfg/files/misc/letsencrypt.tar.gz
+	wipe_config
+	exit
+fi
+
 
 usage
 

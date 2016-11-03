@@ -180,8 +180,9 @@ function gogs_install
 			   ProxyPass        $_uri http://localhost:$_port
 			   ProxyPassReverse $_uri http://localhost:$_port
 		EOF
-		cvw_url -a "$_name" $_uri
 	fi
+
+	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
 }
