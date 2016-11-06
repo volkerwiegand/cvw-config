@@ -81,8 +81,6 @@ function init_init
 	_lang=$(cvw_xml -r system/language)
 	_zone=$(cvw_xml -r system/timezone)
 	_root=$(cvw_xml -r system/app_root)
-	_port=$(cvw_xml -r system/web/port)
-	_ssl_port=$(cvw_xml  -r system/web/ssl_port)
 	_web=$(cvw_xml  -r system/web/server)
 	[[ -s /tmp/cvw/error ]] && exit 1
 
@@ -127,7 +125,7 @@ function init_init
 		cvw_firewall -s ntp
 		cvw_service -s ntpd
 	else
-		cvw_say -s "TODO disabling ntp"
+		cvw_say -s "disabling ntp not implemented yet"
 	fi
 
 	if cvw_xml -c host/ssh_port ; then
@@ -139,10 +137,10 @@ function init_init
 		cvw_firewall -s ssh
 	fi
 
-	if cvw_xml -a software/iredmail ; then
-		cvw_firewall -s http
-		cvw_firewall -s https
-	else
+	if [[ $_web != "none" ]] ; then
+		_port=$(cvw_xml -r system/web/port)
+		_ssl_port=$(cvw_xml  -r system/web/ssl_port)
+		[[ -s /tmp/cvw/error ]] && exit 1
 		cvw_say -s "webserver is $_web ($_port / $_ssl_port)"
 		cvw_firewall -t $_port
 		cvw_firewall -t $_ssl_port

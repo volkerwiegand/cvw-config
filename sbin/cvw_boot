@@ -79,6 +79,7 @@ cvw_redis        -i ; error_check
 cvw_memcache     -i ; error_check
 cvw_openldap     -i ; error_check
 cvw_php          -i ; error_check
+cvw_puppet       -i ; error_check
 cvw_serendipity  -i ; error_check
 cvw_wordpress    -i ; error_check
 cvw_b2evolution  -i ; error_check

@@ -54,7 +54,7 @@ _version=""
 function get_data
 {
 	_id=$1
-	_url=$(cvw_xml -r common/download:$_id/url)
+	_url=$(cvw_xml -r common/download:$_id/url | sed -e 's/\&amp;/\&/g')
 
 	if cvw_xml -c common/download:$_id/name ; then
 		_file=$(cvw_xml -r common/download:$_id/name)
@@ -121,6 +121,7 @@ if [[ ! -s $_dir/$_file ]] ; then
 	else
 		wget -q -P $_dir $_url 2>>/tmp/cvw/error
 	fi
+	cvw_say -s "download complete"
 fi
 
 if [[ $_md5 ]] ; then

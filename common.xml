@@ -70,6 +70,9 @@
     <download id="piwik">
       <url>http://builds.piwik.org/piwik.zip</url>
     </download>
+    <download id="puppet_master">
+      <url>replace-this-text-with-the-download-link-you-received-from-puppet</url>
+    </download>
     <download id="roundcube">
       <url>https://github.com/roundcube/roundcubemail/releases/download/1.2.1/roundcubemail-1.2.1-complete.tar.gz</url>
       <sha256>271aabea275739b5a1f66510b02b79818aa218ffbac2abc9ff168e20a9031d45</sha256>
