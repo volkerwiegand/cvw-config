@@ -1,0 +1,129 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_puppet - Install or remove Puppet
+######              https://puppet.com/de
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Puppet"
+_slug="puppet"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function puppet_install
+{
+	cvw_say -h "Installing $_name"
+	local _canon=$(cvw_xml -r host/fqdn)
+	local _role=$(cvw_xml -r software/$_slug/role)
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _live="/etc/letsencrypt/live/$_canon"
+	local _cert="/opt/puppetlabs/server/data/console-services/certs"
+	local _cons="pe-console-services"
+	local _file
+
+	if [[ $_role == "master" ]] ; then
+		cvw_unpack -i puppet_master $_root puppet-enterprise-installer
+		cvw_firewall -s http
+		cvw_firewall -s https
+		cvw_firewall -t 3000
+		cvw_firewall -t 8140
+
+		if [[ ! -s $_root/installer.done ]] ; then
+			$_root/puppet-enterprise-installer -c $_root/conf.d/pe.conf
+			date >$_root/installer.done
+		fi
+
+		if [[ ! -s $_root/agent.done ]] ; then
+			puppet agent -t
+			date >$_root/agent.done
+		fi
+
+		if [[ -d $_live ]] ; then
+			_file="$_cert/public-console.ca_cert.pem"
+			cp $_live/chain.pem $_file.tmp_VW
+			cvw_file -v $_file -u $_cons:$_cons -m 0400
+			cvw_say -s "CA-CERT .....: $_file"
+
+			_file="$_cert/public-console.cert.pem"
+			cp $_live/cert.pem $_file.tmp_VW
+			cvw_file -v $_file -u $_cons:$_cons -m 0400
+			cvw_say -s "CERT ........: $_file"
+
+			_file="$_cert/public-console.chain.pem"
+			cp $_live/fullchain.pem $_file.tmp_VW
+			cvw_file -v $_file -u $_cons:$_cons -m 0400
+			cvw_say -s "CHAIN .......: $_file"
+
+			_file="$_cert/public-console.private_key.pem"
+			cp $_live/privkey.pem $_file.tmp_VW
+			cvw_file -v $_file -u $_cons:$_cons -m 0400
+			cvw_say -s "PRIV-KEY ....: $_file"
+		fi
+	fi
+
+	cvw_say -o "$_slug"
+}
+
+
+function puppet_remove
+{
+	if cvw_service -c puppetd ; then
+		cvw_say -h "Removing $_name"
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				puppet_install
+			else
+				puppet_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
