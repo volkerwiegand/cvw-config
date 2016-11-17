@@ -34,7 +34,7 @@ trap 'rm /tmp/cvw.lock' 0
 function usage
 {
 	cat >&2 <<-EOF
-		Syntax: $_prog -b                Fetch backups from host
+		Syntax: $_prog -b                Fetch backups from host (save to /backup/<fqdn>/)
 		    or: $_prog -B                Restore backups to host
 		    or: $_prog -c [cmd [args]]   Run remote docker-compose command for app
 		    or: $_prog -d [cmd [args]]   Run remote docker command
@@ -81,7 +81,7 @@ function finish
 }
 
 
-function combine_ssh_ports
+function combine_ssh_configs
 {
 	local _dir=$HOME/.ssh
 	local _conf=$_dir/config
@@ -89,7 +89,7 @@ function combine_ssh_ports
 
 	rm -f $_conf.tmp_VW
 
-	find $_dir -name "port_*" -print | while read _file ; do
+	find $_dir -name "config_*" -print | sort | while read _file ; do
 		cat $_file >>$_conf.tmp_VW
 	done
 
@@ -210,19 +210,11 @@ while getopts ":bBcdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		b)
-			setup_config
-			cvw_say
-			cvw_say -a "Fetch backups from host"
-			rsync -v $RSYNC_FLAGS root@$_fqdn:/var/local/backup/ ./backup
-			exit
+			_backup=1
 		;;
 
 		B)
-			setup_config
-			cvw_say
-			cvw_say -a "Copy backups to host"
-			rsync -v ./backup/ $RSYNC_FLAGS root@$_fqdn:/var/local/backup
-			exit
+			_restore=1
 		;;
 
 		c)
@@ -323,9 +315,32 @@ while getopts ":bBcdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 			usage
 		;;
 	esac
-	[[ $_finito ]] && break
+	[[ $_finito -eq 1 ]] && break
 done
 shift $(($OPTIND-1))
+
+
+if [[ $_backup ]] ; then
+	_fqdn=$(cvw_xml -r host/fqdn)
+	sudo mkdir -p /backup
+	sudo chown $LOGNAME:$LOGNAME /backup
+	setup_config
+	cvw_say
+	cvw_say -a "Fetch backups from host"
+	rsync -v $RSYNC_FLAGS root@$_fqdn:/var/local/backup/ /backup/$_fqdn
+	exit
+fi
+
+
+if [[ $_restore ]] ; then
+	_fqdn=$(cvw_xml -r host/fqdn)
+	[[ -d /backup/$_fqdn ]] || failure "no backups $_fqdn"
+	setup_config
+	cvw_say
+	cvw_say -a "Copy backups to host"
+	rsync -v $RSYNC_FLAGS /backup/$_fqdn/ root@$_fqdn:/var/local/backup
+	exit
+fi
 
 
 if [[ $_compose ]] ; then
@@ -464,24 +479,27 @@ if [[ $_add_ssh_port ]] ; then
 	setup_config
 	if [[ -n "$1" ]] ; then
 		_ssh_port=$1
+		_ssh_id_file="$HOME/.ssh/id_rsa"
 	else
 		_ssh_port=$(cvw_xml -r host/ssh_port)
+		_ssh_id_file=$(cvw_xml -r host/ssh_id_file)
 		[[ -s /tmp/cvw/error ]] && finish
 	fi
-	cat >$HOME/.ssh/port_$_fqdn <<-EOF
+	cat >$HOME/.ssh/config_$_fqdn <<-EOF
 		Host $_fqdn
 		Port $_ssh_port
+		IdentityFile $_ssh_id_file
 
 	EOF
-	combine_ssh_ports
+	combine_ssh_configs
 	exit 0
 fi
 
 
 if [[ $_del_ssh_port ]] ; then
 	setup_config
-	rm -f $HOME/.ssh/port_$_fqdn
-	combine_ssh_ports
+	rm -f $HOME/.ssh/config_$_fqdn
+	combine_ssh_configs
 	exit 0
 fi
 
