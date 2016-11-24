@@ -1,7 +1,7 @@
   <common>
     <download id="b2evolution">
       <link>http://b2evolution.net/downloads/</link>
-      <url>https://github.com/b2evolution/b2evolution/archive/6.7.7.zip</url>
+      <url>https://github.com/b2evolution/b2evolution/archive/6.8.2.zip</url>
     </download>
     <download id="bitnami_ruby">
       <link>https://bitnami.com/stack/ruby/installer#linux</link>
