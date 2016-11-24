@@ -53,10 +53,14 @@ function rails_gem_install
 	local _gem=$1
 	local _check=$(gem list -i "^$_gem$")
 
+	cvw_say -d "GEM $_gem => $_check"
+
 	if [[ "$_check" != "true" ]] ; then
 		cvw_user -r rails "gem install $_gem"
 		cvw_user -r rails "rbenv rehash"
 	fi
+
+	cvw_say -d "GEM $_gem OKAY"
 }
 
 
@@ -67,7 +71,6 @@ function rails_app_install
 	local _pass=$(cvw_xml -r $_base/password)
 	local _dir=$(cvw_user -h rails)/$_id
 	local _uri=$(cvw_xml -r $_base/uri)
-	local _port=$(cvw_xml -r $_base/port)
 	local _secret=$(cvw_xml -r $_base/secret)
 	local _server=$(cvw_xml -r software/$_slug/server)
 	local _threads=$(cvw_xml -R $_base/threads 5)
@@ -76,9 +79,10 @@ function rails_app_install
 	local _config=$_dir/shared/config
 	local _current=$_dir/current
 	local _systemd="/usr/lib/systemd/system/$_id.service"
-	local _file _host _conf _restart _root
+	local _port _file _host _conf _restart _root
 
 	if [[ $_server == "thin" || $_server == "puma" ]] ; then
+		_port=$(cvw_xml -r $_base/port)
 		cvw_say -s "app: $_id -> $_uri ($_server / $_port)"
 	elif [[ $_server == "passenger" ]] ; then
 		cvw_say -s "app: $_id -> $_uri (passenger)"
@@ -260,15 +264,6 @@ function rails_app_install
 		cvw_file -r $_file
 	fi
 
-	if [[ $_server == "passenger" ]] ; then
-		if [[ ! -x $_RBENV_ROOT/shims/passenger ]] ; then
-			passenger-install-apache2-module --auto --languages ruby
-		fi
-	else
-		cvw_file -r /etc/httpd/conf.d/passenger.conf
-		rm -f /etc/httpd/conf.d/passenger.conf.disabled
-	fi
-
 	if cvw_xml -a software/nginx ; then
 		# this is for static files (assets e.g.)
 		_root=$(cvw_xml -r system/app_root)/nginx
@@ -433,6 +428,22 @@ function rails_install
 		rails_gem_install $_gem
 	done
 
+	if [[ $_server == "passenger" ]] ; then
+		set +e
+		passenger-config validate-install --auto >/dev/null 2>&1
+		if [[ $? -ne 0 && $? -ne 2 ]] ; then
+			passenger-install-apache2-module --auto --languages ruby 2>>/tmp/cvw/passenger
+			if [[ $? -ne 0 ]] ; then
+				cat /tmp/cvw/passenger >>/tmp/cvw/error
+				exit 1
+			fi
+		fi
+		set -e
+	else
+		cvw_file -r /etc/httpd/conf.d/passenger.conf
+		rm -f /etc/httpd/conf.d/passenger.conf.disabled
+	fi
+
 	if [[ -s /tmp/cvw/updating ]] ; then
 		cvw_say -s "updating Gems"
 		cvw_user -r rails "gem update --system"
@@ -454,6 +465,12 @@ function rails_remove
 {
 	set +e
 	local _id
+
+	for _id in $(cvw_xml -x software/$_slug/app) ; do
+		cvw_service -z $_id
+		cvw_backup -z $_id
+		cvw_mysql -z $_id $_id
+	done
 
 	if id rails >/dev/null 2>&1 ; then
 		cvw_say -h "Removing Rails"
