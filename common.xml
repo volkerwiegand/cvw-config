@@ -82,10 +82,10 @@
       <url>https://bitbucket.org/haiwen/seafile/downloads/seafile-server_4.2.1_x86-64.tar.gz</url>
     </download>
     <download id="serendipity">
-      <link>http://www.s9y.org/12.html</link>
-      <url>https://github.com/s9y/Serendipity/releases/download/2.0.4/serendipity-2.0.4.zip</url>
-      <md5>edf8bf832bd1835fb4f769b682d37514</md5>
-      <version>2.0.4</version>
+      <link>https://docs.s9y.org/downloads.html</link>
+      <url>https://github.com/s9y/Serendipity/releases/download/2.0.5/serendipity-2.0.5.zip</url>
+      <md5>ea6034d854f5f74a3e472f7f7122bf3f</md5>
+      <version>2.0.5</version>
     </download>
     <download id="shariff">
       <link>https://github.com/heiseonline/shariff-backend-php/releases</link>
