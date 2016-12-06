@@ -29,6 +29,7 @@ function usage
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -c svc   Check if service is running
 		    or: $_prog -d svc   Stop and disable service
+		    or: $_prog -D svc   Stop service immediately
 		    or: $_prog -e svc   Enable service (even if not active)
 		    or: $_prog -l svc   Add reload for service
 		    or: $_prog -r svc   Add restart for service
@@ -84,7 +85,7 @@ function do_action
 }
 
 
-while getopts ":c:d:e:l:r:R:s:S:xz:" opt ; do
+while getopts ":c:d:D:e:l:r:R:s:S:xz:" opt ; do
 	case $opt in
 		c)
 			is_active $OPTARG
@@ -94,6 +95,12 @@ while getopts ":c:d:e:l:r:R:s:S:xz:" opt ; do
 		d)
 			is_loaded  $OPTARG || exit 0
 			is_enabled $OPTARG && do_action $OPTARG disable
+			is_active  $OPTARG && do_action $OPTARG stop
+			exit 0
+		;;
+
+		D)
+			is_loaded  $OPTARG || exit 0
 			is_active  $OPTARG && do_action $OPTARG stop
 			exit 0
 		;;
