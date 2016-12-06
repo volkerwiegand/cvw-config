@@ -3,7 +3,7 @@
 
 #################################################################################
 ######
-###### cvw_certbot - Install or remove Let's encrypt certbot
+###### cvw_certbot - Install or remove Let's Encrypt certbot
 ######               http://certbot.eff.org/
 ######
 ###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
@@ -18,7 +18,7 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="Let's encrypt certbot"
+_name="Let's Encrypt certbot"
 _slug="certbot"
 
 
@@ -59,9 +59,15 @@ function certbot_install
 		tar -x -z -C /etc -f $_file
 	fi
 
+	# TODO check why "--webroot" seems to fail
+	[[ $_web == "apache"  ]] && cvw_service -K httpd
+	[[ $_web == "haproxy" ]] && cvw_service -K haproxy
+	[[ $_web == "nginx"   ]] && cvw_service -K nginx
+	# Web server will be re-started after run
+
 	if [[ -d $_live ]] ; then
 		cvw_say -s "updating web certificate"
-		certbot renew
+		certbot renew --standalone
 	else
 		_list="-d $_canon"
 		[[ $_canon =~ ^www\. ]] && _list="$_list -d ${_canon#*.}"
@@ -69,22 +75,7 @@ function certbot_install
 			_list="$_list -d $_san"
 			[[ $_san =~ ^www\. ]] && _list="$_list -d ${_san#*.}"
 		done
-		if [[ $_web == "nginx" ]] ; then
-			if cvw_service -c nginx ; then
-				_args="--webroot -w $(cvw_xml -r system/app_root)/nginx"
-			else
-				_args="--standalone"
-			fi
-		elif [[ $_web == "apache" ]] ; then
-			if cvw_service -c httpd ; then
-				_args="--webroot -w /var/www/html"
-			else
-				_args="--standalone"
-			fi
-		else
-			_args="--standalone"
-		fi
-		_args="$_args --agree-tos --email '$_admin'"
+		_args="--standalone --agree-tos --email '$_admin'"
 		_args="$_args --keep --text --non-interactive"
 		cvw_say -a "certbot certonly $_args $_list"
 		certbot certonly $_args $_list
