@@ -31,6 +31,7 @@ function usage
 		    or: $_prog -d svc   Stop and disable service
 		    or: $_prog -D svc   Stop service immediately
 		    or: $_prog -e svc   Enable service (even if not active)
+		    or: $_prog -K svc   Stop service, but keep mode
 		    or: $_prog -l svc   Add reload for service
 		    or: $_prog -r svc   Add restart for service
 		    or: $_prog -R svc   Restart service immediately
@@ -85,7 +86,7 @@ function do_action
 }
 
 
-while getopts ":c:d:D:e:l:r:R:s:S:xz:" opt ; do
+while getopts ":c:d:D:e:K:l:r:R:s:S:xz:" opt ; do
 	case $opt in
 		c)
 			is_active $OPTARG
@@ -108,6 +109,13 @@ while getopts ":c:d:D:e:l:r:R:s:S:xz:" opt ; do
 		e)
 			is_loaded  $OPTARG || exit 0
 			is_enabled $OPTARG || do_action $OPTARG enable
+			exit 0
+		;;
+
+		K)
+			is_loaded  $OPTARG || exit 0
+			is_active  $OPTARG && do_action $OPTARG stop
+			echo "$OPTARG" >>$_restart
 			exit 0
 		;;
 
