@@ -202,7 +202,7 @@ function wipe_config
 	local _fqdn=$(cvw_xml -r host/fqdn)
 
 	cvw_say -a "remove remote CVW files"
-	ssh -t root@$_fqdn "rm -rf /var/local/cfg /tmp/cvw"
+	ssh -t root@$_fqdn "rm -rf /var/local/cfg /tmp/cvw /tmp/letsencrypt.tar.gz"
 }
 
 
@@ -526,8 +526,8 @@ if [[ $_lets_encrypt ]] ; then
 	setup_config
 	copy_config
 	cvw_say -a "securing letsencrypt files"
-	ssh -t root@$_fqdn "tar -c -v -z -f /tmp/cvw/letsencrypt.tar.gz -C /etc letsencrypt"
-	scp root@$_fqdn:/tmp/cvw/letsencrypt.tar.gz cfg/files/misc/letsencrypt.tar.gz
+	ssh -t root@$_fqdn "tar -c -v -z -f /tmp/letsencrypt.tar.gz -C /etc letsencrypt"
+	scp root@$_fqdn:/tmp/letsencrypt.tar.gz cfg/files/misc/letsencrypt.tar.gz
 	wipe_config
 	exit
 fi

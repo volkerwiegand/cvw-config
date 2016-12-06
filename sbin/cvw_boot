@@ -67,6 +67,7 @@ cvw_init $_m $_d
 error_check
 
 cvw_yum          -i ; error_check
+cvw_tripwire     -i ; error_check
 cvw_docker       -i ; error_check
 cvw_user         -i ; error_check
 cvw_haproxy      -i ; error_check
@@ -99,13 +100,13 @@ cvw_dokuwiki     -i ; error_check
 cvw_opencart     -i ; error_check
 cvw_piwigo       -i ; error_check
 cvw_vsftpd       -i ; error_check
+cvw_certbot      -i ; error_check
 
 cvw_mysql        -x ; error_check
 cvw_apache       -x ; error_check
 cvw_nginx        -x ; error_check
 cvw_service      -x ; error_check
 cvw_firewall     -x ; error_check
-cvw_certbot      -i ; error_check
 
 cvw_backup       -s ; error_check
 cvw_url          -s ; error_check
