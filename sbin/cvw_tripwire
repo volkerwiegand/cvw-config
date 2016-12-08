@@ -3,7 +3,7 @@
 
 #################################################################################
 ######
-###### cvw_tripwire - Install or remove Tripwire
+###### cvw_tripwire - Install or remove Tripwire IDS
 ######                https://github.com/Tripwire/tripwire-open-source
 ######                https://www.centos.org/docs/2/rhl-rg-en-7.2/ch-tripwire.html
 ######
@@ -19,7 +19,7 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="Tripwire"
+_name="Tripwire IDS"
 _slug="tripwire"
 
 
@@ -45,8 +45,178 @@ function usage
 function tripwire_install
 {
 	cvw_say -h "Installing $_name"
+	local _canon=$(cvw_xml -r host/fqdn)
+	local _sitephrase=$(cvw_xml -r system/$_slug/sitephrase)
+	local _localphrase=$(cvw_xml -r system/$_slug/localphrase)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _sitekey="/etc/tripwire/site.key"
+	local _localkey="/etc/tripwire/$_canon.key"
+	local _cfgtxt="/etc/tripwire/twcfg.txt"
+	local _poltxt="/etc/tripwire/twpol.txt"
+	local _cfgfile="/etc/tripwire/tw.cfg"
+	local _polfile="/etc/tripwire/tw.pol"
+	local _file _dir
 
 	cvw_rpm -i tripwire
+
+	cvw_say -s "generating keys"
+	rm -f $_sitekey $_localkey
+	twadmin --generate-keys --quiet --site-keyfile $_sitekey --site-passphrase $_sitephrase
+	twadmin --generate-keys --quiet --local-keyfile $_localkey --local-passphrase $_localphrase
+	chmod 0600 $_sitekey $_localkey
+
+	cvw_say -s "creating config file"
+	cat >$_cfgtxt.tmp_VW <<-EOF
+		ROOT                   =/usr/sbin
+		POLFILE                =$_polfile
+		DBFILE                 =/var/lib/tripwire/\$(HOSTNAME).twd
+		REPORTFILE             =/var/lib/tripwire/report/\$(HOSTNAME)-\$(DATE).twr
+		SITEKEYFILE            =$_sitekey
+		LOCALKEYFILE           =$_localkey
+		EDITOR                 =/usr/bin/vi
+		LATEPROMPTING          =false
+		LOOSEDIRECTORYCHECKING =false
+		MAILNOVIOLATIONS       =true
+		EMAILREPORTLEVEL       =3
+		REPORTLEVEL            =3
+		MAILMETHOD             =SENDMAIL
+		SYSLOGREPORTING        =false
+		MAILPROGRAM            =/usr/sbin/sendmail -oi -t
+	EOF
+	cvw_file -v $_cfgtxt
+	twadmin --create-cfgfile --quiet --cfgfile $_cfgfile --site-keyfile $_sitekey \
+		--site-passphrase $_sitephrase $_cfgtxt 2>>/tmp/cvw/error
+	[[ -s /tmp/cvw/error ]] && exit 1
+	chmod 0600 $_cfgfile
+
+	cvw_say -s "creating policy prolog"
+	cat >$_poltxt.tmp_VW <<-EOF
+		# Tripwire IDS Policy
+
+		# Global Variable Definitions
+
+		@@section GLOBAL
+		TWROOT=/usr/sbin;
+		TWBIN=/usr/sbin;
+		TWPOL="/etc/tripwire";
+		TWDB="/var/lib/tripwire";
+		TWSKEY="/etc/tripwire";
+		TWLKEY="/etc/tripwire";
+		TWREPORT="/var/lib/tripwire/report";
+		HOSTNAME=$_canon;
+
+		@@section FS
+		SEC_CRIT      = \$(IgnoreNone)-SHa ;  # Critical files that cannot change
+		SEC_SUID      = \$(IgnoreNone)-SHa ;  # Binaries with the SUID or SGID flags set
+		SEC_BIN       = \$(ReadOnly) ;        # Binaries that should not change
+		SEC_CONFIG    = \$(Dynamic) ;         # Config files that are changed infrequently but accessed often
+		SEC_LOG       = \$(Growing) ;         # Files that grow, but that should never change ownership
+		SEC_INVARIANT = +tpug ;              # Directories that should never change permission or ownership
+		SIG_LOW       = 33 ;                 # Non-critical files that are of minimal security impact
+		SIG_MED       = 66 ;                 # Non-critical files that are of significant security impact
+		SIG_HI        = 100 ;                # Critical files that are significant points of vulnerability
+
+
+		# Tripwire Data Files - Configuration Files, Policy Files, Keys, Reports, Databases
+
+		(
+		  rulename = "Tripwire Data Files",
+		  severity = \$(SIG_HI)
+		)
+		{
+		  # NOTE: We remove the inode attribute because when Tripwire creates a backup,
+		  # it does so by renaming the old file and creating a new one (which will
+		  # have a new inode number).  Inode is left turned on for keys, which shouldn't
+		  # ever change.
+
+		  # NOTE: The first integrity check triggers this rule and each integrity check
+		  # afterward triggers this rule until a database update is run, since the
+		  # database file does not exist before that point.
+
+		  \$(TWDB)                              -> \$(SEC_CONFIG) -i ;
+		  \$(TWPOL)/tw.pol                      -> \$(SEC_BIN) -i ;
+		  \$(TWPOL)/tw.cfg                      -> \$(SEC_BIN) -i ;
+		  \$(TWLKEY)/\$(HOSTNAME).key            -> \$(SEC_BIN) ;
+		  \$(TWSKEY)/site.key                   -> \$(SEC_BIN) ;
+
+		  #don't scan the individual reports
+		  \$(TWREPORT)                          -> \$(SEC_CONFIG) (recurse=0) ;
+		}
+
+
+		# Commonly accessed directories that should remain static with regards to owner and group.
+
+		(
+		  rulename = "Invariant Directories",
+		  severity = \$(SIG_MED)
+		)
+		{
+		  /                                    -> \$(SEC_INVARIANT) (recurse = 0) ;
+		  /home                                -> \$(SEC_INVARIANT) (recurse = 0) ;
+		  /etc                                 -> \$(SEC_INVARIANT) (recurse = 0) ;
+		}
+
+
+		# Programs and libraries.
+
+		(
+		  rulename = "Programs and libraries",
+		  severity = \$(SIG_HI)
+		)
+		{
+	EOF
+
+	for _dir in $(grep -v "^#" /tmp/cvw/tripwire.dirs) ; do
+		[[ -d $_dir ]] || continue
+		cvw_say -s "adding $_dir"
+		find $_dir -type f -exec printf "  \"%s\"   -> \$(SEC_CRIT) ;\n" {} \; >>$_poltxt.tmp_VW
+	done
+
+	cvw_say -s "creating policy epilog"
+	cat >>$_poltxt.tmp_VW <<-EOF
+		}
+
+
+		# Temporary directories.
+
+		(
+		  rulename = "Temporary directories",
+		  recurse = false,
+		  severity = \$(SIG_LOW)
+		)
+		{
+		  /usr/tmp                             -> \$(SEC_INVARIANT) ;
+		  /var/tmp                             -> \$(SEC_INVARIANT) ;
+		  /tmp                                 -> \$(SEC_INVARIANT) ;
+		}
+
+
+		# Security Control.
+
+		(
+		  rulename = "Security Control",
+		  severity = \$(SIG_HI)
+		)
+		{
+		  /etc/passwd                          -> \$(SEC_CRIT) ;
+		  /etc/shadow                          -> \$(SEC_CRIT) ;
+		  /etc/group                           -> \$(SEC_CRIT) ;
+		  /etc/gshadow                         -> \$(SEC_CRIT) ;
+		  /etc/security                        -> \$(SEC_CRIT) ;
+		}
+	EOF
+	cvw_file -v $_poltxt
+
+	cvw_say -s "compiling policy database"
+	twadmin --create-polfile --quiet --cfgfile $_cfgfile --polfile $_polfile \
+		--site-keyfile $_sitekey --site-passphrase $_sitephrase \
+		$_poltxt 2>>/tmp/cvw/error
+	[[ -s /tmp/cvw/error ]] && exit 1
+	chmod 0600 $_polfile
+
+	cvw_say -s "loading the gun"
+	tripwire --init --quiet --cfgfile $_cfgfile --polfile $_polfile --site-keyfile $_sitekey \
+		--local-keyfile $_localkey --local-passphrase $_localphrase
 
 	cvw_say -o "$_slug"
 }

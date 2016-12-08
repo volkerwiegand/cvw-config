@@ -48,6 +48,22 @@ function init_init
 
 	cvw_say
 
+	cat >/tmp/cvw/tripwire.dirs <<-EOF
+		/usr/bin
+		/usr/sbin
+		# /usr/lib
+		# /usr/lib64
+		# /usr/libexec
+		# /usr/share
+		/usr/local/bin
+		/usr/local/sbin
+		# /usr/local/lib
+		# /usr/local/lib64
+		# /usr/local/libexec
+		# /usr/local/share
+		/etc/sysconfig/network-scripts
+	EOF
+
 	if [[ $_debug ]] ; then
 		echo "debug" >/tmp/cvw/debug
 	fi

@@ -39,6 +39,11 @@
       <port>80</port>
       <ssl_port>443</ssl_port>
     </web>
+
+    <tripwire active="true">
+      <sitephrase>very_long_string_that_no_one_would_guess_if_she_had_to_64_bytes1</sitephrase>
+      <localphrase>very_long_string_that_no_one_would_guess_if_she_had_to_64_bytes2</localphrase>
+    </tripwire>
   </system>
 
   <software development="false" go="true">

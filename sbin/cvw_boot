@@ -67,7 +67,6 @@ cvw_init $_m $_d
 error_check
 
 cvw_yum          -i ; error_check
-cvw_tripwire     -i ; error_check
 cvw_docker       -i ; error_check
 cvw_user         -i ; error_check
 cvw_haproxy      -i ; error_check
@@ -108,6 +107,7 @@ cvw_nginx        -x ; error_check
 cvw_service      -x ; error_check
 cvw_firewall     -x ; error_check
 
+cvw_tripwire     -i ; error_check
 cvw_backup       -s ; error_check
 cvw_url          -s ; error_check
 
