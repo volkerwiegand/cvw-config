@@ -223,8 +223,12 @@ function tripwire_install
 		--local-keyfile $_localkey --local-passphrase $_localphrase
 
 	_file="/etc/cron.hourly/tripwire.check"
-	echo "/usr/sbin/tripwire --check | mail -s 'Tripwire Report from $_canon' $_mail" >$_file.tmp_VW
-	cvw_file -v $_file
+	cat >$_file.tmp_VW <<-EOF
+		#!/bin/sh
+
+		/usr/sbin/tripwire --check | mail -s 'Tripwire Report from $_canon' $_mail
+	EOF
+	cvw_file -m 0755 -v $_file
 
 	cvw_say -o "$_slug"
 }
