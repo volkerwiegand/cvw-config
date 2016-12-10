@@ -45,31 +45,55 @@ function usage
 function postfix_install
 {
 	cvw_say -h "Installing $_name"
-	local _fqdn=$(cvw_xml -r software/$_slug/fqdn)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _admin=$(cvw_xml -r host/admin)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _domain=${_fqdn#*.}
 	local _cert="/etc/letsencrypt/live/$_fqdn"
 	local _dir _file _diff _restrictions _mydest _var _dest
 
-	cvw_rpm -i certbot
-	cvw_say -s "servers for certbot: $_fqdn"
-	if cvw_service -c web ; then
-		cvw_say -s "installing certificate (webroot)"
-		certbot certonly --webroot -w /var/www/html \
-				--agree-tos --email "$_admin" \
-				--keep --non-interactive -d $_fqdn
-	else
-		cvw_say -s "installing certificate (standalone)"
-		certbot certonly --standalone \
-				--agree-tos --email "$_admin" \
-				--keep --non-interactive -d $_fqdn
-	fi
-
 	cvw_rpm -i postfix
 	cvw_service -d sendmail
 	cvw_service -s postfix
 	alternatives --set mta /usr/sbin/sendmail.postfix
+
+	_var="software/$_slug/smarthost"
+	if cvw_xml -c $_var ; then
+		local _host=$(cvw_xml -r $_var/host)
+		local _port=$(cvw_xml -r $_var/port)
+		local _user=$(cvw_xml -r $_var/username)
+		local _pass=$(cvw_xml -r $_var/password)
+		local _mail=$(cvw_xml -r $_var/mail)
+		cvw_say -s "using smarthost $_host"
+
+		cvw_rpm -i cyrus-sasl-plain
+		cvw_rpm -i mailx
+
+		_file="/etc/postfix/sasl_passwd"
+		echo "[$_host]:$_port $_user:$_pass" >$_file.tmp_VW
+		cvw_file -v $_file postfix
+		postmap $_file
+		chown root:postfix $_file $_file.db
+		chmod 0640 $_file $_file.db
+
+		postconf -e "myhostname = $_fqdn"
+		postconf -e "relayhost = [$_host]:$_port"
+		postconf -e "smtp_use_tls = yes"
+		postconf -e "smtp_sasl_auth_enable = yes"
+		postconf -e "smtp_sasl_password_maps = hash:$_file"
+		postconf -e "smtp_tls_CAfile = /etc/ssl/certs/ca-bundle.crt"
+		postconf -e "smtp_sasl_security_options = noanonymous"
+		postconf -e "smtp_sasl_tls_security_options = noanonymous"
+
+		rm -f /etc/cron.daily/tripwire-check
+		_file="/etc/cron.hourly/tripwire.check"
+		echo "/usr/sbin/tripwire --check | mail -s 'Tripwire Report from $_fqdn' $_mail" >$_file.tmp_VW
+		cvw_file -v $_file
+
+		cvw_say -o "$_slug"
+		exit 0
+	fi
+
 	cvw_rpm -i dovecot
 	cvw_service -s dovecot
 

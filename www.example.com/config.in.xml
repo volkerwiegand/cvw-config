@@ -43,6 +43,7 @@
     <tripwire active="true">
       <sitephrase>very_long_string_that_no_one_would_guess_if_she_had_to_64_bytes1</sitephrase>
       <localphrase>very_long_string_that_no_one_would_guess_if_she_had_to_64_bytes2</localphrase>
+      <mail>security@example.com</mail>
     </tripwire>
   </system>
 
@@ -50,6 +51,15 @@
     <certbot active="true">
       <san>ftp.example.com</san>
     </certbot>
+
+    <postfix active="true">
+      <smarthost>
+        <host>smtp.example.com</host>
+        <port>587</port>
+        <username>user</username>
+        <password>pass</password>
+      </smarthost>
+    </postfix>
 
     <docker active="false">
     </docker>
