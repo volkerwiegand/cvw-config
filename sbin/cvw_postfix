@@ -63,7 +63,6 @@ function postfix_install
 		local _port=$(cvw_xml -r $_var/port)
 		local _user=$(cvw_xml -r $_var/username)
 		local _pass=$(cvw_xml -r $_var/password)
-		local _mail=$(cvw_xml -r $_var/mail)
 		cvw_say -s "using smarthost $_host"
 
 		cvw_rpm -i cyrus-sasl-plain
@@ -84,11 +83,6 @@ function postfix_install
 		postconf -e "smtp_tls_CAfile = /etc/ssl/certs/ca-bundle.crt"
 		postconf -e "smtp_sasl_security_options = noanonymous"
 		postconf -e "smtp_sasl_tls_security_options = noanonymous"
-
-		rm -f /etc/cron.daily/tripwire-check
-		_file="/etc/cron.hourly/tripwire.check"
-		echo "/usr/sbin/tripwire --check | mail -s 'Tripwire Report from $_fqdn' $_mail" >$_file.tmp_VW
-		cvw_file -v $_file
 
 		cvw_say -o "$_slug"
 		exit 0

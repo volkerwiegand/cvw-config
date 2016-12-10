@@ -48,6 +48,7 @@ function tripwire_install
 	local _canon=$(cvw_xml -r host/fqdn)
 	local _sitephrase=$(cvw_xml -r system/$_slug/sitephrase)
 	local _localphrase=$(cvw_xml -r system/$_slug/localphrase)
+	local _mail=$(cvw_xml -r system/$_slug/mail)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _sitekey="/etc/tripwire/site.key"
 	local _localkey="/etc/tripwire/$_canon.key"
@@ -58,6 +59,9 @@ function tripwire_install
 	local _file _dir
 
 	cvw_rpm -i tripwire
+
+	# No database check during install or update
+	rm -f /etc/cron.daily/tripwire-check /etc/cron.hourly/tripwire.check
 
 	cvw_say -s "generating keys"
 	rm -f $_sitekey $_localkey
@@ -217,6 +221,10 @@ function tripwire_install
 	cvw_say -s "loading the gun"
 	tripwire --init --quiet --cfgfile $_cfgfile --polfile $_polfile --site-keyfile $_sitekey \
 		--local-keyfile $_localkey --local-passphrase $_localphrase
+
+	_file="/etc/cron.hourly/tripwire.check"
+	echo "/usr/sbin/tripwire --check | mail -s 'Tripwire Report from $_canon' $_mail" >$_file.tmp_VW
+	cvw_file -v $_file
 
 	cvw_say -o "$_slug"
 }
