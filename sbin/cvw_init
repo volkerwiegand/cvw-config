@@ -47,6 +47,7 @@ function init_init
 	mkdir -p -m 0700 /tmp/cvw /var/local/backup
 
 	cvw_say
+	cvw_say -a "$(date)"
 
 	cat >/tmp/cvw/tripwire.dirs <<-EOF
 		/usr/bin

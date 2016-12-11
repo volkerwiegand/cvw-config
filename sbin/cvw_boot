@@ -86,6 +86,7 @@ cvw_b2evolution  -i ; error_check
 cvw_sqlbuddy     -i ; error_check
 cvw_nodejs       -i ; error_check
 cvw_gogs         -i ; error_check
+cvw_gitolite     -i ; error_check
 cvw_rails        -i ; error_check
 cvw_kivitendo    -i ; error_check
 cvw_piwik        -i ; error_check

@@ -3,7 +3,7 @@
 
 #################################################################################
 ######
-###### cvw_opencart - Install or remove openCart
+###### cvw_opencart - Install or remove OpenCart
 ######                http://www.opencart.com/index.php?route=common/home
 ######
 ###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
@@ -18,7 +18,7 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="openCart Shop"
+_name="OpenCart Shop"
 _slug="opencart"
 
 
@@ -50,22 +50,21 @@ function opencart_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _md5=$(cvw_xml -r software/$_slug/md5)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _conf _file _subdir _dist
+	local _conf _file _check _subdir _dist
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
 			$_root/app/image \
 			$_root/app/system/storage
 
-	_file="/var/local/cvw/files/2.3.0.2-compiled.zip"
+	_file="/var/local/cvw/files/OpenCart.tgz"
+	_check=$(md5sum $_file | cut -c1-32)
+	if [[ $_check != $_md5 ]] ; then
+		cvw_say -f "OpenCart.tgz checksum mismatch"
+	fi
 	cvw_unpack -f $_file $_root/app index.php
-	for _subdir in phpcs phpmod phpunit setup readme.md ; do
-		rm -rf $_root/app/$_subdir
-	done
-
-	_file="/var/local/cvw/files/Translation-German-deDE-Completev.2.0.0-OpenCart-2.x-by-OSWorX.net.ocmod.zip"
-	cvw_unpack -f $_file $_root/app admin/language/de-DE.xml
 
 	for _subdir in image system/storage ; do
 		mkdir -p $_root/app/$_subdir

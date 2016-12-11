@@ -122,6 +122,9 @@
       <md5>8bdf109bcac4b6c05379d01c50c88a51</md5>
     </download>
 
+    <git id="gitolite">
+      <url>https://github.com/sitaramc/gitolite.git</url>
+    </git>
     <git id="ruby_build">
       <url>https://github.com/sstephenson/ruby-build.git</url>
     </git>

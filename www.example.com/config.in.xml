@@ -23,6 +23,11 @@
       <home>/var/local/gogs</home>
     </user>
 
+    <user id="gitolite" active="false">
+      <info>Gitolite Admin</info>
+      <home>/var/local/gitolite</home>
+    </user>
+
     <user id="rails" active="false" ssh="true">
       <info>Rails Deployer</info>
       <home>/var/local/rails</home>
@@ -155,6 +160,11 @@
       <password>secret567password</password>
       <secret>secret_for_gogs</secret>
     </gogs>
+
+    <gitolite active="true">
+      <user>gitolite</user>
+      <admin>admin</admin>
+    </gitolite>
 
     <kivitendo active="true">
       <uri>/erp</uri>

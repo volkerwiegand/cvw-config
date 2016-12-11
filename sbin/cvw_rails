@@ -109,7 +109,7 @@ function rails_app_install
 			_restart=$_id
 		fi
 	else
-		cvw_say -s "application not yet loaded"
+		cvw_say -a "application not yet loaded"
 		_restart=""
 	fi
 
