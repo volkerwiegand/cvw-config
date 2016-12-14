@@ -104,6 +104,7 @@ function apache_initial
 
 	cvw_rpm -i httpd
 	cvw_rpm -i httpd-devel
+	cvw_rpm -i mod_proxy_html
 	cvw_service -s httpd
 	cvw_apache -e welcome
 	cvw_apache -e autoindex
