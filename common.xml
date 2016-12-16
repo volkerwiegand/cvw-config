@@ -70,6 +70,9 @@
     <download id="piwik">
       <url>http://builds.piwik.org/piwik.zip</url>
     </download>
+    <download id="prestashop">
+      <url>https://download.prestashop.com/download/old/prestashop_1.7.0.2.zip</url>
+    </download>
     <download id="puppet_master">
       <url>replace-this-text-with-the-download-link-you-received-from-puppet</url>
     </download>
