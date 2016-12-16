@@ -46,7 +46,7 @@ function opencart_install
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
-	local _canon=$(cvw_xml -r host/fqdn)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
@@ -64,12 +64,7 @@ function opencart_install
 	if [[ $_check != $_md5 ]] ; then
 		cvw_say -f "OpenCart.tgz checksum mismatch"
 	fi
-	cvw_unpack -f $_file $_root/app index.php
-
-	for _subdir in image system/storage ; do
-		mkdir -p $_root/app/$_subdir
-		chown -R apache $_root/app/$_subdir
-	done
+	cvw_unpack -f $_file -u apache $_root/app index.php
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
@@ -106,10 +101,10 @@ function opencart_install
 	cat >$_file.tmp_VW <<-EOF
 		<?php
 		// HTTP
-		define('HTTP_SERVER', 'https://$_canon${_uri%/}/');
+		define('HTTP_SERVER', 'https://$_fqdn${_uri%/}/');
 
 		// HTTPS
-		define('HTTPS_SERVER', 'https://$_canon${_uri%/}/');
+		define('HTTPS_SERVER', 'https://$_fqdn${_uri%/}/');
 
 		// DIR
 		define('DIR_APPLICATION', '$_root/app/catalog/');
@@ -134,11 +129,11 @@ function opencart_install
 		define('DB_PREFIX', 'oc_');
 	EOF
 	if [[ -s $_file ]] ; then
-		cvw_file -v $_file -u root $(cvw_php -s)
+		cvw_file -v $_file $(cvw_php -s)
 		[[ -e $_dist ]] && mv $_dist $_root/config-dist.php
 	elif [[ -e $_dist ]] ; then
 		# pristine install
-		install -o apache -m 0644 /dev/null $_file
+		install -o apache -g apache -m 0644 /dev/null $_file
 	fi
 
 	_file=$_root/app/admin/config.php
@@ -146,12 +141,12 @@ function opencart_install
 	cat >$_file.tmp_VW <<-EOF
 		<?php
 		// HTTP
-		define('HTTP_SERVER', 'https://$_canon${_uri%/}/admin/');
-		define('HTTP_CATALOG', 'https://$_canon${_uri%/}/');
+		define('HTTP_SERVER', 'https://$_fqdn${_uri%/}/admin/');
+		define('HTTP_CATALOG', 'https://$_fqdn${_uri%/}/');
 
 		// HTTPS
-		define('HTTPS_SERVER', 'https://$_canon${_uri%/}/admin/');
-		define('HTTPS_CATALOG', 'https://$_canon${_uri%/}/');
+		define('HTTPS_SERVER', 'https://$_fqdn${_uri%/}/admin/');
+		define('HTTPS_CATALOG', 'https://$_fqdn${_uri%/}/');
 
 		// DIR
 		define('DIR_APPLICATION', '$_root/app/admin/');
@@ -177,7 +172,7 @@ function opencart_install
 		define('DB_PREFIX', 'oc_');
 	EOF
 	if [[ -s $_file ]] ; then
-		cvw_file -v $_file -u root $(cvw_php -s)
+		cvw_file -v $_file $(cvw_php -s)
 		[[ -e $_dist ]] && mv $_dist $_root/admin-dist.php
 		if [[ -d $_root/app/install ]] ; then
 			cvw_say -s "hiding install directory"
@@ -186,8 +181,10 @@ function opencart_install
 		fi
 	elif [[ -e $_dist ]] ; then
 		# pristine install
-		install -o apache -m 0644 /dev/null $_file
+		install -o apache -g apache -m 0644 /dev/null $_file
 	fi
+
+	chown -R apache:apache $_root/app
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug

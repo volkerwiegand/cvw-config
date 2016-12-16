@@ -182,6 +182,7 @@
     <opencart active="true">
       <uri>/shop</uri>
       <password>secret111password</password>
+      <md5>md5_sum_for_OpenCart_file_______</md5>
     </opencart>
 
     <wordpress active="false">
