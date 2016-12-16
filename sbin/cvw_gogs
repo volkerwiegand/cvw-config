@@ -6,12 +6,11 @@
 ###### cvw_gogs - Install or remove gogs (Go Git Service)
 ######            http://gogs.io/
 ######            https://github.com/gogits/gogs/issues/1202
+######            https://gogs.io/docs/intro/faqs
 ######
 ###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
-######
-######          TODO setup reverse proxy for gogs (not working yet)
 ######
 #################################################################################
 
@@ -48,14 +47,13 @@ function gogs_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
-	local _canon=$(cvw_xml -r host/fqdn)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _port=$(cvw_xml -R software/$_slug/port 8888)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_user -s gogs
 	local _home=$(cvw_user -h gogs)
-	local _cert="/etc/letsencrypt/live/$_canon"
 	local _file
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
@@ -84,13 +82,10 @@ function gogs_install
 		ROOT = $_home/gogs-repositories
 
 		[server]
-		PROTOCOL = http
-		ROOT_URL = https://$_canon$_uri
-		# CERT_FILE = $_cert/fullchain.pem
-		# KEY_FILE  = $_cert/privkey.pem
+		ROOT_URL = http://$_fqdn$_uri
 		DISABLE_SSH = false
 		SSH_PORT = $(cvw_xml -R host/ssh_port 22)
-		DOMAIN = $_canon
+		DOMAIN = ${_fqdn#*.}
 		OFFLINE_MODE = false
 		HTTP_ADDR = localhost
 		HTTP_PORT = $_port
@@ -144,7 +139,6 @@ function gogs_install
 	EOF
 	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_file -v $_file gogs
-	chown -R gogs:gogs $_home
 
 	_file="/usr/lib/systemd/system/gogs.service"
 	cat >$_file.tmp_VW <<-EOF
@@ -167,6 +161,7 @@ function gogs_install
 	EOF
 	cvw_file -v $_file gogs
 
+	chown -R gogs:gogs $_home
 	cvw_service -s gogs
 
 	if cvw_xml -a software/apache ; then
@@ -174,11 +169,10 @@ function gogs_install
 		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
 		cat >>$_conf <<-EOF
 
-			   <Proxy $_uri>
-			      Require all granted
-			   </Proxy>
-			   ProxyPass        $_uri http://localhost:$_port
-			   ProxyPassReverse $_uri http://localhost:$_port
+			   ProxyPreserveHost On
+			   ProxyRequests off
+			   ProxyPass $_uri http://127.0.0.1:$_port
+			   ProxyPassReverse $_uri http://127.0.0.1:$_port
 		EOF
 	fi
 
