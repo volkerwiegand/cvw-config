@@ -56,8 +56,7 @@ function opencart_install
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/image \
-			$_root/app/system/storage
+			$_root/app
 
 	_file="/var/local/cvw/files/OpenCart.tgz"
 	_check=$(md5sum $_file | cut -c1-32)
@@ -65,6 +64,20 @@ function opencart_install
 		cvw_say -f "OpenCart.tgz checksum mismatch"
 	fi
 	cvw_unpack -f $_file -u apache $_root/app index.php
+
+	_subdir="/var/local/cfg/images/$_slug"
+	if [[ -d $_subdir/admin ]] ; then
+		find $_subdir/admin -type f -print | while read _file ; do
+			cvw_say -s "catalog image: ${_file##*/}"
+			cp $_file $_root/app/admin/view/image/
+		done
+	fi
+	if [[ -d $_subdir/catalog ]] ; then
+		find $_subdir/catalog -type f -print | while read _file ; do
+			cvw_say -s "admin image: ${_file##*/}"
+			cp $_file $_root/app/image/catalog/
+		done
+	fi
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
