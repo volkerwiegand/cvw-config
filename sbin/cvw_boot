@@ -69,6 +69,7 @@ error_check
 cvw_yum          -i ; error_check
 cvw_docker       -i ; error_check
 cvw_user         -i ; error_check
+cvw_bitnami      -i ; error_check
 cvw_haproxy      -i ; error_check
 cvw_nginx        -i ; error_check
 cvw_apache       -i ; error_check

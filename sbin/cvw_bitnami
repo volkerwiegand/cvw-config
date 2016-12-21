@@ -1,0 +1,137 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_bitnami - Install or remove Bitnami
+######               https://bitnami.com/stack/lamp
+######               https://bitnami.com/
+######
+###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Bitnami"
+_slug="bitnami"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function bitnami_install
+{
+	cvw_say -h "Installing $_name"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _lang=$(cvw_xml -r system/language)
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _user=$(cvw_xml -r users/rootmail)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _mode="lamp"
+	local _run _file _cert
+
+	cvw_xml -t software/$_slug/ruby && _mode="ruby"
+	cvw_download -i ${_slug}_$_mode $_root/Download
+	_run=$(cvw_download -f ${_slug}_$_mode)
+	chmod +x $_root/Download/$_run
+
+	_file=$_root/Download/$_mode.options
+	cat >$_file.tmp_VW <<-EOF
+		installer-language=${_lang%_*}
+		prefix=$_root/app
+		base_user_name=$(cvw_xml -r users/user:$_user/info)
+		base_mail=$_user@${_fqdn#*.}
+		base_user=$_user
+		base_password=$(cvw_xml -r users/user:$_user/password)
+		apache_server_port=$(cvw_xml -r system/web/port)
+		apache_server_ssl_port=$(cvw_xml -r system/web/ssl_port)
+		web_server_domain=$_fqdn
+		mysql_password=$(cvw_xml -r software/$_slug/password/mysql)
+		mysql_database_name=dummy
+		mysql_database_username=dummy
+		mysql_database_password=$(cvw_xml -r users/user:$_user/password)
+		phpmyadmin_password=$(cvw_xml -r software/$_slug/password/phpmyadmin)
+		launch_cloud=0
+	EOF
+	[[ -s /tmp/cvw/error ]] && exit 1
+	cvw_file -v $_file bitnami:apache bitnami:mysql
+
+	if [[ ! -s $_root/app/.bitnamirc ]] ; then
+		cvw_say -s "running $_run"
+		$_root/Download/$_run --mode unattended --optionfile $_file 2>>/tmp/cvw/error
+	fi
+	ln -nfs $_root/app/ctlscript.sh /usr/local/bin/ctlscript.sh
+
+	if cvw_xml -a software/certbot ; then
+		_cert="/etc/letsencrypt/live/$_fqdn"
+		for _file in privkey.pem server.csr ; do
+			rm -f $_root/app/apache2/conf/$_file
+		done
+		cp $_cert/privkey.pem $_root/app/apache2/conf/server.key.tmp_VW
+		cvw_file -v $_root/app/apache2/conf/server.key bitnami:apache
+		cp $_cert/cert.pem $_root/app/apache2/conf/server.crt.tmp_VW
+		cvw_file -v $_root/app/apache2/conf/server.crt bitnami:apache
+	fi
+
+	cvw_say -a "check apache"
+	cvw_service -R bitnami:apache
+
+	cvw_say -o "$_slug"
+}
+
+
+function bitnami_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	if [[ -s $_root/app/.bitnamirc ]] ; then
+		cvw_say -h "Removing $_name"
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				bitnami_install
+			else
+				bitnami_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

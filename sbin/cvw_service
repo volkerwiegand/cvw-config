@@ -57,7 +57,11 @@ function is_enabled
 {
 	local _service=$1
 
-	systemctl -t service -p UnitFileState show $_service | grep -q "=enabled"
+	if [[ $_service =~ ^bitnami ]] ; then
+		cvw_xml -a software/bitnami
+	else
+		systemctl -t service -p UnitFileState show $_service | grep -q "=enabled"
+	fi
 }
 
 
@@ -65,15 +69,25 @@ function is_loaded
 {
 	local _service=$1
 
-	systemctl -t service -p LoadState show $_service | grep -q "=loaded"
+	if [[ $_service =~ ^bitnami ]] ; then
+		cvw_xml -a software/bitnami
+	else
+		systemctl -t service -p LoadState show $_service | grep -q "=loaded"
+	fi
 }
 
 
 function is_active
 {
 	local _service=$1
+	local _status
 
-	systemctl -t service -p ActiveState show $_service | grep -q "=active"
+	if [[ $_service =~ ^bitnami ]] ; then
+		_status=$(/usr/local/bin/ctlscript.sh status ${_service#bitnami:})
+		[[ $_status =~ already.running ]]
+	else
+		systemctl -t service -p ActiveState show $_service | grep -q "=active"
+	fi
 }
 
 
@@ -81,8 +95,35 @@ function do_action
 {
 	local _service=$1
 	local _action=$2
+	local _status
 
-	systemctl -q -t service $_action $_service
+	if [[ $_service =~ ^bitnami ]] ; then
+		[[ $_action == "reload" ]] && _action="restart"
+		_status=$(/usr/local/bin/ctlscript.sh status ${_service#bitnami:})
+		if [[ $_action == "start" ]] ; then
+			if [[ ! $_status =~ already.running ]] ; then
+				/usr/local/bin/ctlscript.sh start ${_service#bitnami:}
+				return
+			fi
+		elif [[ $_action == "stop" ]] ; then
+			if [[ $_status =~ already.running ]] ; then
+				/usr/local/bin/ctlscript.sh stop ${_service#bitnami:}
+				return
+			fi
+		elif [[ $_action == "restart" ]] ; then
+			if [[ $_status =~ already.running ]] ; then
+				/usr/local/bin/ctlscript.sh restart ${_service#bitnami:}
+				return
+			else
+				/usr/local/bin/ctlscript.sh start ${_service#bitnami:}
+				return
+			fi
+		fi
+		# ignore other actions (e.g. enable)
+		return 0
+	else
+		systemctl -q -t service $_action $_service
+	fi
 }
 
 
@@ -136,7 +177,6 @@ while getopts ":c:d:D:e:K:l:r:R:s:S:xz:" opt ; do
 		R)
 			is_loaded  $OPTARG || exit 0
 			is_enabled $OPTARG || do_action $OPTARG enable
-			is_active  $OPTARG && exit 0
 			cvw_say -s "restarting $OPTARG immediately"
 			do_action  $OPTARG restart
 			exit 0
