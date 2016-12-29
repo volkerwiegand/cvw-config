@@ -54,7 +54,10 @@ _version=""
 function get_data
 {
 	_id=$1
-	_url=$(cvw_xml -r common/download:$_id/url | sed -e 's/\&amp;/\&/g')
+	_url=$(cvw_xml -r common/download:$_id/url)
+	if [[ $_url =~ __AMP__ ]] ; then
+		_url=$(cvw_xml -r common/download:$_id/url | sed -e 's/__AMP__/\&/g')
+	fi
 
 	if cvw_xml -c common/download:$_id/name ; then
 		_file=$(cvw_xml -r common/download:$_id/name)
@@ -117,9 +120,9 @@ fi
 if [[ ! -s $_dir/$_file ]] ; then
 	cvw_say -s "downloading $_file"
 	if [[ $_rename ]] ; then
-		wget -q -O $_dir/$_file $_url 2>>/tmp/cvw/error
+		wget -q -O $_dir/$_file "$_url" 2>>/tmp/cvw/error
 	else
-		wget -q -P $_dir $_url 2>>/tmp/cvw/error
+		wget -q -P $_dir "$_url" 2>>/tmp/cvw/error
 	fi
 	cvw_say -s "download complete"
 fi
