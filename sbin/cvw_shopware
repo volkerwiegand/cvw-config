@@ -3,8 +3,8 @@
 
 #################################################################################
 ######
-###### cvw_oscommerce - Install or remove osCommerce
-######                  https://www.oscommerce.com/
+###### cvw_shopware - Install or remove Shopware
+######                http://en.community.shopware.com/Shopware-5-Installer_detail_1351_730.html
 ######
 ###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
@@ -18,8 +18,8 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="osCommerce Shop"
-_slug="oscommerce"
+_name="Shopware"
+_slug="shopware"
 
 
 function usage
@@ -41,7 +41,7 @@ function usage
 }
 
 
-function oscommerce_install
+function shopware_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
@@ -50,23 +50,13 @@ function oscommerce_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
-	local _md5=$(cvw_xml -r software/$_slug/md5)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _check _subdir _dist
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
-	_file="/var/local/cvw/files/oscommerce-2.3.4.zip"
-	_check=$(md5sum $_file | cut -c1-32)
-	if [[ $_check != $_md5 ]] ; then
-		cvw_say -f "oscommerce-2.3.4.zip checksum mismatch"
-	fi
-	cvw_unpack -f $_file -u apache $_root/download README.md
-	if [[ ! -d $_root/app ]] ; then
-		cvw_say -s "moving download/catalog --> app"
-		mv $_root/download/catalog $_root/app
-	fi
+	cvw_unpack -m -s -u apache -i $_slug $_root/app shopware.php
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
@@ -74,12 +64,6 @@ function oscommerce_install
 	      -x /usr/local/bin/rstr.$_slug ]] ; then
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
-	fi
-
-	if [[ -s $_root/app/includes/configure.php ]] ; then
-		cvw_say -s "hiding install directory"
-		rm -rf $_root/install # just in case
-		mv $_root/app/install $_root/install
 	fi
 
 	if cvw_xml -a software/nginx ; then
@@ -96,7 +80,7 @@ function oscommerce_install
 }
 
 
-function oscommerce_remove
+function shopware_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 
@@ -116,9 +100,9 @@ while getopts ":i" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
-				oscommerce_install
+				shopware_install
 			else
-				oscommerce_remove
+				shopware_remove
 			fi
 			exit 0
 		;;

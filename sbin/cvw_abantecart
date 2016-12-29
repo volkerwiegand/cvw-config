@@ -3,8 +3,8 @@
 
 #################################################################################
 ######
-###### cvw_opencart - Install or remove OpenCart
-######                http://www.opencart.com/index.php?route=common/home
+###### cvw_abantecart - Install or remove AbanteCart
+######                  http://www.abantecart.com/
 ######
 ###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
@@ -18,8 +18,8 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="OpenCart Shop"
-_slug="opencart"
+_name="AbanteCart"
+_slug="abantecart"
 
 
 function usage
@@ -41,7 +41,7 @@ function usage
 }
 
 
-function opencart_install_native
+function abantecart_install_native
 {
 	cvw_say -h "Installing $_name (native)"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
@@ -50,38 +50,25 @@ function opencart_install_native
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _name=$(cvw_xml -r software/$_slug/shopname)
+	local _first=$(cvw_xml -r software/$_slug/firstname)
+	local _last=$(cvw_xml -r software/$_slug/lastname)
+	local _email=$(cvw_xml -r software/$_slug/email)
+	local _lang=$(cvw_xml -r system/language)
+	local _zone=$(cvw_xml -r system/timezone)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _check _subdir _dist
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
-	cvw_unpack -m -s -u apache -i $_slug $_root/download README.md
-	if [[ ! -d $_root/app ]] ; then
-		cvw_say -s "moving upload --> app"
-		mv $_root/download/upload $_root/app 2>>/tmp/cvw/error
-	fi
+	cvw_unpack -m -s -u apache -i $_slug $_root/app index.php
 
-	cvw_unpack -i vqmod $_root/app/vqmod vqmod.php
-
-	if [[ -r $_root/app/config-dist.php ]] ; then
-		cvw_say -s "waiting for web install"
-		mv $_root/app/config-dist.php       $_root/app/config.php
-		mv $_root/app/admin/config-dist.php $_root/app/admin/config.php
-	fi
-
-	if [[ -s $_root/app/.htaccess.txt ]] ; then
-		cvw_say -s "activating .htaccess"
-		mv $_root/app/.htaccess.txt $_root/app/.htaccess
-	fi
-
-	if [[ -s $_root/app/config.php && -d $_root/app/install ]] ; then
+	if [[ -s $_root/app/app/config/parameters.php ]] ; then
 		cvw_say -s "hiding install directory"
 		rm -rf $_root/install # just in case
 		mv $_root/app/install $_root/install
 	fi
-
-	chown -R apache:ftp $_root/app
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
@@ -105,7 +92,7 @@ function opencart_install_native
 }
 
 
-function opencart_install_bitnami
+function abantecart_install_bitnami
 {
 	cvw_say -h "Installing $_name (Bitnami)"
 	cvw_xml -a software/bitnami || cvw_say -f "$_prog: requires bitnami"
@@ -128,7 +115,7 @@ function opencart_install_bitnami
 		base_user_name=$(cvw_xml -r users/user:$_user/info)
 		base_mail=$_user@${_fqdn#*.}
 		base_password=$(cvw_xml -r users/user:$_user/password)
-		opencart_domain=$_fqdn
+		abantecart_site=$_fqdn
 		smtp_enable=0
 		launch_cloud=0
 	EOF
@@ -144,7 +131,7 @@ function opencart_install_bitnami
 }
 
 
-function opencart_remove_native
+function abantecart_remove_native
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 
@@ -160,7 +147,7 @@ function opencart_remove_native
 }
 
 
-function opencart_remove_bitnami
+function abantecart_remove_bitnami
 {
 	local _root=$(cvw_xml -r system/app_root)/bitnami
 	local _file=$_root/app/apps/$_slug/uninstall
@@ -183,15 +170,15 @@ while getopts ":i" opt ; do
 		i)
 			if cvw_xml -a software/$_slug ; then
 				if cvw_xml -t software/$_slug/bitnami ; then
-					opencart_install_bitnami
+					abantecart_install_bitnami
 				else
-					opencart_install_native
+					abantecart_install_native
 				fi
 			else
 				if cvw_xml -t software/$_slug/bitnami ; then
-					opencart_remove_bitnami
+					abantecart_remove_bitnami
 				else
-					opencart_remove_native
+					abantecart_remove_native
 				fi
 			fi
 			exit 0

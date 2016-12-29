@@ -98,9 +98,11 @@ cvw_roundcube    -i ; error_check
 cvw_squirrelmail -i ; error_check
 cvw_mantis       -i ; error_check
 cvw_dokuwiki     -i ; error_check
+cvw_shopware     -i ; error_check
 cvw_opencart     -i ; error_check
 cvw_oscommerce   -i ; error_check
 cvw_prestashop   -i ; error_check
+cvw_abantecart   -i ; error_check
 cvw_piwigo       -i ; error_check
 cvw_vsftpd       -i ; error_check
 cvw_certbot      -i ; error_check

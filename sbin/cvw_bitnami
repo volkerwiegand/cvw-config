@@ -5,7 +5,7 @@
 ######
 ###### cvw_bitnami - Install or remove Bitnami
 ######               https://bitnami.com/stack/lamp
-######               https://bitnami.com/
+######               https://docs.bitnami.com/installer/infrastructure/lamp/#add-applications-amp
 ######
 ###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
@@ -62,9 +62,9 @@ function bitnami_install
 	cat >$_file.tmp_VW <<-EOF
 		installer-language=${_lang%_*}
 		prefix=$_root/app
+		base_user=$_user
 		base_user_name=$(cvw_xml -r users/user:$_user/info)
 		base_mail=$_user@${_fqdn#*.}
-		base_user=$_user
 		base_password=$(cvw_xml -r users/user:$_user/password)
 		apache_server_port=$(cvw_xml -r system/web/port)
 		apache_server_ssl_port=$(cvw_xml -r system/web/ssl_port)
@@ -95,9 +95,6 @@ function bitnami_install
 		cp $_cert/cert.pem $_root/app/apache2/conf/server.crt.tmp_VW
 		cvw_file -v $_root/app/apache2/conf/server.crt bitnami:apache
 	fi
-
-	cvw_say -a "check apache"
-	cvw_service -R bitnami:apache
 
 	cvw_say -o "$_slug"
 }
