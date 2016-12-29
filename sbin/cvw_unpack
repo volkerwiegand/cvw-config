@@ -79,8 +79,10 @@ _guard=$2
 _par="${_dir%/*}"
 _box=/tmp/cvw/sandbox
 
-if [[ -n $_guard && -s $_dir/$_guard ]] ; then
-	exit 0
+if [[ -n $_guard ]] ; then
+	if [[ -s $_dir/$_guard ]] ; then
+		exit 0
+	fi
 fi
 
 rm -rf $_box
