@@ -58,7 +58,8 @@
     </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
-      <url>https://nodejs.org/dist/v4.5.0/node-v4.5.0-linux-x64.tar.xz</url>
+      <url>https://nodejs.org/download/release/v6.9.2/node-v6.9.2-linux-x64.tar.gz</url>
+      <sha256>cbf6a35b035c56f991c2e6a4aedbcd9f09555234ac0dd5b2c15128e2b5f4eb50</sha256>
     </download>
     <download id="opencart">
       <link>https://www.opencart.com/index.php?route=cms/download/history</link>
