@@ -50,6 +50,7 @@ function php_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _timezone=$(cvw_xml -r system/timezone)
 	local _filesize=$(cvw_xml -R software/$_slug/filesize "2000M")
+	local _memory=$(cvw_xml -R software/$_slug/memory "256M")
 	local _info=$(cvw_xml -R software/$_slug/info "")
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file
@@ -75,6 +76,7 @@ function php_install
 	cvw_file -e $_file "s%^[;#]*\(date\.timezone\).*%\1 = '$_timezone'%" $(cvw_php -s)
 	cvw_file -e $_file "/^post_max_size/s/=.*/= $_filesize/" $(cvw_php -s)
 	cvw_file -e $_file "/^upload_max_filesize/s/=.*/= $_filesize/" $(cvw_php -s)
+	cvw_file -e $_file "/^memory_limit/s/=.*/= $_memory/" $(cvw_php -s)
 
 	_file="/etc/php.d/apcu.ini"
 	if [[ -s $_file ]] ; then
