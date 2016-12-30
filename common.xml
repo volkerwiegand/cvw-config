@@ -27,7 +27,6 @@
       <link>http://cloudstore.codewizards.co/latest-stable/download/index.html</link>
       <url>http://cloudstore.codewizards.co/latest-stable/download/co.codewizards.cloudstore.server-0.9.13-bin.tar.gz</url>
     </download>
-    <download id="consul">
     <download id="docker_compose">
       <link>https://github.com/docker/compose/releases/</link>
       <url>https://github.com/docker/compose/releases/download/1.9.0/docker-compose-Linux-x86_64</url>
