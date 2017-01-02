@@ -92,6 +92,7 @@ function tripwire_install
 		--site-passphrase $_sitephrase $_cfgtxt 2>>/tmp/cvw/error
 	[[ -s /tmp/cvw/error ]] && exit 1
 	chmod 0600 $_cfgfile
+	rm -f $_cfgtxt
 
 	cvw_say -s "creating policy prolog"
 	cat >$_poltxt.tmp_VW <<-EOF
@@ -217,6 +218,7 @@ function tripwire_install
 		$_poltxt 2>>/tmp/cvw/error
 	[[ -s /tmp/cvw/error ]] && exit 1
 	chmod 0600 $_polfile
+	rm -f $_poltxt
 
 	cvw_say -s "loading the gun"
 	tripwire --init --quiet --cfgfile $_cfgfile --polfile $_polfile --site-keyfile $_sitekey \
