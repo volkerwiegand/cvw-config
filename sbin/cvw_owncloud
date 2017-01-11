@@ -44,7 +44,7 @@ function usage
 }
 
 
-function owncloud_install
+function owncloud_install_native
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
@@ -139,7 +139,46 @@ function owncloud_install
 }
 
 
-function owncloud_remove
+function owncloud_install_bitnami
+{
+	cvw_say -h "Installing $_name (Bitnami)"
+	cvw_xml -a software/bitnami || cvw_say -f "$_prog: requires bitnami"
+	local _root=$(cvw_xml -r system/app_root)/bitnami
+	local _lang=$(cvw_xml -r system/language)
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _user=$(cvw_xml -r users/rootmail)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _run _file
+
+	cvw_download -i bitnami_$_slug $_root/Download
+	_run=$(cvw_download -f bitnami_$_slug)
+	chmod +x $_root/Download/$_run
+
+	_file=$_root/Download/$_slug.options
+	cat >$_file.tmp_VW <<-EOF
+		installer-language=${_lang%_*}
+		prefix=$_root/app
+		base_user=$_user
+		base_user_name=$(cvw_xml -r users/user:$_user/info)
+		base_mail=$_user@${_fqdn#*.}
+		base_password=$(cvw_xml -r users/user:$_user/password)
+		owncloud_domain=$_fqdn
+		smtp_enable=0
+		launch_cloud=0
+	EOF
+	[[ -s /tmp/cvw/error ]] && exit 1
+	cvw_file -v $_file bitnami:apache bitnami:mysql
+
+	if [[ ! -d $_root/app/apps/$_slug ]] ; then
+		cvw_say -s "running $_run"
+		$_root/Download/$_run --help --mode unattended --optionfile $_file 2>>/tmp/cvw/error
+	fi
+
+	cvw_say -o "$_slug"
+}
+
+
+function owncloud_remove_native
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
@@ -156,13 +195,39 @@ function owncloud_remove
 }
 
 
+function owncloud_remove_bitnami
+{
+	local _root=$(cvw_xml -r system/app_root)/bitnami
+	local _file=$_root/app/apps/$_slug/uninstall
+
+	if [[ -x $_file ]] ; then
+		cvw_say -h "Removing $_name (Bitnami)"
+		
+		cvw_say -s "running $_file"
+		$_file --mode unattended
+
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
 while getopts ":i" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
-				owncloud_install
+				if cvw_xml -t software/$_slug/bitnami ; then
+					owncloud_install_bitnami
+				else
+					owncloud_install_native
+				fi
 			else
-				owncloud_remove
+				if cvw_xml -t software/$_slug/bitnami ; then
+					owncloud_remove_bitnami
+				else
+					owncloud_remove_native
+				fi
 			fi
 			exit 0
 		;;
