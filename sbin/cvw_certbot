@@ -6,9 +6,9 @@
 ###### cvw_certbot - Install or remove Let's Encrypt certbot
 ######               http://certbot.eff.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -44,11 +44,10 @@ function usage
 function certbot_install
 {
 	cvw_say -h "Installing $_name"
-	local _canon=$(cvw_xml -r host/fqdn)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _admin=$(cvw_xml -r host/admin)
-	local _web=$(cvw_xml -r system/web/server)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _live="/etc/letsencrypt/live/$_canon"
+	local _live="/etc/letsencrypt/live/$_fqdn"
 	local _file _list _san _args
 
 	cvw_rpm -i certbot
@@ -59,18 +58,19 @@ function certbot_install
 		tar -x -z -C /etc -f $_file
 	fi
 
-	# TODO check why "--webroot" seems to fail
-	[[ $_web == "apache"  ]] && cvw_service -K httpd
-	[[ $_web == "haproxy" ]] && cvw_service -K haproxy
-	[[ $_web == "nginx"   ]] && cvw_service -K nginx
-	# Web server will be re-started after run
+	# FIXME check why "certbot --webroot" seems to fail
+	cvw_service -K httpd
+	cvw_service -K haproxy
+	cvw_service -K bitnami:apache
+	cvw_service -K nginx
+	# Web server(s) will be re-started after run
 
 	if [[ -d $_live ]] ; then
 		cvw_say -s "updating web certificate"
 		certbot renew --standalone
 	else
-		_list="-d $_canon"
-		[[ $_canon =~ ^www\. ]] && _list="$_list -d ${_canon#*.}"
+		_list="-d $_fqdn"
+		[[ $_fqdn =~ ^www\. ]] && _list="$_list -d ${_fqdn#*.}"
 		for _san in $(cvw_xml -l software/$_slug/san) ; do
 			_list="$_list -d $_san"
 			[[ $_san =~ ^www\. ]] && _list="$_list -d ${_san#*.}"
