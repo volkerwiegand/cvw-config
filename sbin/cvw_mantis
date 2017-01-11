@@ -46,14 +46,14 @@ function mantis_install
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
-	local _canon=$(cvw_xml -r host/fqdn)
-	local _domain=${_canon#*.}
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	local _salt=$(cvw_xml -r software/$_slug/salt)
 	local _title=$(cvw_xml -r software/$_slug/title)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _domain=${_fqdn#*.}
 	local _conf _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
