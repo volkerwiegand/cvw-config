@@ -42,7 +42,7 @@ function usage
 
 function url_summary
 {
-	local _canon=$(cvw_xml -r host/fqdn)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _line _app _max _uri
 
 	test -s /tmp/cvw/urls || return
@@ -57,7 +57,7 @@ function url_summary
 		_uri=$2
 		unset IFS
 
-		printf "    %-*s --> https://%s%s\n" $_max "$_app" $_canon $_uri
+		printf "    %-*s --> https://%s%s\n" $_max "$_app" $_fqdn $_uri
 	done
 }
 

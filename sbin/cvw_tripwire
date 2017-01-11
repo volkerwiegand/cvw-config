@@ -45,13 +45,13 @@ function usage
 function tripwire_install
 {
 	cvw_say -h "Installing $_name"
-	local _canon=$(cvw_xml -r host/fqdn)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _sitephrase=$(cvw_xml -r system/$_slug/sitephrase)
 	local _localphrase=$(cvw_xml -r system/$_slug/localphrase)
 	local _mail=$(cvw_xml -r system/$_slug/mail)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _sitekey="/etc/tripwire/site.key"
-	local _localkey="/etc/tripwire/$_canon.key"
+	local _localkey="/etc/tripwire/$_fqdn.key"
 	local _cfgtxt="/etc/tripwire/twcfg.txt"
 	local _poltxt="/etc/tripwire/twpol.txt"
 	local _cfgfile="/etc/tripwire/tw.cfg"
@@ -108,7 +108,7 @@ function tripwire_install
 		TWSKEY="/etc/tripwire";
 		TWLKEY="/etc/tripwire";
 		TWREPORT="/var/lib/tripwire/report";
-		HOSTNAME=$_canon;
+		HOSTNAME=$_fqdn;
 
 		@@section FS
 		SEC_CRIT      = \$(IgnoreNone)-SHa ;  # Critical files that cannot change
@@ -228,7 +228,7 @@ function tripwire_install
 	cat >$_file.tmp_VW <<-EOF
 		#!/bin/sh
 
-		/usr/sbin/tripwire --check | mail -s 'Tripwire Report from $_canon' $_mail
+		/usr/sbin/tripwire --check | mail -s 'Tripwire Report from $_fqdn' $_mail
 	EOF
 	cvw_file -m 0755 -v $_file
 

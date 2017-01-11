@@ -44,11 +44,11 @@ function usage
 function puppet_install
 {
 	cvw_say -h "Installing $_name"
-	local _canon=$(cvw_xml -r host/fqdn)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _role=$(cvw_xml -r software/$_slug/role)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _live="/etc/letsencrypt/live/$_canon"
+	local _live="/etc/letsencrypt/live/$_fqdn"
 	local _cert="/opt/puppetlabs/server/data/console-services/certs"
 	local _cons="pe-console-services"
 	local _file
