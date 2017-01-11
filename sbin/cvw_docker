@@ -45,7 +45,7 @@ function usage
 function docker_install
 {
 	cvw_say -h "Installing $_name"
-	local _file
+	local _file _port
 
 	_file="/etc/yum.repos.d/docker.repo"
 	cat >$_file.tmp_VW <<-EOF
@@ -70,6 +70,10 @@ function docker_install
 	ln -nfs docker-compose-Linux-x86_64 docker-compose
 	popd >/dev/null
 	[[ -s /tmp/cvw/error ]] && exit 1
+
+	cvw_xml -l software/$_slug/tcp_port | sort -u | while read _port ; do
+		cvw_firewall -t $_port
+	done
 
 	cvw_say -o "$_slug"
 }
