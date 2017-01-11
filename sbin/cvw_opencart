@@ -54,7 +54,10 @@ function opencart_install_native
 	local _conf _file _check _subdir _dist
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root \
+			$_root/app/image \
+			$_root/app/system/storage \
+			$_root/app/vqmod
 
 	cvw_unpack -m -s -u apache -i $_slug $_root/download README.md
 	if [[ ! -d $_root/app ]] ; then
@@ -64,10 +67,31 @@ function opencart_install_native
 
 	cvw_unpack -i vqmod $_root/app/vqmod vqmod.php
 
-	if [[ -r $_root/app/config-dist.php ]] ; then
-		cvw_say -s "waiting for web install"
-		mv $_root/app/config-dist.php       $_root/app/config.php
-		mv $_root/app/admin/config-dist.php $_root/app/admin/config.php
+	if [[ ! -s $_root/app/config.php ]] ; then
+		cvw_say -s "running cli_install.php"
+		pushd $_root/app/install >/dev/null
+		php cli_install.php install \
+				--db_hostname localhost \
+				--db_username $_slug \
+				--db_password $_pass \
+				--db_database $_slug \
+				--db_driver   mysqli \
+				--db_port     3306 \
+				--username    $(cvw_xml -r software/$_slug/user/name) \
+				--password    $(cvw_xml -r software/$_slug/user/password) \
+				--email       $(cvw_xml -r software/$_slug/user/email) \
+				--http_server https://$_fqdn$_uri \
+				>/tmp/cvw/opencart.result 2>&1
+		popd >/dev/null
+
+		if grep -q -s SUCCESS /tmp/cvw/opencart.result ; then
+			cvw_say -s "hiding install directory"
+			rm -rf $_root/install # just in case
+			mv $_root/app/install $_root/install
+		else
+			cat /tmp/cvw/opencart.result >>/tmp/cvw/error
+			exit 1
+		fi
 	fi
 
 	if [[ -s $_root/app/.htaccess.txt ]] ; then
@@ -75,13 +99,24 @@ function opencart_install_native
 		mv $_root/app/.htaccess.txt $_root/app/.htaccess
 	fi
 
-	if [[ -s $_root/app/config.php && -d $_root/app/install ]] ; then
-		cvw_say -s "hiding install directory"
-		rm -rf $_root/install # just in case
-		mv $_root/app/install $_root/install
+	if [[ -r /root/.$_slug ]] ; then
+		chown -R apache:apache $_root/app
+		cvw_say -a "$_slug open for update - be careful"
+	elif grep -q "VQMod::bootup" $_root/app/admin/index.php ; then
+		if [[ -d $_root/app/vqmod/install ]] ; then
+			cvw_say -s "hiding vqmod/install directory"
+			rm -rf $_root/vqmod.install # just in case
+			mv $_root/app/vqmod/install $_root/vqmod.install
+		fi
+		chown -R root:root $_root/app
+		chown -R apache $_root/app/image
+		chown -R apache $_root/app/system/storage
+		chown -R apache $_root/app/vqmod
+		cvw_say -s "running in production"
+	else
+		chown -R apache:apache $_root/app
+		cvw_say -a "please run https://$_fqdn${_uri%/}/vqmod/install/"
 	fi
-
-	chown -R apache:ftp $_root/app
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
@@ -100,6 +135,7 @@ function opencart_install_native
 	fi
 
 	cvw_url -a "$_name" $_uri
+	cvw_url -a "$_name" ${_uri%/}/admin/
 
 	cvw_say -o "$_slug"
 }
