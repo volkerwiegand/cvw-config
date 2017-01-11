@@ -74,7 +74,7 @@ function nodejs_install
 		npm install -g $_id
 	done
 
-	if [[ -s /tmp/cvw/updating ]] ; then
+	if grep -q -s upgrade /tmp/cvw/updating ; then
 		cvw_say -s "updating modules"
 		npm update
 	fi
