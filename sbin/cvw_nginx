@@ -6,9 +6,9 @@
 ###### cvw_nginx - Install or remove Nginx
 ######             http://nginx.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 ######          TODO setup nginx and all apps (currently only with docker)
 ######          TODO erase nginx-release-centos-7-0 RPM
@@ -26,6 +26,7 @@ _slug="nginx"
 
 
 _CONF_FILE="/etc/nginx/conf.d/server.conf"
+_ROOT_DIR="/usr/share/nginx/html"
 
 
 function usage
@@ -53,15 +54,16 @@ function usage
 
 function nginx_add_php
 {
+	return 0	# FIXME
+
 	local _base=$1
-	local _root=$(cvw_xml -r system/app_root)/$_base
 	local _uri=$(cvw_xml -r software/$_base/uri)
 	local _nginx=$(cvw_xml -r system/app_root)/$_slug
 	[[ -s /tmp/cvw/error ]] && exit 1
 	[[ -s $_CONF_FILE.tmp_VW ]] || cvw_say -f "$_prog: missing $_CONF_FILE.tmp_VW"
 	local _opts="/tmp/cvw/nginx.options"
 
-	[[ $_uri != "/" ]] && ln -nfs $_root $_nginx$_uri
+	[[ $_uri != "/" ]] && ln -nfs $_ROOT_DIR $_nginx$_uri
 
 	cat >>$_CONF_FILE.tmp_VW <<-EOF
 
@@ -93,7 +95,6 @@ function nginx_add_proxy
 {
 	local _base=$1
 	local _port=$2
-	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_base/uri)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	[[ -s $_CONF_FILE.tmp_VW ]] || cvw_say -f "$_prog: missing $_CONF_FILE.tmp_VW"
@@ -114,65 +115,49 @@ function nginx_add_proxy
 function nginx_initial
 {
 	cvw_say -h "Installing $_name"
-	local _canon=$(cvw_xml -r host/fqdn)
-	local _home=$(cvw_xml -r software/$_slug/home)
-	local _web=$(cvw_xml -r system/web/server)
-	local _root=$(cvw_xml -r system/app_root)/$_slug
+	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _port=$(cvw_xml -r software/$_slug/port)
+	local _ssl_port=$(cvw_xml -r software/$_slug/ssl_port)
+	local _ciphers=$(cvw_xml -r software/$_slug/ciphers)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _cert="/etc/letsencrypt/live/$_canon"
-	local _root _ip _port _ssl_port _file
-	local _container _base _uri _path _cport
+	local _cert="/etc/letsencrypt/live/$_fqdn"
+	[[ -s $_cert/cert.pem ]] || cvw_say -f "missing SSL cert"
+	local _file _container _base _uri _path _cport
 
 	cvw_yum -a nginx
 	cvw_rpm -i nginx
 	cvw_service -s nginx
 
-	cvw_xml -a software/$_home || cvw_say -f "$_slug wants $_home as root"
-	_uri=$(cvw_xml -r software/$_home/uri)
-	[[ $_uri == "/" ]] || cvw_say -f "$_slug wants $_home as /"
-	echo $_home >/tmp/cvw/nginx.home
-	ln -nfs $(cvw_xml -r system/app_root)/$_home $_root 2>>/tmp/cvw/error
-
-	if [[ $_web == $_slug ]] ; then
-		_ip="0.0.0.0"
-		_port=$(cvw_xml -r system/web/port)
-		_ssl_port=$(cvw_xml -r system/web/ssl_port)
-	else
-		_ip="127.0.0.1"
-		_port=$(cvw_xml -R software/$_slug/port 8880)
-		if [ $_port -eq $(cvw_xml -r system/web/port) ] ; then
-			cvw_say -f "conflicting port $_port"
-		fi
-		_ssl_port=$(cvw_xml -R software/$_slug/ssl_port 8843)
-		if [ $_ssl_port -eq $(cvw_xml -r system/web/ssl_port) ] ; then
-			cvw_say -f "conflicting ssl port $_ssl_port"
-		fi
-	fi
-
 	_file="/etc/nginx/nginx.conf"
 	cvw_file -e $_file "s/\(worker_processes\).*/\1 auto;/" nginx
 
-	cat >$_CONF_FILE.tmp_VW <<-EOF
+	_file="/etc/nginx/conf.d/http.conf"
+	cat >$_file.tmp_VW <<-EOF
 		server {
-		  listen              $_port default_server;
+		  listen      $_port default_server;
+		  listen      [::]:$_port default_server;
+		  server_name _;
+		  return      301 https://\$host\$request_uri;
+		}
 	EOF
-	if [[ -d $_cert ]] ; then
-		cat >>$_CONF_FILE.tmp_VW <<-EOF
-			  listen              $_ssl_port ssl default_server;
-			  ssl_certificate     $_cert/fullchain.pem;
-			  ssl_certificate_key $_cert/privkey.pem;
-			  ssl_session_timeout 5m;
-			  ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
-			  ssl_prefer_server_ciphers on;
-			  ssl_session_cache   shared:SSL:10m;
-			  ssl_dhparam         /etc/pki/tls/dhparam.pem;
-			  ssl_ciphers         ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-RSA-DES-CBC3-SHA:ECDHE-ECDSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA;
-		EOF
-	fi
-	cat >>$_CONF_FILE.tmp_VW <<-EOF
+	cvw_file -v $_file nginx
+	echo $_file >>/tmp/cvw/nginx.enabled
+
+	cat >$_CONF_FILE.tmp_VW <<-EOF
+	server {
+		  listen              $_ssl_port ssl default_server;
+		  ssl_certificate     $_cert/fullchain.pem;
+		  ssl_certificate_key $_cert/privkey.pem;
+		  ssl_session_timeout 5m;
+		  ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+		  ssl_prefer_server_ciphers on;
+		  ssl_session_cache   shared:SSL:10m;
+		  ssl_dhparam         /etc/pki/tls/dhparam.pem;
+		  ssl_ciphers         "$_ciphers";
 
 		  server_name         _;
-		  root                $_root;
+		  root                $_ROOT_DIR;
 		  index               index.html index.htm index.php;
 		  fastcgi_buffers     64 4K;
 		  client_max_body_size 2G;
@@ -183,39 +168,42 @@ function nginx_initial
 		  location ~ ^/\\.well-known { allow all; }
 	EOF
 
-	for _container in $(cvw_xml -i software/$_slug/container) ; do
-		cvw_say -s "container: $_container"
-		_base="software/$_slug/container:$_container"
-		_uri=$(cvw_xml -r $_base/uri)
-		_cport=$(cvw_xml -r $_base/port)
-		[[ -s /tmp/cvw/error ]] && exit 1
+	if cvw_xml -a software/docker ; then
+		for _container in $(cvw_xml -i software/docker/container) ; do
+			_base="software/docker/container:$_container"
+			cvw_xml -t $_base/$_slug || continue
+			cvw_say -s "container: $_container"
+			_uri=$(cvw_xml -r $_base/uri)
+			_cport=$(cvw_xml -r $_base/port)
+			[[ -s /tmp/cvw/error ]] && exit 1
 
-		if [[ $_uri == "/" ]] ; then
-			echo '' >>$_CONF_FILE.tmp_VW
-			_path=""
-		elif [[ ${_uri%/} == $_uri ]] ; then
-			echo '' >>$_CONF_FILE.tmp_VW
-			_path=""
-		else
+			if [[ $_uri == "/" ]] ; then
+				echo '' >>$_CONF_FILE.tmp_VW
+				_path=""
+			elif [[ ${_uri%/} == $_uri ]] ; then
+				echo '' >>$_CONF_FILE.tmp_VW
+				_path=""
+			else
+				cat >>$_CONF_FILE.tmp_VW <<-EOF
+
+					  location = $_uri {
+					    return 302 $_uri/;
+					  }
+				EOF
+				_path="$_uri/"
+			fi
 			cat >>$_CONF_FILE.tmp_VW <<-EOF
-
-				  location = $_uri {
-				    return 302 $_uri/;
+				  location $_uri {
+				    proxy_set_header Host \$host;
+				    proxy_set_header X-Real-IP \$remote_addr;
+				    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+				    proxy_set_header X-Forwarded-Proto \$scheme;
+				    proxy_set_header X-Proto \$scheme;
+				    proxy_pass       http://127.0.0.1:$_cport$_path;
 				  }
 			EOF
-			_path="$_uri/"
-		fi
-		cat >>$_CONF_FILE.tmp_VW <<-EOF
-			  location $_uri {
-			    proxy_set_header Host \$host;
-			    proxy_set_header X-Real-IP \$remote_addr;
-			    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-			    proxy_set_header X-Forwarded-Proto \$scheme;
-			    proxy_set_header X-Proto \$scheme;
-			    proxy_pass       http://127.0.0.1:$_cport$_path;
-			  }
-		EOF
-	done
+		done
+	fi
 
 	[[ -s /tmp/cvw/error ]] && exit 1
 
@@ -226,6 +214,9 @@ function nginx_initial
 function nginx_finish
 {
 	cvw_say -h "Finishing Nginx"
+	local _port=$(cvw_xml -r software/$_slug/port)
+	local _ssl_port=$(cvw_xml -r software/$_slug/ssl_port)
+	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file
 
 	echo "}" >>$_CONF_FILE.tmp_VW
@@ -246,14 +237,17 @@ function nginx_finish
 		rm -f /tmp/cvw/error
 	fi
 
+	if cvw_xml -t software/$_slug/public ; then
+		cvw_firewall -t $_port
+		cvw_firewall -t $_ssl_port
+	fi
+
 	cvw_say -o "$_slug:finish"
 }
 
 
 function nginx_remove
 {
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
 	if cvw_service -c nginx ; then
 		cvw_say -h "Removing Nginx"
 
@@ -261,7 +255,7 @@ function nginx_remove
 		cvw_rpm -e nginx
 		# rpm erase nginx-release-centos-7-0
 
-		rm -rf /etc/nginx $_root
+		rm -rf /etc/nginx /usr/share/nginx
 
 		cvw_say -o "$_slug:remove"
 	fi

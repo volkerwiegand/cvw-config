@@ -6,9 +6,9 @@
 ###### cvw_apache - Install or disable Apache httpd
 ######              http://httpd.apache.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -60,9 +60,9 @@ function apache_add_php
 	if [[ $_uri == "/" ]] ; then
 		cat >>$_conf.tmp_VW <<-EOF
 
-		   <Directory /var/www/html>
+		   <Directory __DOC_ROOT__>
 		EOF
-		echo "$_root/app" >/tmp/cvw/apache.link
+		echo "$_root/app" >/tmp/cvw/apache.doc.root
 	else
 		cat >>$_conf.tmp_VW <<-EOF
 
@@ -93,44 +93,32 @@ function apache_add_php
 function apache_initial
 {
 	cvw_say -h "Installing $_name"
-	local _canon=$(cvw_xml -r host/fqdn)
-	local _domain=${_canon#*.}
-	local _hstnam=${_canon%%.*}
-	local _web=$(cvw_xml -r system/web/server)
+	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _domain=${_fqdn#*.}
+	local _hstnam=${_fqdn%%.*}
 	local _loglvl=$(cvw_xml -r software/$_slug/loglevel)
+	local _port=$(cvw_xml -r software/$_slug/port)
+	local _ssl_port=$(cvw_xml -r software/$_slug/ssl_port)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _cert="/etc/letsencrypt/live/$_canon"
-	local _ip _port _ssl_port _file _alias
+	local _cert="/etc/letsencrypt/live/$_fqdn"
+	[[ -s $_cert/cert.pem ]] || cvw_say -f "missing SSL cert"
+	local _file _alias _redir _container _base _uri _cport
 
 	cvw_rpm -i httpd
 	cvw_rpm -i httpd-devel
-	cvw_rpm -i mod_proxy_html
 	cvw_service -s httpd
 	cvw_apache -e welcome
 	cvw_apache -e autoindex
 	cvw_apache -e userdir
 
-	if [[ $_web == $_slug ]] ; then
-		_ip="0.0.0.0"
-		_port=$(cvw_xml -r system/web/port)
-		_ssl_port=$(cvw_xml -r system/web/ssl_port)
-	else
-		_ip="127.0.0.1"
-		_port=$(cvw_xml -R software/$_slug/port 8080)
-		if [ $_port -eq $(cvw_xml -r system/web/port) ] ; then
-			cvw_say -f "$_slug: conflicting port $_port"
-		fi
-		_ssl_port=$(cvw_xml -R software/$_slug/ssl_port 8443)
-		if [ $_ssl_port -eq $(cvw_xml -r system/web/ssl_port) ] ; then
-			cvw_say -f "$_slug: conflicting ssl port $_ssl_port"
-		fi
-	fi
+	echo "/var/www/html" >/tmp/cvw/apache.doc.root
 
 	_file="/etc/httpd/conf/httpd.conf"
-	cvw_file -e $_file "s/^\(Listen\).*/\1 $_ip:$_port/" httpd
+	cvw_file -e $_file "s/^\(Listen\).*/\1 $_port/" httpd
 	cvw_file -e $_file "s/^\(ServerAdmin\).*/\1 webmaster@$_domain/" httpd
 	cvw_file -e $_file "s/^#ServerName/ServerName/" httpd
-	cvw_file -e $_file "s/^\(ServerName\).*/\1 $_canon:$_port/" httpd
+	cvw_file -e $_file "s/^\(ServerName\).*/\1 $_fqdn:$_port/" httpd
 
 	cvw_rpm -i mod_ssl
 	_file="/etc/httpd/conf.d/ssl.conf"
@@ -161,7 +149,7 @@ function apache_initial
 	cvw_rpm -i mod_fcgid && cvw_apache -e fcgid
 
 	_file="/tmp/cvw/apache.names"
-	echo "   ServerName       $_canon" >$_file
+	echo "   ServerName       $_fqdn" >$_file
 	if [[ $_hstnam == "www" ]] ; then
 		echo "   ServerAlias      $_domain" >>$_file
 	fi
@@ -172,72 +160,86 @@ function apache_initial
 		fi
 	done
 
-	_file="/tmp/cvw/apache.certbot"
-	cat >$_file <<-EOF
-		   <IfModule mod_headers.c>
-		      <LocationMatch "/.well-known/acme-challenge/*">
-		         Header set Content-Type "application/jose+json"
-		         Require all granted
-		      </LocationMatch>
-		   </IfModule>
+	if [[ $_ssl_port -eq 443 ]] ; then
+		_redir=""
+	else
+		_redir=":$_ssl_port"
+	fi
+
+	cat >$_CONF_FILE.tmp_VW <<-EOF
+		<VirtualHost *:$_port>
+		$(cat /tmp/cvw/apache.names)
+		   UseCanonicalName Off
+		   ErrorLog         logs/error_log
+		   TransferLog      logs/transfer_log
+		   LogLevel         $_loglvl
+		   RewriteEngine    On
+		   RewriteCond      %{HTTPS} off
+		   RewriteRule      ^ https://%{HTTP_HOST}${_redir}%{REQUEST_URI}
+		</VirtualHost>
+
+		<VirtualHost *:$_ssl_port>
+		$(cat /tmp/cvw/apache.names)
+		   UseCanonicalName Off
+		   ErrorLog         logs/ssl_error_log
+		   TransferLog      logs/ssl_transfer_log
+		   LogLevel         $_loglvl
+		   DocumentRoot     __DOC_ROOT__
+		   ProxyRequests    off
+
+		   SSLEngine             on
+		   SSLCertificateFile    $_cert/cert.pem
+		   SSLCertificateKeyFile $_cert/privkey.pem
+		   SSLCACertificateFile  $_cert/chain.pem
+		   $(grep "^SSLProtocol"    /etc/httpd/conf.d/ssl.conf.bak_VW)
+		   $(grep "^SSLCipherSuite" /etc/httpd/conf.d/ssl.conf.bak_VW)
+
+		   <Files ~ "\\.(cgi|shtml|phtml|php3?)\$">
+		      SSLOptions +StdEnvVars
+		   </Files>
+		   <Directory "/var/www/cgi-bin">
+		      SSLOptions +StdEnvVars
+		   </Directory>
+
+		   BrowserMatch "MSIE [2-5]" \\
+		      nokeepalive ssl-unclean-shutdown \\
+		      downgrade-1.0 force-response-1.0
 	EOF
 
-	if [[ -s $_cert/cert.pem ]] ; then
-		cvw_say -s "found SSL config $_cert"
-		cat >$_CONF_FILE.tmp_VW <<-EOF
-			<VirtualHost *:$_port>
-			$(cat /tmp/cvw/apache.names)
-			   UseCanonicalName Off
-			   ErrorLog         logs/error_log
-			   TransferLog      logs/transfer_log
-			   LogLevel         $_loglvl
-			   RewriteEngine    On
-			   RewriteCond      %{HTTPS} off
-			   RewriteRule      ^ https://%{HTTP_HOST}%{REQUEST_URI}
-			</VirtualHost>
+	if cvw_xml -a software/docker ; then
+		for _container in $(cvw_xml -i software/docker/container) ; do
+			_base="software/docker/container:$_container"
+			cvw_xml -t $_base/$_slug || continue
+			cvw_say -s "container: $_container"
+			_uri=$(cvw_xml -r $_base/uri)
+			_cport=$(cvw_xml -r $_base/port)
+			[[ -s /tmp/cvw/error ]] && exit 1
 
-			<VirtualHost _default_:443>
-			$(cat /tmp/cvw/apache.names)
-			   UseCanonicalName Off
-			   ErrorLog         logs/ssl_error_log
-			   TransferLog      logs/ssl_transfer_log
-			   LogLevel         $_loglvl
-			   DocumentRoot     /var/www/html
+			if [[ $_uri == "/" ]] ; then
+				cat >>$_CONF_FILE.tmp_VW <<-EOF
 
-			   SSLEngine             on
-			   SSLCertificateFile    $_cert/cert.pem
-			   SSLCertificateKeyFile $_cert/privkey.pem
-			   SSLCACertificateFile  $_cert/chain.pem
-			   $(grep "^SSLProtocol" /etc/httpd/conf.d/ssl.conf.bak_VW)
-			   $(grep "^SSLCipherSuite" /etc/httpd/conf.d/ssl.conf.bak_VW)
+					   ProxyPass        / http://localhost:$_cport/
+					   ProxyPassReverse / http://localhost:$_cport/
+				EOF
+			else
+				cvw_rpm -i mod_proxy_html
 
-			   <Files ~ "\\.(cgi|shtml|phtml|php3?)\$">
-			      SSLOptions +StdEnvVars
-			   </Files>
-			   <Directory "/var/www/cgi-bin">
-			      SSLOptions +StdEnvVars
-			   </Directory>
+				cat >>$_CONF_FILE.tmp_VW <<-EOF
 
-			$(cat /tmp/cvw/apache.certbot)
-
-			   BrowserMatch "MSIE [2-5]" \\
-			      nokeepalive ssl-unclean-shutdown \\
-			      downgrade-1.0 force-response-1.0
-		EOF
-	else
-		cvw_say -s "missing SSL config"
-		cat >$_CONF_FILE.tmp_VW <<-EOF
-			<VirtualHost *:$_port>
-			$(cat /tmp/cvw/apache.names)
-			   UseCanonicalName Off
-			   ErrorLog         logs/error_log
-			   TransferLog      logs/transfer_log
-			   LogLevel         $_loglvl
-			   DocumentRoot     /var/www/html
-
-			$(cat /tmp/cvw/apache.certbot)
-		EOF
+					   ProxyPass ${_uri%/}/ http://localhost:$_cport/
+					   ProxyHTMLURLMap      http://localhost $_uri
+					   <Location ${_uri%/}/>
+					      ProxyPassReverse /
+					      ProxyHTMLEnable  On
+					      ProxyHTMLURLMap  /     ${_uri%/}/
+					      RequestHeader    unset Accept-Encoding
+					   </Location>
+				EOF
+			fi
+		done
 	fi
+
+	[[ -s /tmp/cvw/error ]] && exit 1
 
 	cvw_say -o "$_slug:initial"
 }
@@ -246,23 +248,19 @@ function apache_initial
 function apache_finish
 {
 	cvw_say -h "Finishing $_name"
-	local _canon=$(cvw_xml -r host/fqdn)
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _port=$(cvw_xml -r software/$_slug/port)
+	local _ssl_port=$(cvw_xml -r software/$_slug/ssl_port)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _cnt _base _root _uri _file
+	local _root=$(cat /tmp/cvw/apache.doc.root)
+	local _file _uri
 
 	echo "</VirtualHost>" >>$_CONF_FILE.tmp_VW
+
+	sed -i -e "s#__DOC_ROOT__#$_root#g" $_CONF_FILE.tmp_VW
+	mkdir -p $_root
 	cvw_file -v $_CONF_FILE httpd
 	cvw_apache -e $_CONF_FILE
-
-	_file="/tmp/cvw/apache.link"
-	if [[ -s $_file ]] ; then
-		[[ -h /var/www/html ]] && rm  -f /var/www/html
-		[[ -d /var/www/html ]] && rm -rf /var/www/html
-		ln -nfs $(cat $_file) /var/www/html
-	else
-		[[ -h /var/www/html ]] && rm -f /var/www/html
-		mkdir -p /var/www/html
-	fi
 
 	find /etc/httpd/conf.d -maxdepth 1 -name "*.conf" | while read _file ; do
 		grep -q -s "$_file" /tmp/cvw/apache.enabled && continue
@@ -270,6 +268,11 @@ function apache_finish
 		mv $_file $_file.disabled
 		cvw_service -r httpd
 	done
+
+	if cvw_xml -t software/$_slug/public ; then
+		cvw_firewall -t $_port
+		cvw_firewall -t $_ssl_port
+	fi
 
 	cvw_say -o "$_slug:finish"
 }
