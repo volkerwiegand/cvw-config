@@ -84,14 +84,14 @@ function opencart_install_native
 				>/tmp/cvw/opencart.result 2>&1
 		popd >/dev/null
 
-		if grep -q -s SUCCESS /tmp/cvw/opencart.result ; then
-			cvw_say -s "hiding install directory"
-			rm -rf $_root/install # just in case
-			mv $_root/app/install $_root/install
-		else
+		if ! grep -q -s SUCCESS /tmp/cvw/opencart.result ; then
 			cat /tmp/cvw/opencart.result >>/tmp/cvw/error
 			exit 1
 		fi
+	elif [[ -d $_root/app/install ]] ; then
+		cvw_say -s "hiding install directory"
+		rm -rf $_root/install # just in case
+		mv $_root/app/install $_root/install
 	fi
 
 	if [[ -s $_root/app/.htaccess.txt ]] ; then
