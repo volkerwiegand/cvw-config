@@ -49,7 +49,7 @@ function usage
 while getopts ":b:e:f:m:r:u:v:" opt ; do
 	case $opt in
 		b)
-			[[ -f $OPTARG.bak_VW ]] && exit 0
+			[[ -f $OPTARG.bak_VW || ! -f $OPTARG ]] && exit 0
 			cvw_say -s "backing up $OPTARG"
 			cp -p $OPTARG $OPTARG.bak_VW 2>>/tmp/cvw/error
 			exit
