@@ -101,7 +101,7 @@ function opencart_install_native
 
 	if [[ -r /root/.$_slug ]] ; then
 		chown -R apache:apache $_root/app
-		cvw_say -a "$_slug open for update - be careful"
+		cvw_say -e "$_slug open for update - be careful"
 	elif grep -q "VQMod::bootup" $_root/app/admin/index.php ; then
 		if [[ -d $_root/app/vqmod/install ]] ; then
 			cvw_say -s "hiding vqmod/install directory"
