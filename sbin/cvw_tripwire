@@ -46,9 +46,9 @@ function tripwire_install
 {
 	cvw_say -h "Installing $_name"
 	local _fqdn=$(cvw_xml -r host/fqdn)
-	local _sitephrase=$(cvw_xml -r system/$_slug/sitephrase)
-	local _localphrase=$(cvw_xml -r system/$_slug/localphrase)
-	local _mail=$(cvw_xml -r system/$_slug/mail)
+	local _sitephrase=$(cvw_xml -r software/$_slug/sitephrase)
+	local _localphrase=$(cvw_xml -r software/$_slug/localphrase)
+	local _mail=$(cvw_xml -r software/$_slug/mail)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _sitekey="/etc/tripwire/site.key"
 	local _localkey="/etc/tripwire/$_fqdn.key"
@@ -251,7 +251,7 @@ function tripwire_remove
 while getopts ":i" opt ; do
 	case $opt in
 		i)
-			if cvw_xml -a system/$_slug ; then
+			if cvw_xml -a software/$_slug ; then
 				tripwire_install
 			else
 				tripwire_remove
