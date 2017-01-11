@@ -130,6 +130,8 @@ function prestashop_install_bitnami
 		$_root/Download/$_run --mode unattended --optionfile $_file 2>>/tmp/cvw/error
 	fi
 
+	cvw_url -a "$_name" $_uri
+
 	cvw_say -o "$_slug"
 }
 
