@@ -34,7 +34,8 @@ trap 'rm /tmp/cvw.lock' 0
 function usage
 {
 	cat >&2 <<-EOF
-		Syntax: $_prog -b                Fetch backups from host (save to /backup/<fqdn>/)
+		Syntax: $_prog -a                Assemble docker-compose.yaml from sources
+		    or: $_prog -b                Fetch backups from host (save to /backup/<fqdn>/)
 		    or: $_prog -B                Restore backups to host
 		    or: $_prog -c [cmd [args]]   Run remote docker-compose command for app
 		    or: $_prog -d [cmd [args]]   Run remote docker command
@@ -206,9 +207,14 @@ function wipe_config
 }
 
 
-while getopts ":bBcdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
+while getopts ":abBcdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 	_finito=""
 	case $opt in
+		a)
+			_assemble=1
+			_finito=1
+		;;
+
 		b)
 			_backup=1
 		;;
@@ -343,12 +349,28 @@ if [[ $_restore ]] ; then
 fi
 
 
+if [[ $_assemble ]] ; then
+	[[ -s docker-compose.conf ]] || failure "missing docker-compose.conf"
+	cat >docker-compose.tmp <<-EOF
+		version: '2'
+
+		services:
+
+	EOF
+	grep -v "^#" docker-compose.conf | grep -v "^$" | while read _file ; do
+		cvw_say -a "$_file"
+		cat docker-compose.d/$_file.yaml >>docker-compose.tmp || exit 1
+	done
+	mv docker-compose.tmp docker-compose.yaml
+	exit
+fi
+
+
 if [[ $_compose ]] ; then
 	_fqdn=$(cvw_xml -r host/fqdn)
 	_cmd="$@"
 	[[ -z $_cmd ]] && _cmd="up -d"
 	copy_compose
-	copy_local_cvw
 	cvw_say -a "docker-compose $_cmd"
 	cvw_say
 	ssh -tq root@$_fqdn /usr/local/bin/docker-compose "$_cmd"
