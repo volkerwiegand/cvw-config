@@ -6,9 +6,9 @@
 ###### cvw_haproxy - Install or remove HAProxy
 ######               http://www.haproxy.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 ######          TODO HAProxy configuration is not implemented yet
 ######
@@ -46,9 +46,18 @@ function usage
 function haproxy_install
 {
 	cvw_say -h "Installing $_name"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _port=$(cvw_xml -r software/$_slug/port)
+	local _ssl_port=$(cvw_xml -r software/$_slug/ssl_port)
+	[[ -s /tmp/cvw/error ]] && exit 1
 
 	cvw_rpm -i haproxy
 	cvw_service -S haproxy
+
+	if cvw_xml -t software/$_slug/public ; then
+		cvw_firewall -t $_port
+		cvw_firewall -t $_ssl_port
+	fi
 
 	cvw_say -o "$_slug"
 }
