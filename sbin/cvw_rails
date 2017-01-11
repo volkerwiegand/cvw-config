@@ -444,7 +444,7 @@ function rails_install
 		rm -f /etc/httpd/conf.d/passenger.conf.disabled
 	fi
 
-	if [[ -s /tmp/cvw/updating ]] ; then
+	if grep -q -s upgrade /tmp/cvw/updating ; then
 		cvw_say -s "updating Gems"
 		cvw_user -r rails "gem update --system"
 		cvw_user -r rails "gem update --force"
