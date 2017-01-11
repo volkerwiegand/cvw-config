@@ -69,6 +69,7 @@ error_check
 cvw_yum          -i ; error_check
 cvw_docker       -i ; error_check
 cvw_user         -i ; error_check
+cvw_certbot      -i ; error_check
 cvw_bitnami      -i ; error_check
 cvw_haproxy      -i ; error_check
 cvw_nginx        -i ; error_check
@@ -98,14 +99,15 @@ cvw_roundcube    -i ; error_check
 cvw_squirrelmail -i ; error_check
 cvw_mantis       -i ; error_check
 cvw_dokuwiki     -i ; error_check
-cvw_shopware     -i ; error_check
+cvw_modified     -i ; error_check
 cvw_opencart     -i ; error_check
+cvw_magento      -i ; error_check
+cvw_shopware     -i ; error_check
 cvw_oscommerce   -i ; error_check
 cvw_prestashop   -i ; error_check
 cvw_abantecart   -i ; error_check
 cvw_piwigo       -i ; error_check
 cvw_vsftpd       -i ; error_check
-cvw_certbot      -i ; error_check
 
 cvw_mysql        -x ; error_check
 cvw_apache       -x ; error_check
