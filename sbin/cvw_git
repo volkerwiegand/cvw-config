@@ -74,7 +74,7 @@ if [[ $_id ]] ; then
 	if [[ $_user ]] ; then
 		cvw_say -d "user...: $_user"
 		if [[ -d $_dir/.git ]] ; then
-			if [[ -s /tmp/cvw/updating ]] ; then
+			if grep -q -s upgrade /tmp/cvw/updating ; then
 				cvw_user -r $_user "cd $_dir && git pull"
 			fi
 		else
@@ -83,7 +83,7 @@ if [[ $_id ]] ; then
 	else
 		cvw_say -d "user...: <none>"
 		if [[ -d $_dir/.git ]] ; then
-			if [[ -s /tmp/cvw/updating ]] ; then
+			if grep -q -s upgrade /tmp/cvw/updating ; then
 				cd $_dir && git pull
 			fi
 		else
