@@ -39,7 +39,7 @@ function failure
 function init_init
 {
 	local _mode=$1
-	local _fqdn _addr _lang _web _curr _want _file _host _cert _src_dst
+	local _fqdn _addr _lang _curr _want _file _host _cert _src_dst
 
 	rm -rf /tmp/cvw
 	test -e /tmp/cvw && failure "pre-existing /tmp/cvw"
@@ -89,7 +89,14 @@ function init_init
 	EOF
 	cvw_file -v $_file
 
-	cvw_rpm -L
+	if [[ ! -s /root/initial_rpm_list ]] ; then
+		cvw_say -o "coldstart"
+		cvw_rpm -L
+		# FIXME polkit breaks firewalld and docker - why???
+		cvw_rpm -e polkit
+		echo "initial" >>/tmp/cvw/updating
+	fi
+
 	cvw_say -o "coldstart"
 
 	cvw_say -h "Configuring / verifying basics"
@@ -98,7 +105,6 @@ function init_init
 	_lang=$(cvw_xml -r system/language)
 	_zone=$(cvw_xml -r system/timezone)
 	_root=$(cvw_xml -r system/app_root)
-	_web=$(cvw_xml  -r system/web/server)
 	[[ -s /tmp/cvw/error ]] && exit 1
 
 	_src="/var/local/cfg/files/keys"
@@ -154,22 +160,13 @@ function init_init
 		cvw_firewall -s ssh
 	fi
 
-	if [[ $_web != "none" ]] ; then
-		_port=$(cvw_xml -r system/web/port)
-		_ssl_port=$(cvw_xml  -r system/web/ssl_port)
-		[[ -s /tmp/cvw/error ]] && exit 1
-		cvw_say -s "webserver is $_web ($_port / $_ssl_port)"
-		cvw_firewall -t $_port
-		cvw_firewall -t $_ssl_port
-	fi
-
 	cvw_say -s "language is $_lang"
 	cvw_say -s "timezone is $_zone"
 
 	cvw_say -o "basics"
 
 	if [[ $_upgrade ]] ; then
-		echo "upgrade" >/tmp/cvw/updating
+		echo "upgrade" >>/tmp/cvw/updating
 		cvw_say -h "Starting the upgrade"
 	else
 		cvw_say -h "Starting the update"
@@ -204,7 +201,8 @@ function init_init
 		go get github.com/constabulary/gb/...
 	fi
 
-	test $_upgrade && cvw_rpm -u
+	grep -q -s upgrade /tmp/cvw/updating && cvw_rpm -u
+	grep -q -s initial /tmp/cvw/updating && cvw_say -f "initial - please reboot"
 
 	cvw_say -o "startup"
 }
