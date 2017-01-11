@@ -99,12 +99,10 @@ while getopts ":c:e:g:i:l:Lr:uv:" opt ; do
 		;;
 
 		L)
-			test -s $HOME/initial_rpm_list && exit 0
 			cvw_say -s "ensure yum groups are active"
 			yum groups mark convert
 			cvw_say -s "save initial_rpm_list"
 			rpm -q -a --qf='%{NAME}\n' | sort >$HOME/initial_rpm_list
-			echo "initial_rpm_list" >/tmp/cvw/updating
 			exit 0
 		;;
 
