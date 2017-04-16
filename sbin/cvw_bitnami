@@ -62,6 +62,7 @@ function bitnami_install
 	cvw_download -i ${_slug}_$_mode $_root/Download
 	_run=$(cvw_download -f ${_slug}_$_mode)
 	chmod +x $_root/Download/$_run
+	cvw_rpm -i perl-Data-Dumper
 
 	_file=$_root/Download/$_mode.options
 	cat >$_file.tmp_VW <<-EOF

@@ -39,7 +39,7 @@ function failure
 function init_init
 {
 	local _mode=$1
-	local _fqdn _addr _lang _curr _want _file _host _cert _src_dst
+	local _fqdn _addr _lang _curr _want _file _host _cert _src_dst _swap
 
 	rm -rf /tmp/cvw
 	test -e /tmp/cvw && failure "pre-existing /tmp/cvw"
@@ -160,6 +160,18 @@ function init_init
 		cvw_firewall -s ssh
 	fi
 
+	if cvw_xml -c system/swap ; then
+		_swap=$(cvw_xml -r system/swap)
+		if [[ ! -e /mnt/swap.0 ]] ; then
+			cvw_say -s "creating $_swap of swap"
+			fallocate --length $_swap /mnt/swap.0
+			chmod 0600 /mnt/swap.0
+			mkswap /mnt/swap.0
+		fi
+		grep -q "swap.0" /etc/fstab || echo "/mnt/swap.0 swap swap defaults 0 0" >>/etc/fstab
+		swapon -a
+	fi
+
 	cvw_say -s "language is $_lang"
 	cvw_say -s "timezone is $_zone"
 
@@ -173,6 +185,9 @@ function init_init
 	fi
 
 	cvw_rpm -l general
+
+	cvw_say -s "sleep for 5 seconds"
+	sleep 5
 
 	if cvw_xml -t software/development ; then
 		cvw_rpm -g "libtool:Development Tools"
@@ -202,7 +217,7 @@ function init_init
 	fi
 
 	grep -q -s upgrade /tmp/cvw/updating && cvw_rpm -u
-	grep -q -s initial /tmp/cvw/updating && cvw_say -f "initial - please reboot"
+	grep -q -s initial /tmp/cvw/updating && cvw_say -f "initial: cvw -l shutdown -r now"
 
 	cvw_say -o "startup"
 }

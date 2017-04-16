@@ -21,6 +21,7 @@ _args="$*"
 
 _restart="/tmp/cvw/service.restart"
 _reload="/tmp/cvw/service.reload"
+_bitnami="/usr/local/bin/ctlscript.sh"
 
 
 function usage
@@ -83,8 +84,12 @@ function is_active
 	local _status
 
 	if [[ $_service =~ ^bitnami ]] ; then
-		_status=$(/usr/local/bin/ctlscript.sh status ${_service#bitnami:})
-		[[ $_status =~ already.running ]]
+		if [[ -x $_bitnami ]] ; then
+			_status=$($_bitnami status ${_service#bitnami:})
+			[[ $_status =~ already.running ]]
+		else
+			false
+		fi
 	else
 		systemctl -t service -p ActiveState show $_service | grep -q "=active"
 	fi
@@ -99,28 +104,28 @@ function do_action
 
 	if [[ $_service =~ ^bitnami ]] ; then
 		[[ $_action == "reload" ]] && _action="restart"
-		_status=$(/usr/local/bin/ctlscript.sh status ${_service#bitnami:})
+		_status=$($_bitnami status ${_service#bitnami:})
 		if [[ $_action == "start" ]] ; then
 			if [[ ! $_status =~ already.running ]] ; then
-				/usr/local/bin/ctlscript.sh start ${_service#bitnami:}
+				$_bitnami start ${_service#bitnami:}
 				return
 			fi
 		elif [[ $_action == "stop" ]] ; then
 			if [[ $_status =~ already.running ]] ; then
-				/usr/local/bin/ctlscript.sh stop ${_service#bitnami:}
+				$_bitnami stop ${_service#bitnami:}
 				return
 			fi
 		elif [[ $_action == "restart" ]] ; then
 			if [[ $_status =~ already.running ]] ; then
-				/usr/local/bin/ctlscript.sh restart ${_service#bitnami:}
+				$_bitnami restart ${_service#bitnami:}
 				return
 			else
-				/usr/local/bin/ctlscript.sh start ${_service#bitnami:}
+				$_bitnami start ${_service#bitnami:}
 				return
 			fi
 		fi
 		# ignore other actions (e.g. enable)
-		return 0
+		return
 	else
 		systemctl -q -t service $_action $_service
 	fi

@@ -360,6 +360,7 @@ function rails_app_delete
 function rails_install
 {
 	cvw_say -h "Installing $_name"
+	cvw_xml -a software/nodejs || cvw_say -f "$_prog: requires nodejs"
 	local _ruby=$(cvw_xml -r software/$_slug/ruby)
 	local _server=$(cvw_xml -r software/$_slug/server)
 	[[ -s /tmp/cvw/error ]] && exit 1

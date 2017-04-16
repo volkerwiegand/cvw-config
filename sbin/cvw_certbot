@@ -59,10 +59,10 @@ function certbot_install
 	fi
 
 	# FIXME check why "certbot --webroot" seems to fail
-	cvw_service -K httpd
-	cvw_service -K haproxy
-	cvw_service -K bitnami:apache
-	cvw_service -K nginx
+	cvw_xml -a software/apache  && cvw_service -K httpd
+	cvw_xml -a software/haproxy && cvw_service -K haproxy
+	cvw_xml -a software/bitnami && cvw_service -K bitnami:apache
+	cvw_xml -a software/nginx   && cvw_service -K nginx
 	# Web server(s) will be re-started after run
 
 	if [[ -d $_live ]] ; then
@@ -78,6 +78,7 @@ function certbot_install
 		_args="--standalone --agree-tos --email '$_admin'"
 		_args="$_args --keep --text --non-interactive"
 		cvw_say -a "certbot certonly $_args $_list"
+		cvw_firewall -t 443
 		certbot certonly $_args $_list
 	fi
 	[[ -s /tmp/cvw/error ]] && exit 1

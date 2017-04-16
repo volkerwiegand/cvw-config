@@ -105,6 +105,9 @@ elif [[ $_file =~ .*\.tgz$ ]] ; then
 elif [[ $_file =~ .*\.tar\.bz2$ ]] ; then
 	cvw_say -s "untarring $_file into $_dir"
 	tar -x -j -C $_box -f $HOME/src/files/$_file 2>>/tmp/cvw/error
+elif [[ $_file =~ .*\.tar\.xz$ ]] ; then
+	cvw_say -s "untarring $_file into $_dir"
+	tar -x -J -C $_box -f $HOME/src/files/$_file 2>>/tmp/cvw/error
 else
 	cvw_say -f "$_prog: $_file is not an archive"
 fi

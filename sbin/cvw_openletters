@@ -1,0 +1,183 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_openletters - Install or remove Open Letters
+######                   http://www.open-letters.de/
+######
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Open Letters"
+_slug="openletters"
+
+
+_archive="/var/local/cfg/files/misc/2017-02-19_OpenLetters_release_1.2.zip"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function openletters_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
+	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _conf _file _subdir
+
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_root/app/log \
+			$_root/app/uploaded
+
+	# cvw_unpack -i $_slug $_root/app index.php
+	if [[ ! -s $_root/app/index.php ]] ; then
+		mkdir -p $_root/app && unzip -q -d $_root/app $_archive
+	fi
+	chmod -R go-w $_root/app
+	for _subdir in log uploaded ; do
+		mkdir -p $_root/app/$_subdir
+		chown -R apache $_root/app/$_subdir
+	done
+
+	if [[ -d /var/local/backup/$_slug/last/mysql && \
+	      -d /var/local/backup/$_slug/last/dirs  && \
+	      -x /usr/local/bin/bkup.$_slug          && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+
+	_file="$_root/app/config/newsletter.sql"
+	if [[ -s $_file ]] ; then
+		cvw_say -s "loading newsletter.sql"
+		cvw_mysql -f $_file $_slug $_pass $_slug
+		mv $_file $_root
+		mv $_root/app/extras $_root
+		mv $_root/app/documentation $_root
+	fi
+
+	_file="$_root/app/config/config.inc.php"
+	cat >$_file.tmp_VW <<-EOF
+		<?php
+
+		define("HTML_TITLE", "$(cvw_xml -r software/$_slug/title)");
+		define("ROOT_DOMAIN","http://$_fqdn/newsletter/");
+		define("DEFAULT_LANGUAGE", "de");
+		define("ALLOW_OTHER_LANGUAGE", 1);
+		define("KNOWN_LANGUAGES", "de;en");
+		define("FRONTEND_TEMPLATE_FILENAME", "website_template_frontend_01");
+		define("BACKEND_TEMPLATE_FILENAME", "website_template_backend_01");
+
+		define("DB_SERVER","localhost");
+		define("DB_USER","$_slug");
+		define("DB_PASSWORD","$_pass");
+		define("DB_NAME","$_slug");
+		define("PREFIX","");
+		define( "ALLOWED_HTML_TAGS", 'b,br,strong,u,i,p,div,table,thead,tbody,tr,td,th,em,span,li,ul,ol,a,hr,p,img,h1,h2,h3,h4,h5,h6,dt,dl,dd');
+		define('ALLOWED_HTML_ATTRIBUTES', '*.style,*.title,a.href,a.target,img.src,img.alt,img.title');
+
+		define("SUBJECT","Open-Letters.de - Newsletter");
+		define("SUBJECT_DATE", "true");
+		define("SENDER_ADDRESS", "newsletter@${_fqdn#*.}");
+		define("SENDER_NAME", "Newsletter");
+		define("NEWSLETTER_RECEIVERS_AT_ONE_GO", 25);
+		define("NEWSLETTER_SENDING_TIMEOUT", 5);
+
+		define("SMTP_HOST", "smtp.example.com");
+		define( "SMTP_USER", "sender@example.com");
+		define( "SMTP_PASSWORD", "1234567890");
+		define( "SMTP_PORT", 25);
+		define( "SMTP_SECURITY", "");
+
+		define("IMAP", false);
+
+		define("LOGFILE", ROOT_PATH."log/open-letters.log");
+		define("MAX_LOGFILESIZE", 256000); // 256kB
+
+		define("DEBUG_MODUS", 0);
+	EOF
+	[[ -s /tmp/cvw/error ]] && exit 1
+	cvw_file -v $_file $(cvw_php -s)
+
+	if cvw_xml -a software/nginx ; then
+		cvw_nginx -p $_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		cvw_apache -p $_slug
+	fi
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "$_slug"
+}
+
+
+function openletters_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	cvw_backup -z $_slug
+	cvw_mysql -z $_slug $_slug
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				openletters_install
+			else
+				openletters_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

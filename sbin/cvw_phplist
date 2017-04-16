@@ -3,10 +3,11 @@
 
 #################################################################################
 ######
-###### cvw_serendipity - Install or remove Serendipity
-######                   http://www.s9y.org/
+###### cvw_phplist - Install or remove phpList
+######               https://www.phplist.org/
+######               https://www.phplist.org/manual/ch028_installation.xhtml
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
@@ -18,8 +19,8 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="Serendipity"
-_slug="serendipity"
+_name="phpList"
+_slug="phplist"
 
 
 function usage
@@ -41,11 +42,12 @@ function usage
 }
 
 
-function serendipity_install
+function phplist_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
@@ -53,19 +55,15 @@ function serendipity_install
 	local _conf _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/archives \
-			$_root/app/plugins \
-			$_root/app/templates_c \
-			$_root/app/uploads \
-			$_root/app/spamblock
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
-	cvw_unpack -i $_slug $_root/app index.php
+	cvw_unpack -i $_slug $_root/download VERSION
+	if [[ ! -d $_root/app ]] ; then
+		mv $_root/download/public_html/lists $_root
+		mv $_root/lists $_root/app
+	fi
 	chmod -R go-w $_root/app
-	for _subdir in archives plugins templates_c uploads spamblock ; do
-		mkdir -p $_root/app/$_subdir
-		chown -R apache $_root/app/$_subdir
-	done
+	rm -f $_root/app/index.html
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
@@ -75,17 +73,25 @@ function serendipity_install
 		/usr/local/bin/bkup.$_slug
 	fi
 
-	_file="serendipity_config_local.inc.php"
-	if [[ -s $_root/app/.htaccess ]] ; then
-		chown apache $_root/app/.htaccess $_root/app/$_file
-		chmod 0644   $_root/app/.htaccess $_root/app/$_file
-		chmod 0755   $_root/app
-		cp $_root/app/.htaccess $_root/htaccess
-		cp $_root/app/$_file $_root/$_file
-	else
-		cvw_say -s "waiting for installation"
-		chmod 0777 $_root/app
-	fi
+	_file="$_root/app/config/config.php"
+	cat >$_file.tmp_VW <<-EOF
+		<?php
+
+		\$default_system_language = "de";
+		\$language_module = 'german.inc';
+
+		\$database_host = 'localhost';
+		\$database_name = '$_slug';
+		\$database_user = '$_slug';
+		\$database_password = '$_pass';
+
+		define('PHPMAILERHOST', '');
+
+		define('TEST', 1);
+
+		\$pageroot = '$_uri';
+	EOF
+	cvw_file -v $_file $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
@@ -101,7 +107,7 @@ function serendipity_install
 }
 
 
-function serendipity_remove
+function phplist_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 
@@ -121,9 +127,9 @@ while getopts ":i" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
-				serendipity_install
+				phplist_install
 			else
-				serendipity_remove
+				phplist_remove
 			fi
 			exit 0
 		;;
