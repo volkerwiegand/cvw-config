@@ -53,16 +53,16 @@ function cmsms_install
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _inst _file _subdir
+	local _phar _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app
 
-	_inst="${_slug}-$(cvw_download -v $_slug)-install.php"
+	_phar="${_slug}-$(cvw_download -v $_slug)-install.php"
 	if [[ -s $_root/app/index.php ]] ; then
 		if [[ -s $_root/app/README-PHAR.TXT ]] ; then
-			cvw_say -s "hiding install script"
-			mv $_root/app/$_inst $_root/app/README-PHAR.TXT $_root
+			cvw_say -s "hiding installer archive"
+			mv $_root/app/$_phar $_root/app/README-PHAR.TXT $_root
 		fi
 
 		_file="$_root/app/config.php"
@@ -82,7 +82,7 @@ function cmsms_install
 
 			ini_set('max_execution_time', 120);
 		EOF
-		cvw_file -u apache:apache -m 0444 -v $_file $(cvw_php -s)
+		cvw_file -m 0444 -v $_file $(cvw_php -s)
 
 		_file="$_root/app/.htaccess"
 		if [[ ! -s $_file ]] ; then
@@ -91,6 +91,10 @@ function cmsms_install
 		fi
 		cvw_file -e $_file "s/^#Options/Options/" $(cvw_php -s)
 
+		for _subdir in images fonts js ; do
+			mkdir -p $_root/app/assets/$_subdir
+		done
+
 		if [[ -d /var/local/backup/$_slug/last/mysql && \
 		      -d /var/local/backup/$_slug/last/dirs  && \
 		      -x /usr/local/bin/bkup.$_slug          && \
@@ -98,10 +102,12 @@ function cmsms_install
 			cvw_say -s "updating / syncing backup"
 			/usr/local/bin/bkup.$_slug
 		fi
+
+		# This is okay since there is a .htaccess
+		chown -R apache:apache $_root/app
 	else
 		cvw_unpack -s -i $_slug $_root/app README-PHAR.TXT
-		chown apache:apache $_root/app
-		cvw_say -s "waiting for install: https://$_fqdn/$_inst"
+		cvw_say -s "waiting for install: https://$_fqdn/$_phar"
 	fi
 
 	if cvw_xml -a software/nginx ; then

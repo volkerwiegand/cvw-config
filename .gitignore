@@ -2,6 +2,7 @@
 # Ignore real server configurations
 #
 *.de/
+*.org/
 
 # Ignore files containing private data
 #
