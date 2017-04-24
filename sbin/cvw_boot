@@ -105,6 +105,7 @@ cvw_squirrelmail -i ; error_check
 cvw_mantis       -i ; error_check
 cvw_dokuwiki     -i ; error_check
 cvw_modified     -i ; error_check
+cvw_randshop     -i ; error_check
 cvw_opencart     -i ; error_check
 cvw_magento      -i ; error_check
 cvw_shopware     -i ; error_check
