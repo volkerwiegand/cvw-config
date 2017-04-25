@@ -1,0 +1,210 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_simpleinvoices - Install or remove Simple Invoices
+######                      http://www.simpleinvoices.org/
+######                      http://www.simpleinvoices.org/install
+######
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Simple Invoices"
+_slug="simpleinvoices"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function simpleinvoices_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
+	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _lang=$(cvw_xml -r system/language)
+	local _zone=$(cvw_xml -r system/timezone)
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _crypt=$(cvw_xml -r software/$_slug/encrypt)
+	local _nonce=$(cvw_xml -r software/$_slug/nonce)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file _subdir
+
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
+	cvw_unpack -i $_slug $_root/app index.php
+
+	_file="$_root/app/config/config.ini"
+	cat >$_file.tmp_VW <<-EOF
+		; Simple Invoices configuration file
+		; - refer http://www.simpleinvoices.org/config for all options
+
+		; Production site configuration data
+		[production]
+		database.adapter                   = pdo_mysql
+		database.utf8                      = true
+		database.params.host               = localhost
+		database.params.username           = $_slug
+		database.params.password           = $_pass
+		database.params.dbname             = $_slug
+		database.params.port               = 3306
+
+		authentication.enabled             = false
+		authentication.http                = 
+
+		export.spreadsheet                 = xls
+		export.wordprocessor               = doc
+		export.pdf.screensize              = 800
+		export.pdf.papersize               = A4
+		export.pdf.leftmargin              = 15
+		export.pdf.rightmargin             = 15
+		export.pdf.topmargin               = 15
+		export.pdf.bottommargin            = 15
+
+		local.locale                       = $_lang
+		local.precision                    = 2
+
+		email.host                         = localhost
+		email.smtp_auth                    = false
+		email.username                     =  
+		email.password                     = 
+		email.smtpport                     = 25
+		email.secure                       = 
+		email.ack                          = false
+
+		encryption.default.key             = $_crypt
+		nonce.key                          = $_nonce
+		nonce.timelimit                    = 3600
+
+		version.name                       = 2011.1 - stable
+		 
+		debug.level                        = All 
+		debug.error_reporting              = E_ERROR
+		phpSettings.date.timezone          = $_zone
+		phpSettings.display_startup_errors = 1
+		phpSettings.display_errors         = 1
+		phpSettings.log_errors             = 0
+		phpSettings.error_log              = tmp/log/php.log
+
+		; Explicity confirm delete of line items from invoices? (yes/no)
+		confirm.deleteLineItem             = no
+	EOF
+	cvw_file -v $_file $(cvw_php -s)
+
+	for _subdir in tmp ; do
+		mkdir -p $_root/app/$_subdir
+		chown -R apache:apache $_root/app/$_subdir
+	done
+
+if false ; then
+	_file="$_root/app/sitemap.xml"
+	[[ -s $_file ]] || touch $_file
+	chown apache:apache $_file
+
+	_file="$_root/app/conf/config.inc.php"
+	if grep -q "INSTALL.*true" $_file ; then
+		cvw_say -e "$_slug open for update - be careful"
+		chown apache:apache $_file
+	elif [[ -d $_root/app/install ]] ; then
+		cvw_say -s "hiding install directory"
+		rm -rf $_root/install # just in case
+		mv $_root/app/install $_root/install
+		chown root:root $_file
+	fi
+
+	_file="$_root/app/admin/.htaccess"
+	cat >$_file.tmp_VW <<-EOF
+		AuthType Basic
+		AuthName "Admin-Bereich"
+		AuthUserFile $_root/app/admin/data/.passwd
+		require valid-user
+	EOF
+	cvw_file -v $_file $(cvw_php -s)
+
+	if [[ -d /var/local/backup/$_slug/last/mysql && \
+	      -d /var/local/backup/$_slug/last/dirs  && \
+	      -x /usr/local/bin/bkup.$_slug          && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+fi
+
+	if cvw_xml -a software/nginx ; then
+		cvw_nginx -p $_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		cvw_apache -p $_slug
+	fi
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "$_slug"
+}
+
+
+function simpleinvoices_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	cvw_backup -z $_slug
+	cvw_mysql -z $_slug $_slug
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				simpleinvoices_install
+			else
+				simpleinvoices_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

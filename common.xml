@@ -158,6 +158,10 @@
       <link>http://en.community.shopware.com/Downloads_cat_725.html</link>
       <url>http://releases.s3.shopware.com.s3.amazonaws.com/install_5.2.12_8c8f67d848ef15aafaac6fed5f0eef062644250f.zip</url>
     </download>
+    <download id="simpleinvoices">
+      <link>http://simpleinvoices.org/start</link>
+      <url>https://bitbucket.org/simpleinvoices/simpleinvoices/downloads/simpleinvoices.2011.1.zip</url>
+    </download>
     <download id="sqlbuddy">
       <url>https://github.com/calvinlough/sqlbuddy/raw/gh-pages/sqlbuddy.zip</url>
     </download>
