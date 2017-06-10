@@ -102,13 +102,11 @@ function cmsms_install
 			cvw_say -s "updating / syncing backup"
 			/usr/local/bin/bkup.$_slug
 		fi
-
-		# This is okay since there is a .htaccess
-		chown -R apache:apache $_root/app
 	else
 		cvw_unpack -s -i $_slug $_root/app README-PHAR.TXT
 		cvw_say -s "waiting for install: https://$_fqdn/$_phar"
 	fi
+	chown -R apache:apache $_root/app
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug

@@ -48,6 +48,11 @@
       <url>https://bitnami.com/redirect/to/147132/bitnami-prestashop-1.7.1.1-0-module-linux-x64-installer.run</url>
       <md5>dedf77ebc776c88ccc62aed0f3ca94c3</md5>
     </download>
+    <download id="bitnami_simpleinvoices">
+      <link>https://bitnami.com/stack/lamp/modules#simpleinvoices</link>
+      <url>https://bitnami.com/redirect/to/129057/bitnami-simpleinvoices-2013.1.beta.8-6-module-linux-x64-installer.run</url>
+      <md5>b86f6154efbd8d2412d47bb25bcae199</md5>
+    </download>
     <download id="cloudstore">
       <link>http://cloudstore.codewizards.co/latest-stable/download/index.html</link>
       <url>http://cloudstore.codewizards.co/latest-stable/download/co.codewizards.cloudstore.server-0.10.0-bin.tar.gz</url>

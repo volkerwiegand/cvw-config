@@ -47,31 +47,38 @@ function modified_install
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
-	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
-	#local _name=$(cvw_xml -r software/$_slug/shopname)
-	#local _first=$(cvw_xml -r software/$_slug/firstname)
-	#local _last=$(cvw_xml -r software/$_slug/lastname)
-	#local _email=$(cvw_xml -r software/$_slug/email)
-	#local _lang=$(cvw_xml -r system/language)
-	#local _zone=$(cvw_xml -r system/timezone)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _conf _file _check _subdir _dist
+	local _file
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
 	_file=$(cvw_download -f $_slug)
 	cvw_unpack -u apache -i $_slug $_root/Download "._${_file%.zip}"
-	(cd $_root && ln -nfs Download/shoproot app)
+	[[ -h $_root/app ]] || ln -nfs $_root/Download/shoproot $_root/app
 
-if false ; then
-	if [[ -s $_root/app/app/config/parameters.php ]] ; then
-		cvw_say -s "hiding install directory"
-		rm -rf $_root/install # just in case
-		mv $_root/app/install $_root/install
+	if grep -q $_pass $_root/app/includes/configure.php ; then
+		chmod 0444 $_root/app/includes/configure.php
+
+		if [[ -d $_root/app/_installer ]] ; then
+			cvw_say -s "hiding install directory"
+			rm -rf $_root/_installer # just in case
+			mv $_root/app/_installer $_root/_installer
+			chown -R root:root $_root/_installer
+		fi
+
+		if [[ -s $_root/app/_.htaccess ]] ; then
+			_file="$_root/app/.htaccess"
+			cp $_root/app/_.htaccess $_file
+			cvw_file -e $_file "s|^AddDefaultCharset.*|AddDefaultCharset UTF-8|"
+			cvw_file -e $_file "s|^RewriteBase.*|RewriteBase ${_uri%/}/|"
+		fi
+	else
+		cvw_say -s "waiting for install: https://$_fqdn$_uri/_installer"
 	fi
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
@@ -81,7 +88,6 @@ if false ; then
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
 	fi
-fi
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug

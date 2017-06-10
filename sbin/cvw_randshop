@@ -54,10 +54,11 @@ function randshop_install
 	local _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app
 
 	cvw_unpack -m -s -i $_slug $_root/app index.php
-	for _subdir in data admin/data images/dbimages ; do
+
+	for _subdir in data admin images/dbimages ; do
 		mkdir -p $_root/app/$_subdir
 		chown -R apache:apache $_root/app/$_subdir
 	done
@@ -68,23 +69,14 @@ function randshop_install
 
 	_file="$_root/app/conf/config.inc.php"
 	if grep -q "INSTALL.*true" $_file ; then
-		cvw_say -e "$_slug open for update - be careful"
+		cvw_say -a "$_name waiting for install and admin protection"
 		chown apache:apache $_file
 	elif [[ -d $_root/app/install ]] ; then
 		cvw_say -s "hiding install directory"
 		rm -rf $_root/install # just in case
 		mv $_root/app/install $_root/install
-		chown root:root $_file
+		chown -R root:root $_root/install
 	fi
-
-	_file="$_root/app/admin/.htaccess"
-	cat >$_file.tmp_VW <<-EOF
-		AuthType Basic
-		AuthName "Admin-Bereich"
-		AuthUserFile $_root/app/admin/data/.passwd
-		require valid-user
-	EOF
-	cvw_file -v $_file $(cvw_php -s)
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \

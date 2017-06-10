@@ -42,9 +42,9 @@ function usage
 }
 
 
-function simpleinvoices_install
+function simpleinvoices_install_native
 {
-	cvw_say -h "Installing $_name"
+	cvw_say -h "Installing $_name (native)"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
@@ -172,15 +172,71 @@ fi
 }
 
 
-function simpleinvoices_remove
+function simpleinvoices_install_bitnami
+{
+	cvw_say -h "Installing $_name (Bitnami)"
+	cvw_xml -a software/bitnami || cvw_say -f "$_prog: requires bitnami"
+	local _root=$(cvw_xml -r system/app_root)/bitnami
+	local _lang=$(cvw_xml -r system/language)
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _user=$(cvw_xml -r users/rootmail)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _run _file
+
+	cvw_download -i bitnami_$_slug $_root/Download
+	_run=$(cvw_download -f bitnami_$_slug)
+	chmod +x $_root/Download/$_run
+
+	_file=$_root/Download/$_slug.options
+	cat >$_file.tmp_VW <<-EOF
+		installer-language=en
+		prefix=$_root/app
+		base_user=$_user
+		base_user_name=$(cvw_xml -r users/user:$_user/info)
+		base_mail=$_user@${_fqdn#*.}
+		base_password=$(cvw_xml -r users/user:$_user/password)
+		smtp_enable=0
+		launch_cloud=0
+	EOF
+	[[ -s /tmp/cvw/error ]] && exit 1
+	cvw_file -v $_file bitnami:apache bitnami:mysql
+
+	if [[ ! -d $_root/app/apps/$_slug ]] ; then
+		cvw_say -s "running $_run"
+		$_root/Download/$_run --mode unattended --optionfile $_file 2>>/tmp/cvw/error
+	fi
+
+	cvw_say -o "$_slug"
+}
+
+
+function simpleinvoices_remove_native
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 
 	cvw_backup -z $_slug
 	cvw_mysql -z $_slug $_slug
 	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
+		cvw_say -h "Removing $_name (native)"
 		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+function simpleinvoices_remove_bitnami
+{
+	local _root=$(cvw_xml -r system/app_root)/bitnami
+	local _file=$_root/app/apps/$_slug/uninstall
+
+	if [[ -x $_file ]] ; then
+		cvw_say -h "Removing $_name (Bitnami)"
+		
+		cvw_say -s "running $_file"
+		$_file --mode unattended
+
 		cvw_say -o "$_slug:remove"
 	fi
 
@@ -192,9 +248,17 @@ while getopts ":i" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
-				simpleinvoices_install
+				if cvw_xml -t software/$_slug/bitnami ; then
+					simpleinvoices_install_bitnami
+				else
+					simpleinvoices_install_native
+				fi
 			else
-				simpleinvoices_remove
+				if cvw_xml -t software/$_slug/bitnami ; then
+					simpleinvoices_remove_bitnami
+				else
+					simpleinvoices_remove_native
+				fi
 			fi
 			exit 0
 		;;

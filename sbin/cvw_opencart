@@ -6,7 +6,7 @@
 ###### cvw_opencart - Install or remove OpenCart
 ######                http://www.opencart.com/index.php?route=common/home
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
@@ -46,13 +46,42 @@ function opencart_install_native
 	cvw_say -h "Installing $_name (native)"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
-	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _check _subdir _dist
 
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
+	cvw_unpack -m -s -i $_slug $_root/download README.md
+	if [[ ! -d $_root/app ]] ; then
+		cvw_say -s "moving upload --> app"
+		mv $_root/download/upload $_root/app 2>>/tmp/cvw/error
+	fi
+	cvw_unpack -i vqmod $_root/app/vqmod vqmod.php
+	chown -R apache:apache $_root/app
+
+	if ! grep -q "VQMod::bootup" $_root/app/admin/index.php ; then
+		cvw_say -a "please run https://$_fqdn${_uri%/}/vqmod/install/"
+	elif [[ -f $_root/app/config-dist.php ]] ; then
+		mv $_root/app/config-dist.php $_root/app/config.php
+		mv $_root/app/admin/config-dist.php $_root/app/admin/config.php
+		cvw_say -s "waiting for install: https://$_fqdn${_uri%/}/install"
+	else
+		if [[ -s $_root/app/config.php ]] ; then
+			cvw_say -s "hiding install directory"
+			rm -rf $_root/install # just in case
+			mv $_root/app/install $_root/install
+			chown -R root:root $_root/install
+		else
+			cvw_say -s "waiting for install: https://$_fqdn${_uri%/}/install"
+		fi
+	fi
+
+if false ; then
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root \
 			$_root/app/image \
@@ -64,7 +93,6 @@ function opencart_install_native
 		cvw_say -s "moving upload --> app"
 		mv $_root/download/upload $_root/app 2>>/tmp/cvw/error
 	fi
-
 	cvw_unpack -i vqmod $_root/app/vqmod vqmod.php
 
 	if [[ ! -s $_root/app/config.php ]] ; then
@@ -77,9 +105,9 @@ function opencart_install_native
 				--db_database $_slug \
 				--db_driver   mysqli \
 				--db_port     3306 \
-				--username    $(cvw_xml -r software/$_slug/user/name) \
-				--password    $(cvw_xml -r software/$_slug/user/password) \
-				--email       $(cvw_xml -r software/$_slug/user/email) \
+				--username    $(cvw_xml -r software/$_slug/admin/name) \
+				--password    $(cvw_xml -r software/$_slug/admin/password) \
+				--email       $(cvw_xml -r software/$_slug/admin/email) \
 				--http_server https://$_fqdn$_uri \
 				>/tmp/cvw/opencart.result 2>&1
 		popd >/dev/null
@@ -125,6 +153,7 @@ function opencart_install_native
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
 	fi
+fi
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug

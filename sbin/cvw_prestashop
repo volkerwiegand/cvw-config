@@ -48,16 +48,17 @@ function prestashop_install_native
 	cvw_say -h "Installing $_name (native)"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
-	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
-	local _name=$(cvw_xml -r software/$_slug/shopname)
-	local _first=$(cvw_xml -r software/$_slug/firstname)
-	local _last=$(cvw_xml -r software/$_slug/lastname)
-	local _email=$(cvw_xml -r software/$_slug/email)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _lang=$(cvw_xml -r system/language)
 	local _zone=$(cvw_xml -r system/timezone)
+	local _shop=$(cvw_xml -r software/$_slug/shopname)
+	local _first=$(cvw_xml -r software/$_slug/admin/first_name)
+	local _last=$(cvw_xml -r software/$_slug/admin/last_name)
+	local _pswd=$(cvw_xml -r software/$_slug/admin/password)
+	local _email=$(cvw_xml -r software/$_slug/admin/email)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _check _subdir _dist
 
@@ -66,6 +67,44 @@ function prestashop_install_native
 
 	cvw_unpack -m -s -u apache -i $_slug $_root/app index.php
 
+	_file="prestashop.zip"
+	if [[ -s $_root/app/$_file ]] ; then
+		cvw_say -s "unzipping $_file"
+		rm -rf $_root/$_file # just in case
+		mv $_root/app/$_file $_root/$_file
+		rm -rf $_root/app
+		mkdir -p $_root/app
+		unzip -q -o -d $_root/app $_root/$_file
+	fi
+	chown root:root $_root/$_file
+	chown -R apache:apache $_root/app
+
+	_subdir="$_root/app/install"
+	if [[ -d $_subdir ]] ; then
+		cvw_say -s "running command line installer"
+		pushd $_subdir >/dev/null
+		php index_cli.php 		\
+			--language=${_lang%_*}	\
+			--timezone="$_zone"	\
+			--domain=$_fqdn$_uri	\
+			--db_server=localhost	\
+			--db_name=$_slug	\
+			--db_user=$_slug	\
+			--db_password="$_pass"	\
+			--name="$_shop"		\
+			--country=${_lang%_*}	\
+			--firstname="$_first"	\
+			--lastname="$_last"	\
+			--password="$_pswd"	\
+			--email="$_email"	\
+			--newsletter=0
+		popd >/dev/null
+		rm -rf $_root/install # just in case
+		mv $_subdir $_root/install
+	fi
+	chown root:root $_root/install
+
+if false ; then
 	if [[ -s $_root/app/app/config/parameters.php ]] ; then
 		cvw_say -s "hiding install directory"
 		rm -rf $_root/install # just in case
@@ -79,6 +118,7 @@ function prestashop_install_native
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
 	fi
+fi
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
@@ -129,8 +169,6 @@ function prestashop_install_bitnami
 		cvw_say -s "running $_run"
 		$_root/Download/$_run --mode unattended --optionfile $_file 2>>/tmp/cvw/error
 	fi
-
-	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
 }
