@@ -47,10 +47,10 @@ function gogs_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
-	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _port=$(cvw_xml -R software/$_slug/port 8888)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_user -s gogs
 	local _home=$(cvw_user -h gogs)
@@ -82,7 +82,7 @@ function gogs_install
 		ROOT = $_home/gogs-repositories
 
 		[server]
-		ROOT_URL = http://$_fqdn$_uri
+		ROOT_URL = https://$_fqdn$_uri
 		DISABLE_SSH = false
 		SSH_PORT = $(cvw_xml -R host/ssh_port 22)
 		DOMAIN = ${_fqdn#*.}

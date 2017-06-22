@@ -111,6 +111,11 @@
       <url>https://nodejs.org/dist/v6.11.0/node-v6.11.0-linux-x64.tar.xz</url>
       <sha256>2f0c0833a1dc0d1d52ef42d275d40125c5163bf92d2a663139beef70896f544d</sha256>
     </download>
+    <download id="open3a">
+      <link>https://www.open3a.de/page-Download</link>
+      <url>https://www.open3a.de/multiCMSDownload.php?filedl=98</url>
+      <name>open3A_2.6.zip</name>
+    </download>
     <download id="opencart">
       <link>https://www.opencart.com/index.php?route=cms/download/history</link>
       <url>https://www.opencart.com/index.php?route=cms/download/download__AMP__download_id=47</url>

@@ -3,9 +3,9 @@
 
 #################################################################################
 ######
-###### cvw_randshop - Install or remove randshop eCommerce
-######                http://www.randshop.com/
-######                http://www.wiki.randshop.com/Randshop-Installation
+###### cvw_open3a - Install or remove open3A Faktura
+######              https://www.open3a.de/
+######              https://www.open3a.de/page-Installation/Webserver
 ######
 ###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
@@ -19,8 +19,8 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="randshop eCommerce"
-_slug="randshop"
+_name="open3A Faktura"
+_slug="open3a"
 
 
 function usage
@@ -42,7 +42,7 @@ function usage
 }
 
 
-function randshop_install
+function open3a_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
@@ -58,25 +58,13 @@ function randshop_install
 
 	cvw_unpack -m -s -i $_slug $_root/app index.php
 
-	for _subdir in data admin images/dbimages includes/libraries/mpdf/tmp ; do
+	_file="$_root/app/system/DBData/Installation.pfdb.php"
+	chown apache:apache $_file
+
+	for _subdir in specifics system/Backup ; do
 		mkdir -p $_root/app/$_subdir
 		chown -R apache:apache $_root/app/$_subdir
 	done
-
-	_file="$_root/app/sitemap.xml"
-	[[ -s $_file ]] || touch $_file
-	chown apache:apache $_file
-
-	_file="$_root/app/conf/config.inc.php"
-	if grep -q "INSTALL.*true" $_file ; then
-		cvw_say -a "$_name waiting for install and admin protection"
-		chown apache:apache $_file
-	elif [[ -d $_root/app/install ]] ; then
-		cvw_say -s "hiding install directory"
-		rm -rf $_root/install # just in case
-		mv $_root/app/install $_root/install
-		chown -R root:root $_root/install
-	fi
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
@@ -100,7 +88,7 @@ function randshop_install
 }
 
 
-function randshop_remove
+function open3a_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 
@@ -120,9 +108,9 @@ while getopts ":i" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
-				randshop_install
+				open3a_install
 			else
-				randshop_remove
+				open3a_remove
 			fi
 			exit 0
 		;;
