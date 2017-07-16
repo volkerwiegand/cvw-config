@@ -3,7 +3,7 @@
 
 #################################################################################
 ######
-###### cvw_postgresql - Install or remove PostgreSQL 9.5
+###### cvw_postgresql - Install or remove PostgreSQL 9.6
 ######                  https://postgresql.org/
 ######
 ###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
@@ -18,10 +18,10 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="PostgreSQL 9.5"
+_name="PostgreSQL 9.6"
 _slug="postgresql"
 
-_DATADIR="/var/lib/pgsql/9.5/data"
+_DATADIR="/var/lib/pgsql/9.6/data"
 
 
 function usage
@@ -94,29 +94,29 @@ function postgresql_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 
 	cvw_yum -a postgresql
-	cvw_rpm -i postgresql95
-	cvw_rpm -i postgresql95-server
-	cvw_rpm -i postgresql95-contrib
-	cvw_rpm -i postgresql95-devel
+	cvw_rpm -i postgresql96
+	cvw_rpm -i postgresql96-server
+	cvw_rpm -i postgresql96-contrib
+	cvw_rpm -i postgresql96-devel
 
 	if [[ ! -s $_DATADIR/PG_VERSION ]] ; then
-		/usr/pgsql-9.5/bin/postgresql95-setup initdb
-		cvw_service -S postgresql-9.5
+		/usr/pgsql-9.6/bin/postgresql96-setup initdb
+		cvw_service -S postgresql-9.6
 		cvw_user -r postgres "psql -c \"ALTER USER postgres PASSWORD '$_pass';\""
 	else
-		cvw_service -s postgresql-9.5
+		cvw_service -s postgresql-9.6
 	fi
 
 	_file="$_DATADIR/pg_hba.conf"
-	cvw_file -e $_file "/^host/s/ident/md5/" postgresql-9.5
-	cvw_file -e $_file "/^local/s/peer/md5/" postgresql-9.5
+	cvw_file -e $_file "/^host/s/ident/md5/" postgresql-9.6
+	cvw_file -e $_file "/^local/s/peer/md5/" postgresql-9.6
 
 	_file="/root/.pgpass"
 	cat >$_file.tmp_VW <<-EOF
 		# hostname:port:database:username:password
 		*:*:*:postgres:$_pass
 	EOF
-	cvw_file -v $_file -m 0600 postgresql-9.5
+	cvw_file -v $_file -m 0600 postgresql-9.6
 
 	cvw_say -o "$_slug"
 }
@@ -124,13 +124,13 @@ function postgresql_install
 
 function postgresql_remove
 {
-	if cvw_service -c postgresql-9.5 ; then
+	if cvw_service -c postgresql-9.6 ; then
 		cvw_say -h "Removing $_name"
 
-		cvw_rpm -e postgresql95-devel
-		cvw_rpm -e postgresql95-contrib
-		cvw_rpm -e postgresql95-server
-		cvw_rpm -e postgresql95
+		cvw_rpm -e postgresql96-devel
+		cvw_rpm -e postgresql96-contrib
+		cvw_rpm -e postgresql96-server
+		cvw_rpm -e postgresql96
 
 		rm -rf /var/lib/pgsql
 
