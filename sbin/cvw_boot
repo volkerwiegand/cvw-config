@@ -86,6 +86,7 @@ cvw_serendipity    -i ; error_check
 cvw_concrete5      -i ; error_check
 cvw_wordpress      -i ; error_check
 cvw_b2evolution    -i ; error_check
+cvw_processwire    -i ; error_check
 cvw_cmsms          -i ; error_check
 cvw_joomla         -i ; error_check
 cvw_openletters    -i ; error_check

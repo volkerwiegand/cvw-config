@@ -201,6 +201,10 @@ function apache_initial
 		      SSLOptions +StdEnvVars
 		   </Directory>
 
+		   <Directory "/var/www/html">
+		      AllowOverride all
+		   </Directory>
+
 		   BrowserMatch "MSIE [2-5]" \\
 		      nokeepalive ssl-unclean-shutdown \\
 		      downgrade-1.0 force-response-1.0

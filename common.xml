@@ -93,8 +93,7 @@
     </download>
     <download id="kivitendo">
       <link>https://github.com/kivitendo/kivitendo-erp/releases</link>
-      <url>https://github.com/kivitendo/kivitendo-erp/archive/release-3.4.1.tar.gz</url>
-      <md5>32f81effdfeac82c7a36a77e43dfbf1c</md5>
+      <url>https://github.com/kivitendo/kivitendo-erp/archive/release-3.5.0beta.tar.gz</url>
     </download>
     <download id="mantis">
       <link>http://mantisbt.org/download.php</link>
@@ -150,6 +149,17 @@
     <download id="prestashop">
       <link>https://www.prestashop.com/en/download</link>
       <url>https://download.prestashop.com/download/releases/prestashop_1.7.1.2.zip</url>
+    </download>
+    <download id="processwire">
+      <link>https://processwire.com/download/</link>
+      <url>https://github.com/processwire/processwire/archive/master.zip</url>
+      <name>processwire-3.0.62.zip</name>
+      <version>3.0.62</version>
+    </download>
+    <download id="processwire_de_DE">
+      <link>https://github.com/yellowled/pw-lang-de/releases</link>
+      <url>https://github.com/yellowled/pw-lang-de/archive/v3.0.61.zip</url>
+      <name>pw-lang-de-3.0.61.zip</name>
     </download>
     <download id="puppet_master">
       <url>replace-this-text-with-the-download-link-you-received-from-puppet</url>
@@ -240,9 +250,9 @@
       <fingerprint>7bd9bf62</fingerprint>
     </repo>
     <repo id="postgresql">
-      <file>pgdg-95-redhat</file>
+      <file>pgdg-96-centos</file>
       <prio>15</prio>
-      <rpm>http://yum.postgresql.org/9.5/redhat/rhel-7-x86_64/pgdg-redhat95-9.5-2.noarch.rpm</rpm>
+      <rpm>https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/pgdg-centos96-9.6-3.noarch.rpm</rpm>
     </repo>
     <repo id="nodesource">
       <file>nodesource-el</file>
