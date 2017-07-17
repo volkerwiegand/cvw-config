@@ -81,6 +81,12 @@
       <url>https://dl.gogs.io/gogs_v0.9.141_linux_amd64.tar.gz</url>
       <sha256>7caa455ef2ec8e60d12d26001f4ec319c2c24068315e5528d84fc7879f57f347</sha256>
     </download>
+    <download id="golang">
+      <link>https://golang.org/dl/</link>
+      <url>https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz</url>
+      <sha256>1862f4c3d3907e59b04a757cfda0ea7aa9ef39274af99a784f5be843c80c6772</sha256>
+      <version>1.8.3</version>
+    </download>
     <download id="joomla">
       <status>currently-unknown</status>
       <link>https://www.joomla.de/</link>

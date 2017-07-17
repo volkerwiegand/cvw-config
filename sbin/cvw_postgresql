@@ -89,7 +89,7 @@ function postgresql_adduser
 
 function postgresql_install
 {
-	cvw_say -h "$_name"
+	cvw_say -h "Installing $_name"
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 

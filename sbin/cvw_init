@@ -195,7 +195,9 @@ function init_init
 	fi
 
 	if cvw_xml -t software/go ; then
-		cvw_rpm -i golang
+		cvw_download -i golang $HOME/src/files
+		_file=$HOME/src/files/go$(cvw_download -v golang).linux-amd64.tar.gz
+		tar -C /usr/local -xzf $_file
 		_file=/etc/profile.d/go.sh
 		cat >$_file.tmp_VW <<-EOF
 			#
@@ -207,13 +209,13 @@ function init_init
 			#
 			# Add go binaries to search path
 			#
-			if ! echo \$PATH | grep -q gocode.bin ; then
-			    export PATH=\$PATH:/usr/local/gocode/bin
+			if ! echo \$PATH | grep -q go.bin ; then
+			    export PATH=\$PATH:/usr/local/go/bin
 			fi
 		EOF
 		cvw_file -v $_file
 		source $_file
-		go get github.com/constabulary/gb/...
+		go get -u -v github.com/constabulary/gb/...
 	fi
 
 	grep -q -s upgrade /tmp/cvw/updating && cvw_rpm -u
