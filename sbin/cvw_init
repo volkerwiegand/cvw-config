@@ -210,7 +210,7 @@ function init_init
 			# Add go binaries to search path
 			#
 			if ! echo \$PATH | grep -q go.bin ; then
-			    export PATH=\$PATH:/usr/local/go/bin
+			    export PATH=\$PATH:/usr/local/go/bin:/usr/local/gocode/bin
 			fi
 		EOF
 		cvw_file -v $_file
