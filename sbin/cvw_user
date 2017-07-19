@@ -53,7 +53,7 @@ function user_setup
 	local _home=$(cvw_xml -R $_base/home /home/$_id)
 	local _file="/etc/aliases"
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _line _folder _subdir _path _rsakey _sshdir _keys
+	local _line _folder _subdir _path _rsakey _sshdir _auth _keys
 
 	if id $_id >/dev/null 2>&1 ; then
 		cvw_say -s "user: $_id"
@@ -115,7 +115,8 @@ function user_setup
 		cvw_file -v $_sshdir/id_rsa.pub
 	fi
 	if cvw_xml -t $_base/ssh ; then
-		_keys="/var/local/cfg/files/keys/authorized_keys"
+		_auth=$(cvw_xml -r $_base/authorized)
+		_keys="/var/local/cfg/files/keys/$_auth"
 		cp $_keys $_sshdir/authorized_keys.tmp_VW 2>>/tmp/cvw/error
 		cvw_file -v $_sshdir/authorized_keys
 	fi
@@ -165,6 +166,7 @@ function init_users
 
 	cvw_xml -i users/user | sort | while read _id ; do
 		user_setup $_id
+		[[ -s /tmp/cvw/error ]] && exit 1
 	done
 
 	cvw_file -v $_file

@@ -16,11 +16,13 @@
     <user id="admin" active="true" maildir="true" ssh="true" imap="true">
       <info>Example Admin</info>
       <password>secret123password</password>
+      <authorized>owner_rsa.pub</authorized>
     </user>
 
     <user id="gogs" active="false" ssh="true">
       <info>Git Service User</info>
       <home>/var/local/gogs</home>
+      <authorized>owner_rsa.pub</authorized>
     </user>
 
     <user id="gitolite" active="false">
@@ -31,6 +33,7 @@
     <user id="rails" active="false" ssh="true">
       <info>Rails Deployer</info>
       <home>/var/local/rails</home>
+      <authorized>owner_rsa.pub</authorized>
     </user>
   </users>
 
