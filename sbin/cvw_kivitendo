@@ -54,24 +54,54 @@ function kivitendo_install
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	local _mail=$(cvw_xml -r software/$_slug/mail/method)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _conf _file _subdir
+	local _conf _file _subdir _perl
 
 	cvw_postgresql -u $_slug $_pass
 
 	cvw_rpm -i gcc
-	cvw_rpm -i perl-DBD-Pg
+	cvw_rpm -i poppler-utils
 	cvw_rpm -i perl-GD
+	cvw_rpm -i perl-DBD-Pg
 	curl -fsL http://cpanmin.us | perl - --self-upgrade
-	cpanm --quiet parent Algorithm::CheckDigits Archive::Zip CGI Clone \
-		Config::Std DateTime DateTime::Format::Strptime DBI \
-		Digest::MD5 Digest::SHA Email::Address Email::MIME FCGI \
-		File::Copy::Recursive HTML::Parser HTML::Restrict \
-		Image::Info JSON List::MoreUtils List::UtilsBy \
-		Net::SMTP::SSL Net::SSLGlue Params::Validate PBKDF2::Tiny \
-		PDF::API2 Rose::Object Rose::DB Rose::DB::Object \
-		String::ShellQuote Sort::Naturally Test::Harness \
-		Test::Moose Template Text::CSV_XS Text::Iconv URI \
-		XML::Writer YAML
+	for _perl in \
+		Archive::Zip \
+		Algorithm::CheckDigits \
+		CGI \
+		Clone \
+		Config::Std \
+		DateTime \
+		DateTime::Format::Strptime \
+		Email::Address \
+		Email::MIME \
+		FCGI \
+		File::Copy::Recursive \
+		File::MimeInfo::Magic \
+		HTML::Parser \
+		HTML::Restrict \
+		Image::Info \
+		JSON \
+		List::MoreUtils \
+		List::UtilsBy \
+		Net::SMTP::SSL \
+		Net::SSLGlue \
+		Params::Validate \
+		PBKDF2::Tiny \
+		PDF::API2 \
+		Rose::Object \
+		Rose::DB \
+		Rose::DB::Object \
+		String::ShellQuote \
+		Sort::Naturally \
+		Template \
+		Text::CSV_XS \
+		Text::Iconv \
+		URI \
+		XML::Writer \
+		YAML
+	do
+		cvw_say -a "PERL install $_perl"
+		cpanm --quiet $_perl 2>>/tmp/cvw/error
+	done
 
 	cvw_backup $_slug $_root/app $(cvw_postgresql -d)
 	cvw_unpack -i $_slug $_root/app VERSION
@@ -158,7 +188,7 @@ function kivitendo_install
 		debug = 0
 		run_as = apache
 	EOF
-	cvw_file -v $_dest $(cvw_php -s)
+	cvw_file -v $_file $(cvw_php -s)
 	rm -f /tmp/cvw/kivitendo.mail_delivery
 
 	if cvw_xml -a software/nginx ; then
