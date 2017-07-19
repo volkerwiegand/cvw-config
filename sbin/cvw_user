@@ -79,7 +79,7 @@ function user_setup
 		useradd -d $_home -m -c "$_info" -p "*" -s "/bin/bash" $_id
 	fi
 
-	for _group in $(cvw_xml -l $_base/group | sort) ; do
+	cvw_xml -l $_base/group | sort | while read _group ; do
 		if id -n -G $_id | grep -q -w $_group ; then
 			cvw_say -s "   $_id is in group: $_group"
 		else
@@ -132,8 +132,6 @@ function user_setup
 	chown -R $_id:$_id $_sshdir
 	chmod -R go-rwx $_sshdir
 	chmod 0755 $_home
-
-	return 0
 }
 
 
@@ -176,6 +174,7 @@ function init_users
 	cvw_xml -i users/user | sort | while read _id ; do
 		user_setup $_id
 		[[ -s /tmp/cvw/error ]] && exit 1
+		true
 	done
 
 	cvw_file -v $_file
@@ -187,7 +186,8 @@ function init_users
 	fi
 
 	_file="/var/local/cfg/files/diffs/sudoers.diff"
-	if [[ -r $_file ]] ; then
+	if [[ -s $_file ]] ; then
+		cvw_say -s "enabling password-less sudo for %wheel"
 		if ! grep -q "^%wheel.*NOPASSWD" /etc/sudoers ; then
 			patch -d /etc -i $_file 2>/tmp/cvw/error
 			[[ -s /tmp/cvw/error ]] && exit 1
