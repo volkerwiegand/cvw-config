@@ -186,6 +186,14 @@ function init_users
 		cvw_say -s "############################################"
 	fi
 
+	_file="/var/local/cfg/files/diffs/sudoers.diff"
+	if [[ -r $_file ]] ; then
+		if ! grep -q "^%wheel.*NOPASSWD" /etc/sudoers ; then
+			patch -d /etc -i $_file 2>/tmp/cvw/error
+			[[ -s /tmp/cvw/error ]] && exit 1
+		fi
+	fi
+
 	cvw_say -o "users"
 }
 
