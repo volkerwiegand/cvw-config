@@ -50,43 +50,36 @@ function processwire_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
-	local _profile=$(cvw_xml -r software/$_slug/profile)
-	local _lang=$(cvw_xml -r system/language)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app
 
-	cvw_unpack -i $_slug $_root/app index.php
-	cvw_download -i ${_slug}_$_lang $_root
+	cvw_unpack -u apache -i $_slug $_root/app index.php
 
 	_file=$_root/app/.htaccess
-	cp $_root/app/htaccess.txt $_file
-	cvw_file -v $_file $(cvw_php -s)
-	if [[ "$_uri" != "/" ]] ; then
+	if [[ ! -r $_file ]] ; then
+		cp $_root/app/htaccess.txt $_file.tmp_VW
+		cvw_file -v $_file $(cvw_php -s)
+	fi
+	if [[ "$_uri" == "/" ]] ; then
+		cvw_file -e $_file "s|^ \( RewriteBase\).*|  #\1 /pw/|" $(cvw_php -s)
+	else
 		cvw_file -e $_file "s|# \(RewriteBase /pw/\)|\1|" $(cvw_php -s)
 		cvw_file -e $_file "s|^\(  RewriteBase\).*|\1 $_uri/|" $(cvw_php -s)
 	fi
 
 	_file=$_root/app/site/config.php
-	if ! grep -q $_pass $_file ; then
-		cvw_say -a "waiting for installation ($_profile)"
-		if [[ ! -d $_root/app/site ]] ; then
-			mv $_root/app/site-$_profile $_root/app/site
-			chown -R apache $_root/app
-		fi
+	if grep -q dbHost $_file ; then
+		cvw_file -e $_file "s/dbHost.*/dbHost = 'localhost';/" $(cvw_php -s)
+		cvw_file -e $_file "s/dbName.*/dbName = '$_slug';/" $(cvw_php -s)
+		cvw_file -e $_file "s/dbUser.*/dbUser = '$_slug';/" $(cvw_php -s)
+		cvw_file -e $_file "s/dbPass.*/dbPass = '$_pass';/" $(cvw_php -s)
+		cvw_file -e $_file "s/dbPort.*/dbPort = '3306';/" $(cvw_php -s)
+		chmod 0400 $_file
 	else
-		if ! grep -q setlocale $_file ; then
-			cat >>$_file <<-EOF
-
-				/**
-				 * Set locale
-				 */
-				setlocale(LC_ALL, '$_lang.UTF-8');
-			EOF
-		fi
-		chmod 0444 $_file
+		chmod 0644 $_file
 	fi
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
