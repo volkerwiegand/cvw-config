@@ -57,6 +57,12 @@ function apache_add_php
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _rails
 
+	if [[ -r /tmp/cvw/apache.block ]] ; then
+		cat /tmp/cvw/apache.block >>$_conf.tmp_VW
+		rm -f /tmp/cvw/apache.block
+		return
+	fi
+
 	if [[ $_uri == "/" ]] ; then
 		cat >>$_conf.tmp_VW <<-EOF
 
