@@ -6,8 +6,9 @@
 ###### cvw_nextcloud - Install or remove Nextcloud
 ######                 https://nextcloud.com/
 ######                 https://docs.nextcloud.com/server/12/admin_manual/installation/index.html
+######                 https://doc.owncloud.org/server/9.0/admin_manual/configuration_server/occ_command.html
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
@@ -42,11 +43,21 @@ function usage
 }
 
 
+function nextcloud_occ
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	cvw_user -r apache -d $_root/app php occ $*
+	[[ $? -eq 0 ]] || exit 1
+}
+
+
 function nextcloud_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
@@ -54,11 +65,14 @@ function nextcloud_install
 	local _file
 
 	cvw_mysql -c $_slug $_slug $_pass utf8mb4_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_root/app \
+			$_root/data
 
 	cvw_unpack -u apache -i $_slug $_root/app index.php
 
-	if [[ ! -s $_root/app/config/config.php ]] ; then
+	_file="$_root/app/config/config.php"
+	if [[ ! -s $_file ]] ; then
 		cvw_user -r apache -d $_root/app \
 			php occ maintenance:install \
 			--database      "mysql" \
@@ -68,6 +82,15 @@ function nextcloud_install
 			--admin-user    "admin" \
 			--admin-pass    "$_pass"
 		[[ $? -eq 0 ]] || exit 1
+	fi
+	if ! grep -q "$_root/data" $_file ; then
+		nextcloud_occ config:system:set datadirectory --value=$_root/data
+	fi
+	if ! grep -q "$_fqdn" $_file ; then
+		nextcloud_occ config:system:set trusted_domains 1 --value=$_fqdn
+	fi
+	if ! grep -q "APCu" $_file ; then
+		nextcloud_occ config:system:set memcache.local --value=\\\\OC\\\\Memcache\\\\APCu
 	fi
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
@@ -113,6 +136,12 @@ function nextcloud_install
 			      Require all granted
 			      <IfModule mod_dav.c>
 			         Dav off
+			      </IfModule>
+			      <IfModule mod_passenger.c>
+			         PassengerEnabled off
+			      </IfModule>
+			      <IfModule mod_headers.c>
+			         Header always set Strict-Transport-Security "max-age=15552000; includeSubDomains"
 			      </IfModule>
 			      SetEnv HOME $_root/app
 			      SetEnv HTTP_HOME $_root/app

@@ -51,9 +51,10 @@ function php_install
 	local _timezone=$(cvw_xml -r system/timezone)
 	local _filesize=$(cvw_xml -R software/$_slug/filesize "2000M")
 	local _memory=$(cvw_xml -R software/$_slug/memory "256M")
+	local _opcache=$(cvw_xml -R software/$_slug/opcache "4000")
 	local _info=$(cvw_xml -R software/$_slug/info "")
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _file
+	local _file _var
 
 	cvw_yum -a ius
 	cvw_rpm -l $_slug
@@ -78,9 +79,16 @@ function php_install
 	cvw_file -e $_file "/^upload_max_filesize/s/=.*/= $_filesize/" $(cvw_php -s)
 	cvw_file -e $_file "/^memory_limit/s/=.*/= $_memory/" $(cvw_php -s)
 
-	_file="/etc/php.d/apcu.ini"
+	_file="/etc/php.d/10-opcache.ini"
 	if [[ -s $_file ]] ; then
-		cvw_file -e $_file "/^apc.enable_cli/s/=0/=1/" $(cvw_php -s)
+		cvw_file -e $_file "s/^[;#]*\(opcache\.enable_cli\).*/\1=1/" $(cvw_php -s)
+		cvw_file -e $_file "s/^[;#]*\(opcache\.max_accelerated_files\).*/\1=$_opcache/" $(cvw_php -s)
+		cvw_file -e $_file "s/^[;#]*\(opcache\.revalidate_freq\).*/\1=1/" $(cvw_php -s)
+	fi
+
+	_file="/etc/php.d/40-apcu.ini"
+	if [[ -s $_file ]] ; then
+		cvw_file -e $_file "s/^[;#]*\(apc\.enable_cli\).*/\1=1/" $(cvw_php -s)
 	fi
 
 	if [[ -n $_info ]] ; then
