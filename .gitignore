@@ -6,6 +6,6 @@
 
 # Ignore files containing private data
 #
-files/keys/authorized_keys
+files/keys/
 files/misc/postgrey.common
 
