@@ -106,6 +106,7 @@ function init_init
 	_zone=$(cvw_xml -r system/timezone)
 	_root=$(cvw_xml -r system/app_root)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	rm -rf $HOME/.cpanm
 
 	_src="/var/local/cfg/files/keys"
 	_dst="/etc/pki/tls/dhparam.pem"
@@ -186,8 +187,8 @@ function init_init
 
 	cvw_rpm -l general
 
-	cvw_say -s "sleep for 5 seconds"
-	sleep 5
+	# cvw_say -s "sleep for 5 seconds"
+	# sleep 5
 
 	if cvw_xml -t software/development ; then
 		cvw_rpm -g "libtool:Development Tools"
@@ -215,7 +216,9 @@ function init_init
 		EOF
 		cvw_file -v $_file
 		source $_file
-		go get -u -v github.com/constabulary/gb/...
+		if [[ ! -x /usr/local/gocode/bin/gb ]] ; then
+			go get -u -v github.com/constabulary/gb/...
+		fi
 	fi
 
 	grep -q -s upgrade /tmp/cvw/updating && cvw_rpm -u
