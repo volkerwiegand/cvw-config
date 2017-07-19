@@ -53,7 +53,7 @@ function user_setup
 	local _home=$(cvw_xml -R $_base/home /home/$_id)
 	local _file="/etc/aliases"
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _line _folder _subdir _path _rsakey _sshdir _auth _keys
+	local _line _group _folder _subdir _path _rsakey _sshdir _auth _keys
 
 	if id $_id >/dev/null 2>&1 ; then
 		cvw_say -s "user: $_id"
@@ -78,6 +78,15 @@ function user_setup
 		cvw_say -s "adding user '$_id'"
 		useradd -d $_home -m -c "$_info" -p "*" -s "/bin/bash" $_id
 	fi
+
+	for _group in $(cvw_xml -l $_base/group | sort) ; do
+		if id -n -G $_id | grep -q -w $_group ; then
+			cvw_say -s "   $_id is in group: $_group"
+		else
+			cvw_say -s "   $_id adding group: $_group"
+			usermod -a -G $_group $_id 2>>/tmp/cvw/error
+		fi
+	done
 
 	if cvw_xml -t $_base/imap ; then
 		cvw_xml -r $_base/password | passwd --stdin $_id >/dev/null
@@ -114,7 +123,7 @@ function user_setup
 		cp $_rsakey.pub $_sshdir/id_rsa.pub.tmp_VW
 		cvw_file -v $_sshdir/id_rsa.pub
 	fi
-	if cvw_xml -t $_base/ssh ; then
+	if cvw_xml -c $_base/authorized ; then
 		_auth=$(cvw_xml -r $_base/authorized)
 		_keys="/var/local/cfg/files/keys/$_auth"
 		cp $_keys $_sshdir/authorized_keys.tmp_VW 2>>/tmp/cvw/error
