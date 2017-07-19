@@ -99,6 +99,7 @@ cvw_rails          -i ; error_check
 cvw_kivitendo      -i ; error_check
 cvw_piwik          -i ; error_check
 cvw_owncloud       -i ; error_check
+cvw_nextcloud      -i ; error_check
 cvw_webdav         -i ; error_check
 cvw_shariff        -i ; error_check
 cvw_roundcube      -i ; error_check

@@ -111,6 +111,11 @@
       <name>modified-shop_2.0.2.2-r10690_install.zip</name>
       <version>2.0.2.2</version>
     </download>
+    <download id="nextcloud">
+      <link>https://download.nextcloud.com/server/releases/</link>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-12.0.0.tar.bz2</url>
+      <sha256>1b9d9cf05e657cd564a552b418fbf42d669ca51e0fd1f1f118fe44cbf93a243f</sha256>
+    </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
       <url>https://nodejs.org/dist/v6.11.0/node-v6.11.0-linux-x64.tar.xz</url>

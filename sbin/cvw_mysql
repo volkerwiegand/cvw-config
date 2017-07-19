@@ -196,6 +196,8 @@ if [[ $_create ]] ; then
 
 	if [[ $_collate =~ latin ]] ; then
 		_charset="latin1"
+	elif [[ $_collate =~ utf8mb4 ]] ; then
+		_charset="utf8mb4"
 	else
 		_charset="utf8"
 	fi
