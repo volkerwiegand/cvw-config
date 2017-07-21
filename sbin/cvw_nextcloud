@@ -83,6 +83,10 @@ function nextcloud_install
 			--admin-pass    "$_pass"
 		[[ $? -eq 0 ]] || exit 1
 	fi
+	if [[ ! -d $_root/data ]] ; then
+		cvw_say -s "moving data out of docroot"
+		mv $_root/app/data $_root/data
+	fi
 	if ! grep -q "$_root/data" $_file ; then
 		nextcloud_occ config:system:set datadirectory --value=$_root/data
 	fi
