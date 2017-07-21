@@ -99,7 +99,8 @@
     </download>
     <download id="kivitendo">
       <link>https://github.com/kivitendo/kivitendo-erp/releases</link>
-      <url>https://github.com/kivitendo/kivitendo-erp/archive/release-3.5.0beta.tar.gz</url>
+      <url>https://github.com/kivitendo/kivitendo-erp/archive/release-3.5.0.tar.gz</url>
+      <sha256>10ddc17b7d7445c60ae4c622efd69292869628f3c2dacfeeedd5d94eaa1a838b</sha256>
     </download>
     <download id="mantis">
       <link>http://mantisbt.org/download.php</link>
