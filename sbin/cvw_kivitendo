@@ -6,6 +6,7 @@
 ###### cvw_kivitendo - Install or remove kivitendo ERP
 ######                 http://www.kivitendo.de/
 ######                 https://www.kivitendo.de/doc/html/
+######                 https://demo.kivitendo.de/doc/html/index.html
 ######
 ###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
@@ -64,6 +65,8 @@ function kivitendo_install
 	cvw_rpm -i perl-DBD-Pg
 	curl -fsL http://cpanmin.us | perl - --self-upgrade
 	for _perl in \
+		Digest::MD5 \
+		Path::Tiny \
 		Archive::Zip \
 		Algorithm::CheckDigits \
 		CGI \
@@ -108,7 +111,9 @@ function kivitendo_install
 
 	_file=/tmp/cvw/$_slug.check
 	(cd $_root/app && ./scripts/installation_check.pl >$_file 2>&1)
-	if ! grep -q -s "OK" $_file ; then
+	if grep -q -s "OK" $_file ; then
+		cvw_say -s "installation check okay"
+	else
 		cat $_file >>/tmp/cvw/error
 		exit 1
 	fi
@@ -153,7 +158,7 @@ function kivitendo_install
 		[authentication/database]
 		host     = localhost
 		port     = 5432
-		db       = kivitendo_auth
+		db       = $_slug
 		user     = $_slug
 		password = $_pass
 
@@ -189,7 +194,33 @@ function kivitendo_install
 		run_as = apache
 	EOF
 	cvw_file -v $_file $(cvw_php -s)
-	rm -f /tmp/cvw/kivitendo.mail_delivery
+
+	cvw_postgresql -u $_slug $_pass
+	cvw_postgresql -p $_slug $_pass
+
+	_file="/usr/lib/systemd/system/kivitendo-task-server.service"
+	cat >$_file.tmp_VW <<-EOF
+		[Unit]
+		Description=kivitendo background jobs server
+		Requires=$(cvw_postgresql -s).service
+		After=$(cvw_postgresql -s).service
+
+		[Service]
+		Type=forking
+		# Change the user to the one your web server runs as.
+		User=apache
+		# Change these two to point to the kivitendo "task_server.pl" location.
+		ExecStart=$_root/app/scripts/task_server.pl start
+		ExecStop=$_root/app/scripts/task_server.pl stop
+		Restart=always
+		ProtectSystem=full
+		ProtectHome=yes
+		PrivateTmp=yes
+
+		[Install]
+		WantedBy=multi-user.target
+	EOF
+	cvw_file -v $_file kivitendo-task-server
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
