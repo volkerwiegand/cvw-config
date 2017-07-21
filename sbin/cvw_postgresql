@@ -32,6 +32,9 @@ function usage
 		    or: $_prog -d             Get PostgreSQL data directory
 		    or: $_prog -p user pass   Update password in .pgpass
 		    or: $_prog -P user        Remove password for user
+		    or: $_prog -s             Get PostgreSQL service name
+		    or: $_prog -u user pass   Create user with password
+		    or: $_prog -U user        Remove user
 		Called with: '$_prog $_args'
 	EOF
 
@@ -90,6 +93,7 @@ function postgresql_adduser
 function postgresql_install
 {
 	cvw_say -h "Installing $_name"
+	local _lang=$(cvw_xml -r system/language)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 
@@ -100,6 +104,7 @@ function postgresql_install
 	cvw_rpm -i postgresql96-devel
 
 	if [[ ! -s $_DATADIR/PG_VERSION ]] ; then
+		export PGSETUP_INITDB_OPTIONS="--locale=$_lang.UTF-8 --encoding=UTF-8"
 		/usr/pgsql-9.6/bin/postgresql96-setup initdb
 		cvw_service -S postgresql-9.6
 		cvw_user -r postgres "psql -c \"ALTER USER postgres PASSWORD '$_pass';\""
@@ -109,7 +114,9 @@ function postgresql_install
 
 	_file="$_DATADIR/pg_hba.conf"
 	cvw_file -e $_file "/^host/s/ident/md5/" postgresql-9.6
+	[[ -s /tmp/cvw/changed ]] && _restart=1
 	cvw_file -e $_file "/^local/s/peer/md5/" postgresql-9.6
+	[[ -s /tmp/cvw/changed ]] && _restart=1
 
 	_file="/root/.pgpass"
 	cat >$_file.tmp_VW <<-EOF
@@ -117,6 +124,10 @@ function postgresql_install
 		*:*:*:postgres:$_pass
 	EOF
 	cvw_file -v $_file -m 0600 postgresql-9.6
+	[[ -s /tmp/cvw/changed ]] && _restart=1
+
+	# Restart service
+	[[ $_restart ]] && cvw_service -R postgresql-9.6
 
 	cvw_say -o "$_slug"
 }
@@ -139,7 +150,7 @@ function postgresql_remove
 }
 
 
-while getopts ":idp:P:u:U:" opt ; do
+while getopts ":idp:P:su:U:" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -164,6 +175,11 @@ while getopts ":idp:P:u:U:" opt ; do
 				postgresql_addpass $OPTARG
 				exit
 			fi
+			exit 0
+		;;
+
+		s)
+			echo -n "postgresql-9.6"
 			exit 0
 		;;
 
