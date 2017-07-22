@@ -139,7 +139,7 @@ function init_users
 {
 	cvw_say -h "Installing users"
 	local _file="/etc/aliases"
-	local _id _alias _line
+	local _id _alias _line _dir
 
 	if [[ ! -s $_file.bak_VW ]] ; then
 		cvw_file -e $_file "s/^root:/#root:/"
@@ -192,6 +192,15 @@ function init_users
 			patch -d /etc -i $_file 2>/tmp/cvw/error
 			[[ -s /tmp/cvw/error ]] && exit 1
 		fi
+	fi
+
+	_dir="/var/local/cfg/files/profile.d"
+	if [[ -d $_dir ]] ; then
+		find $_dir -name "*.sh" -print | sort | while read _line ; do
+			_file="/etc/profile.d/${_line##*/}"
+			cp $_line $_file.tmp_VW
+			cvw_file -m 0644 -v $_file
+		done
 	fi
 
 	cvw_say -o "users"
