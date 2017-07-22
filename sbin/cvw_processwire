@@ -105,6 +105,9 @@ function processwire_install
 	EOF
 	cvw_file -v $_file
 
+	cvw_say -s "allow write access for group apache"
+	chmod -R ug+rw $_root/app
+
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi
