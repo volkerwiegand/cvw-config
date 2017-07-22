@@ -90,6 +90,21 @@ function processwire_install
 		/usr/local/bin/bkup.$_slug
 	fi
 
+	_file="/etc/profile.d/alias_$_slug.sh"
+	cat >$_file.tmp_VW <<-EOF
+		#
+		# shell aliases for processwire
+		#
+
+		alias pw-p='cd /var/local/processwire/app'
+		alias pw-w='cd /var/local/processwire/app/wire'
+		alias pw-s='cd /var/local/processwire/app/site'
+		alias pw-a='cd /var/local/processwire/app/site/assets'
+		alias pw-m='cd /var/local/processwire/app/site/modules'
+		alias pw-t='cd /var/local/processwire/app/site/templates'
+	EOF
+	cvw_file -v $_file
+
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi
