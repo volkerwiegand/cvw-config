@@ -76,6 +76,14 @@
       <url>https://download.dokuwiki.org/src/dokuwiki/dokuwiki-2017-02-19b.tgz</url>
       <md5>ea11e4046319710a2bc6fdf58b5cda86</md5>
     </download>
+    <download id="geoip_city">
+      <link>http://dev.maxmind.com/geoip/legacy/geolite/</link>
+      <url>http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz</url>
+    </download>
+    <download id="geoip_country">
+      <link>http://dev.maxmind.com/geoip/legacy/geolite/</link>
+      <url>http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz</url>
+    </download>
     <download id="gogs">
       <link>https://dl.gogs.io/</link>
       <url>https://dl.gogs.io/gogs_v0.9.141_linux_amd64.tar.gz</url>
