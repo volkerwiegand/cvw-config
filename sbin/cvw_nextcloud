@@ -61,8 +61,15 @@ function nextcloud_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
+	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file
+
+	cvw_say -s "Database password .......: $_pass"
+	cvw_say -s "Login URL ...............: $(cvw_url -r $_uri)index.php/login"
+	cvw_say -s "Admin user name .........: $_adm_name"
+	cvw_say -s "Admin password ..........: $_adm_pass"
 
 	cvw_mysql -c $_slug $_slug $_pass utf8mb4_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
@@ -79,8 +86,8 @@ function nextcloud_install
 			--database-name "$_slug"  \
 			--database-user "$_slug" \
 			--database-pass "$_pass" \
-			--admin-user    "admin" \
-			--admin-pass    "$_pass"
+			--admin-user    "$_adm_name" \
+			--admin-pass    "$_adm_pass"
 		[[ $? -eq 0 ]] || exit 1
 	fi
 	if [[ ! -d $_root/data ]] ; then
