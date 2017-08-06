@@ -84,8 +84,9 @@ function nextcloud_install
 		[[ $? -eq 0 ]] || exit 1
 	fi
 	if [[ ! -d $_root/data ]] ; then
-		cvw_say -s "moving data out of docroot"
-		mv $_root/app/data $_root/data
+		cvw_say -s "installing data dir outside docroot"
+		install -o apache -g apache -d $_root/data
+		install -o apache -g apache /dev/null $_root/data/.ocdata
 	fi
 	if ! grep -q "$_root/data" $_file ; then
 		nextcloud_occ config:system:set datadirectory --value=$_root/data
