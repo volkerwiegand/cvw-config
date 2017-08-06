@@ -132,7 +132,7 @@ function php_install
 
 		_file=/etc/php.d/45-geoip_dir.ini
 		cat >$_file.tmp_VW <<-EOF
-			# Set location for GeoIP files
+			; Set location for GeoIP files
 			geoip.custom_directory=$_geoip
 		EOF
 		cvw_file -v $_file $(cvw_php -s)
