@@ -328,12 +328,15 @@ shift $(($OPTIND-1))
 
 if [[ $_backup ]] ; then
 	_fqdn=$(cvw_xml -r host/fqdn)
-	sudo mkdir -p /backup
-	sudo chown $LOGNAME:$LOGNAME /backup
+	mkdir -p /backup/$_fqdn
+	sudo chown -R $LOGNAME:$LOGNAME /backup
 	setup_config
 	cvw_say
 	cvw_say -a "Fetch backups from host"
-	rsync -v $RSYNC_FLAGS root@$_fqdn:/var/local/backup/ /backup/$_fqdn
+	rsync -v $RSYNC_FLAGS root@$_fqdn:/var/local/backup/ /backup/$_fqdn/data
+	cvw_say -a "Backup configuration"
+	mkdir -p /backup/$_fqdn/config
+	tar cvzf /backup/$_fqdn/config/$(date +%F-%H-%M).tgz config.in.xml cfg
 	exit
 fi
 
