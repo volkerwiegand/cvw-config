@@ -53,6 +53,13 @@ function openletters_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _title=$(cvw_xml -r software/$_slug/title)
+	local _admin_name=$(cvw_xml -r software/$_slug/admin/name)
+	local _admin_pass=$(cvw_xml -r software/$_slug/admin/password)
+	local _smtp_host=$(cvw_xml -r software/postfix/smarthost/host)
+	local _smtp_port=$(cvw_xml -r software/postfix/smarthost/port)
+	local _smtp_user=$(cvw_xml -r software/postfix/smarthost/username)
+	local _smtp_pass=$(cvw_xml -r software/postfix/smarthost/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _subdir
 
@@ -63,13 +70,27 @@ function openletters_install
 
 	# cvw_unpack -i $_slug $_root/app index.php
 	if [[ ! -s $_root/app/index.php ]] ; then
-		mkdir -p $_root/app && unzip -q -d $_root/app $_archive
+		mkdir -p $_root/app 
+		unzip -q -d $_root/app $_archive
 	fi
 	chmod -R go-w $_root/app
 	for _subdir in log uploaded ; do
 		mkdir -p $_root/app/$_subdir
 		chown -R apache $_root/app/$_subdir
 	done
+
+	_file="$_root/app/admin/.htaccess"
+	cat >$_file.tmp_VW <<-EOF
+		AuthType basic
+		AuthName "Admin $_title"
+		AuthUserFile $_root/app/admin/.htpasswd
+		Require valid-user 
+	EOF
+	cvw_file -v $_file $(cvw_php -s)
+
+	_file="$_root/app/admin/.htpasswd"
+	htpasswd -b -c $_file.tmp_VW $_admin_name $_admin_pass
+	cvw_file -v $_file $(cvw_php -s)
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
@@ -93,7 +114,7 @@ function openletters_install
 		<?php
 
 		define("HTML_TITLE", "$(cvw_xml -r software/$_slug/title)");
-		define("ROOT_DOMAIN","http://$_fqdn/newsletter/");
+		define("ROOT_DOMAIN","http://$_fqdn$_uri/");
 		define("DEFAULT_LANGUAGE", "de");
 		define("ALLOW_OTHER_LANGUAGE", 1);
 		define("KNOWN_LANGUAGES", "de;en");
@@ -108,18 +129,18 @@ function openletters_install
 		define( "ALLOWED_HTML_TAGS", 'b,br,strong,u,i,p,div,table,thead,tbody,tr,td,th,em,span,li,ul,ol,a,hr,p,img,h1,h2,h3,h4,h5,h6,dt,dl,dd');
 		define('ALLOWED_HTML_ATTRIBUTES', '*.style,*.title,a.href,a.target,img.src,img.alt,img.title');
 
-		define("SUBJECT","Open-Letters.de - Newsletter");
+		define("SUBJECT", "$_title");
 		define("SUBJECT_DATE", "true");
 		define("SENDER_ADDRESS", "newsletter@${_fqdn#*.}");
 		define("SENDER_NAME", "Newsletter");
 		define("NEWSLETTER_RECEIVERS_AT_ONE_GO", 25);
 		define("NEWSLETTER_SENDING_TIMEOUT", 5);
 
-		define("SMTP_HOST", "smtp.example.com");
-		define( "SMTP_USER", "sender@example.com");
-		define( "SMTP_PASSWORD", "1234567890");
-		define( "SMTP_PORT", 25);
-		define( "SMTP_SECURITY", "");
+		define("SMTP_HOST", "$_smtp_host");
+		define( "SMTP_USER", "$_smtp_user");
+		define( "SMTP_PASSWORD", "$_smtp_pass");
+		define( "SMTP_PORT", $_smtp_port);
+		define( "SMTP_SECURITY", "tls");
 
 		define("IMAP", false);
 

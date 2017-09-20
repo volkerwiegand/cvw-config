@@ -91,6 +91,7 @@ cvw_cmsms          -i ; error_check
 cvw_joomla         -i ; error_check
 cvw_openletters    -i ; error_check
 cvw_phplist        -i ; error_check
+cvw_xiopo          -i ; error_check
 cvw_sqlbuddy       -i ; error_check
 cvw_nodejs         -i ; error_check
 cvw_gogs           -i ; error_check
@@ -111,6 +112,7 @@ cvw_randshop       -i ; error_check
 cvw_simpleinvoices -i ; error_check
 cvw_open3a         -i ; error_check
 cvw_opencart       -i ; error_check
+cvw_cubecart       -i ; error_check
 cvw_magento        -i ; error_check
 cvw_shopware       -i ; error_check
 cvw_oscommerce     -i ; error_check

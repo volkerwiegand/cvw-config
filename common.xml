@@ -67,6 +67,10 @@
       <url>https://s3-us-west-2.amazonaws.com/core-releases/8314/8532/5573/concrete5-8.1.0.zip</url>
       <md5>c78361dc5f71f6a8eebc2de4678dc40f</md5>
     </download>
+    <download id="cubecart">
+      <link>https://www.cubecart.com/download</link>
+      <url>https://www.cubecart.com/download/CubeCart-6.1.10.zip</url>
+    </download>
     <download id="docker_compose">
       <link>https://github.com/docker/compose/releases/</link>
       <url>https://github.com/docker/compose/releases/download/1.13.0/docker-compose-Linux-x86_64</url>
@@ -471,5 +475,16 @@
       <rpm>php56u-pecl-memcache</rpm>
       <rpm>php56u-soap</rpm>
       <rpm>php56u-xml</rpm>
+    </rpm_list>
+    <rpm_list id="clamav">
+      <rpm>clamav</rpm>
+      <rpm>clamav-lib</rpm>
+      <rpm>clamav-data</rpm>
+      <rpm>clamav-devel</rpm>
+      <rpm>clamav-update</rpm>
+      <rpm>clamav-server</rpm>
+      <rpm>clamav-server-systemd</rpm>
+      <rpm>clamav-scanner-systemd</rpm>
+      <rpm>clamav-filesystem</rpm>
     </rpm_list>
   </common>

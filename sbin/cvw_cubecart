@@ -1,0 +1,196 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_cubecart - Install or remove CubeCart eCommerce
+######                https://www.cubecart.com/
+######                https://support.cubecart.com/Knowledgebase/Article/View/227/41/how-can-i-install-cubecart-v6
+######
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="CubeCart eCommerce"
+_slug="cubecart"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function cubecart_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
+	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _subdir _file
+
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
+	cvw_unpack -m -s -i $_slug $_root/app index.php
+	for _subdir in backup cache files images includes language modules/plugins ; do
+		mkdir -p $_root/app/$_subdir
+		chown -R apache $_root/app/$_subdir
+	done
+
+	_file=$_root/app/.htaccess
+	cat >$_file.tmp_VW <<-EOF
+		##### START CubeCart .htaccess #####
+
+		### File Security ###
+		<FilesMatch "\\.(htaccess)$">
+		  Order Allow,Deny
+		  Deny from all
+		</FilesMatch>
+
+		### Apache directory listing rules ###
+		DirectoryIndex index.php index.htm index.html
+		IndexIgnore *
+
+		<ifModule mod_headers.c>
+		  Header always append X-Frame-Options SAMEORIGIN
+		</ifModule>
+
+		### Rewrite rules for SEO functionality ###
+		<IfModule mod_rewrite.c>
+		  RewriteEngine On
+		  RewriteBase $_uri/ 
+
+		  ##### START v4 SEO URL BACKWARD COMPATIBILITY #####
+		  RewriteCond %{QUERY_STRING} (.*)\$
+		  RewriteCond %{REQUEST_FILENAME} !-f
+		  RewriteRule cat_([0-9]+)(\\.[a-z]{3,4})?(.*)\$ index.php?_a=category&cat_id=\$1&%1 [NC]
+
+		  RewriteCond %{QUERY_STRING} (.*)\$
+		  RewriteCond %{REQUEST_FILENAME} !-f
+		  RewriteRule prod_([0-9]+)(\\.[a-z]{3,4})?\$ index.php?_a=product&product_id=\$1&%1 [NC]
+
+		  RewriteCond %{QUERY_STRING} (.*)\$
+		  RewriteCond %{REQUEST_FILENAME} !-f
+		  RewriteRule info_([0-9]+)(\\.[a-z]{3,4})?\$ index.php?_a=document&doc_id=\$1&%1 [NC]
+
+		  RewriteCond %{QUERY_STRING} (.*)\$
+		  RewriteCond %{REQUEST_FILENAME} !-f
+		  RewriteRule tell_([0-9]+)(\\.[a-z]{3,4})?\$ index.php?_a=product&product_id=\$1&%1 [NC]
+
+		  RewriteCond %{QUERY_STRING} (.*)\$
+		  RewriteCond %{REQUEST_FILENAME} !-f
+		  RewriteRule _saleItems(\\.[a-z]+)?(\\?.*)?\$ index.php?_a=saleitems&%1 [NC,L]
+		  ##### END v4 SEO URL BACKWARD COMPATIBILITY #####
+
+		  RewriteCond %{REQUEST_FILENAME} !-f
+		  RewriteCond %{REQUEST_FILENAME} !-d
+		  RewriteCond %{REQUEST_URI} !=/favicon.ico
+		  RewriteRule ^(.*)\\.html?\$ index.php?seo_path=\$1 [L,QSA]
+		</IfModule>
+
+		### Default store 404 page ###
+		ErrorDocument 404 $_uri/index.php
+
+		## Override default 404 error document for missing page resources ##
+		<FilesMatch "\\.(gif|jpe?g|png|ico|css|js|svg)\$">
+		  ErrorDocument 404 "<html></html>"
+		</FilesMatch>
+		##### END CubeCart .htaccess #####
+	EOF
+	cvw_file -v $_file $(cvw_php -s)
+
+	_file=$_root/app/includes/global.inc.php
+	if [[ -s $_file ]] ; then
+		if [[ -d $_root/app/setup ]] ; then
+			cvw_say -s "hiding setup directory"
+			rm -rf $_root/setup # just in case
+			mv $_root/app/setup $_root/setup
+		fi
+	else
+		cvw_say -s "waiting for installation: https://$_fqdn$_uri/setup"
+	fi
+
+	if [[ -d /var/local/backup/$_slug/last/mysql && \
+	      -d /var/local/backup/$_slug/last/dirs  && \
+	      -x /usr/local/bin/bkup.$_slug          && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+
+	if cvw_xml -a software/nginx ; then
+		cvw_nginx -p $_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		cvw_apache -p $_slug
+	fi
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "$_slug"
+}
+
+
+function cubecart_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	cvw_backup -z $_slug
+	cvw_mysql -z $_slug $_slug
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				cubecart_install
+			else
+				cubecart_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
