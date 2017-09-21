@@ -54,14 +54,14 @@ function open3a_install
 	local _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_root/app/specifics \
+			$_root/app/system/Backup \
+			$_root/app/system/DBData
 
 	cvw_unpack -m -s -i $_slug $_root/app index.php
 
-	_file="$_root/app/system/DBData/Installation.pfdb.php"
-	chown apache:apache $_file
-
-	for _subdir in specifics system/Backup ; do
+	for _subdir in specifics system/Backup system/DBData ; do
 		mkdir -p $_root/app/$_subdir
 		chown -R apache:apache $_root/app/$_subdir
 	done
