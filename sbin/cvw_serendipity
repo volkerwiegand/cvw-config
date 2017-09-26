@@ -49,8 +49,15 @@ function serendipity_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
+	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _subdir
+
+	cvw_say -a "Database password .......: $_pass"
+	cvw_say -a "Login URL ...............: $(cvw_url -r $_uri)index.php?/admin"
+	cvw_say -a "Admin user name .........: $_adm_name"
+	cvw_say -a "Admin password ..........: $_adm_pass"
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
