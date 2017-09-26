@@ -78,7 +78,7 @@ function modified_install
 			cvw_file -e $_file "s|^RewriteBase.*|RewriteBase ${_uri%/}/|"
 		fi
 	else
-		cvw_say -s "waiting for install: https://$_fqdn$_uri/_installer"
+		cvw_say -a "waiting for install .....: https://$_fqdn${_uri%/}/_installer"
 	fi
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
