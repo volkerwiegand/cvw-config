@@ -114,6 +114,7 @@ while getopts ":c:e:g:i:l:Lr:uv:" opt ; do
 		u)
 			cvw_say -s "cleanup RPM cache"
 			yum clean all
+			rm -rf /var/cache/yum
 			yum makecache fast
 			cvw_say -s "updating RPMs"
 			yum update -y
