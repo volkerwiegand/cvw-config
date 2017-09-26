@@ -72,9 +72,7 @@ function nextcloud_install
 	cvw_say -s "Admin password ..........: $_adm_pass"
 
 	cvw_mysql -c $_slug $_slug $_pass utf8mb4_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app \
-			$_root/data
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
 	cvw_unpack -u apache -i $_slug $_root/app index.php
 
@@ -159,6 +157,7 @@ function nextcloud_install
 			      SetEnv HTTP_HOME $_root/app
 			   </Directory>
 		EOF
+		cvw_apache -p $_slug
 	fi
 
 	cvw_url -a "$_name" $_uri
