@@ -36,7 +36,7 @@ function usage
 	cat >&2 <<-EOF
 		Syntax: $_prog -a                Assemble docker-compose.yaml from sources
 		    or: $_prog -b                Fetch backups from host (save to /backup/<fqdn>/)
-		    or: $_prog -B                Restore backups to host
+		    or: $_prog -B [app [day]]    Restore (selected) backups to host
 		    or: $_prog -c [cmd [args]]   Run remote docker-compose command for app
 		    or: $_prog -d [cmd [args]]   Run remote docker command
 		    or: $_prog -e [-D]           Execute config [debug]
@@ -343,11 +343,24 @@ fi
 
 if [[ $_restore ]] ; then
 	_fqdn=$(cvw_xml -r host/fqdn)
-	[[ -d /backup/$_fqdn ]] || failure "no backups $_fqdn"
 	setup_config
 	cvw_say
-	cvw_say -a "Copy backups to host"
-	rsync -v $RSYNC_FLAGS /backup/$_fqdn/ root@$_fqdn:/var/local/backup
+	_cmd=""
+	if [[ -n $2 ]] ; then
+		[[ -d /backup/$_fqdn/data/$1/$2 ]] || failure "no remote backups $_fqdn $1 $2"
+		cvw_say -a "Restore backup for $1 from $2 to $_fqdn"
+		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/$1/$2/ root@$_fqdn:/var/local/backup/$1/$2"
+	elif [[ -n $1 ]] ; then
+		[[ -d /backup/$_fqdn/data/$1 ]] || failure "no remote backups $_fqdn $1"
+		cvw_say -a "Restore backups for $1 to $_fqdn"
+		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/$1/ root@$_fqdn:/var/local/backup/$1"
+	else
+		[[ -d /backup/$_fqdn/data ]] || failure "no remote backups $_fqdn"
+		cvw_say -a "Restore all backups to $_fqdn"
+		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/ root@$_fqdn:/var/local/backup"
+	fi
+	sleep 5
+	$_cmd
 	exit
 fi
 
