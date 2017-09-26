@@ -48,8 +48,11 @@ function sqlbuddy_install
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/mysql/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf
+
+	cvw_say -a "Password ................: $_pass"
 
 	cvw_unpack -i $_slug $_root/app index.php
 
