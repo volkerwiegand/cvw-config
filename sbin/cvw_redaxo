@@ -1,0 +1,147 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_redaxo - Install or remove REDAXO CMS
+######                https://redaxo.org/
+######                https://redaxo.org/doku/master/installation
+######
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="REDAXO CMS"
+_slug="redaxo"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function redaxo_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
+	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
+	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file
+
+	cvw_say -s "Database password .......: $_pass"
+	cvw_say -s "Login URL ...............: $(cvw_url -r $_uri)$_slug/index.php"
+	cvw_say -s "Admin user name .........: $_adm_name"
+	cvw_say -s "Admin password ..........: $_adm_pass"
+
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
+	cvw_unpack -m -s -u apache -i $_slug $_root/app index.php
+
+if false ; then
+	if grep -q $_pass $_root/app/includes/configure.php ; then
+		chmod 0444 $_root/app/includes/configure.php
+
+		if [[ -d $_root/app/_installer ]] ; then
+			cvw_say -s "hiding install directory"
+			rm -rf $_root/_installer # just in case
+			mv $_root/app/_installer $_root/_installer
+			chown -R root:root $_root/_installer
+		fi
+
+		if [[ -s $_root/app/_.htaccess ]] ; then
+			_file="$_root/app/.htaccess"
+			cp $_root/app/_.htaccess $_file
+			cvw_file -e $_file "s|^AddDefaultCharset.*|AddDefaultCharset UTF-8|"
+			cvw_file -e $_file "s|^RewriteBase.*|RewriteBase ${_uri%/}/|"
+		fi
+	else
+		cvw_say -a "waiting for install .....: https://$_fqdn${_uri%/}/_installer"
+	fi
+
+	if [[ -d /var/local/backup/$_slug/last/mysql && \
+	      -d /var/local/backup/$_slug/last/dirs  && \
+	      -x /usr/local/bin/bkup.$_slug          && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+fi
+
+	if cvw_xml -a software/nginx ; then
+		cvw_nginx -p $_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		cvw_apache -p $_slug
+	fi
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "$_slug"
+}
+
+
+function redaxo_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	cvw_backup -z $_slug
+	cvw_mysql -z $_slug $_slug
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				redaxo_install
+			else
+				redaxo_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

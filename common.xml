@@ -192,6 +192,10 @@
       <link>https://www.randshop.com/Randshop-Download</link>
       <url>https://www.randshop.com/download/files/version_2_5_1.zip</url>
     </download>
+    <download id="redaxo">
+      <link>https://redaxo.org/download/core/</link>
+      <url>https://redaxo.org/download/redaxo/5.3.0.zip</url>
+    </download>
     <download id="roundcube">
       <status>currently-unknown</status>
       <url>https://github.com/roundcube/roundcubemail/releases/download/1.2.1/roundcubemail-1.2.1-complete.tar.gz</url>

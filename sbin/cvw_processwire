@@ -48,15 +48,28 @@ function processwire_install
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _lang=$(cvw_xml -r system/language)
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
+	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
+	local _adm_mail=$(cvw_xml -r software/$_slug/admin/email)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file _subdir
 
-	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app
+	cvw_say -a "DB Name / User ..........: $_slug"
+	cvw_say -a "DB Pass .................: $_pass"
+	cvw_say -a "Admin Login URL .........: $(cvw_url -r $_uri)$_slug/"
+	cvw_say -a "Admin User ..............: $_adm_name"
+	cvw_say -a "Admin Password ..........: $_adm_pass"
+	cvw_say -a "Admin Email .............: $_adm_mail"
 
-	cvw_unpack -u apache -i $_slug $_root/app index.php
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_root/app/site
+
+	cvw_unpack -i $_slug $_root/app index.php
 
 	_file=$_root/app/.htaccess
 	if [[ ! -r $_file ]] ; then
@@ -68,18 +81,6 @@ function processwire_install
 	else
 		cvw_file -e $_file "s|# \(RewriteBase /pw/\)|\1|" $(cvw_php -s)
 		cvw_file -e $_file "s|^\(  RewriteBase\).*|\1 $_uri/|" $(cvw_php -s)
-	fi
-
-	_file=$_root/app/site/config.php
-	if grep -q dbHost $_file ; then
-		cvw_file -e $_file "s/dbHost.*/dbHost = 'localhost';/" $(cvw_php -s)
-		cvw_file -e $_file "s/dbName.*/dbName = '$_slug';/" $(cvw_php -s)
-		cvw_file -e $_file "s/dbUser.*/dbUser = '$_slug';/" $(cvw_php -s)
-		cvw_file -e $_file "s/dbPass.*/dbPass = '$_pass';/" $(cvw_php -s)
-		cvw_file -e $_file "s/dbPort.*/dbPort = '3306';/" $(cvw_php -s)
-		chmod 0400 $_file
-	else
-		chmod 0644 $_file
 	fi
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
@@ -105,8 +106,28 @@ function processwire_install
 	EOF
 	cvw_file -v $_file
 
-	cvw_say -s "allow write access for group apache"
-	chmod -R ug+rw $_root/app
+	_file=$_root/app/site/config.php
+	if grep -q -s $_pass $_file ; then
+		chmod 0400 $_file
+		chown -R root   $_root/app
+		chown -R apache $_root/app/site
+
+		if ! grep -q setlocale $_file ; then
+			cvw_say -s "adding setlocale '$_lang.utf8'"
+			cat >>$_file <<-EOF
+
+				/**
+				 * Post-install: update locale
+				 * 
+				 */
+				setlocale(LC_ALL, '$_lang.utf8');
+
+			EOF
+		fi
+	else
+		cvw_say -a "waiting for install .....: https://$_fqdn${_uri%/}/install.php"
+		chown -R apache $_root/app
+	fi
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug

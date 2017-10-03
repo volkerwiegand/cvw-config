@@ -88,6 +88,7 @@ cvw_wordpress      -i ; error_check
 cvw_b2evolution    -i ; error_check
 cvw_processwire    -i ; error_check
 cvw_cmsms          -i ; error_check
+cvw_redaxo         -i ; error_check
 cvw_joomla         -i ; error_check
 cvw_openletters    -i ; error_check
 cvw_phplist        -i ; error_check

@@ -55,6 +55,11 @@ function joomla_install_native
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _subdir
 
+	cvw_say -s "Database password .......: $_pass"
+	cvw_say -s "Login URL ...............: $(cvw_url -r $_uri)index.php"
+	#cvw_say -s "Admin user name .........: $_adm_name"
+	#cvw_say -s "Admin password ..........: $_adm_pass"
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
