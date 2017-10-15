@@ -46,29 +46,30 @@ function init_squirrelmail
 	cvw_xml -a software/apache || cvw_say -f "$_prog: requires apache"
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _lang=$(cvw_xml -r system/language)
-	local _domain=${_fqdn#*.}
 	test -s /tmp/cvw/error && exit 1
+	local _domain=${_fqdn#*.}
 	local _http="/etc/httpd/conf.d/squirrelmail.conf"
 	local _conf="/etc/squirrelmail/config_local.php"
-	local _diff _vhost _uri
+	local _diff _uri
 
 	if [ ! -s $_http ] ; then
 		cvw_service -r httpd
 	fi
 
+	cvw_rpm -i hunspell-de
 	cvw_rpm -i squirrelmail
 	cvw_apache -e squirrelmail
 
-	cvw_file -b $_http
-	if ! grep -q passenger $_http ; then
-		_diff="/var/local/cfg/files/diffs/squirrelmail.diff"
-		patch -d /etc/httpd/conf.d -i $_diff 2>/tmp/cvw/error
+	if cvw_xml -a software/rails ; then
+		cvw_file -b $_http
+		if ! grep -q passenger $_http ; then
+			_diff="/var/local/cfg/files/diffs/squirrelmail.diff"
+			patch -d /etc/httpd/conf.d -i $_diff 2>/tmp/cvw/error
+		fi
 	fi
 
 	_uri=$(awk -e '/^Alias/ { print $2 }' $_http)
-	cvw_xml -i software/apache/vhost | sort | while read _vhost ; do
-		cvw_url -a "SquirrelMail" $_uri
-	done
+	cvw_url -a "SquirrelMail" $_uri
 
 	cvw_file -b $_conf
 	cat >$_conf.tmp_VW <<-EOF

@@ -101,12 +101,12 @@ function apache_initial
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
 	local _fqdn=$(cvw_xml -r host/fqdn)
-	local _domain=${_fqdn#*.}
-	local _hstnam=${_fqdn%%.*}
 	local _loglvl=$(cvw_xml -r software/$_slug/loglevel)
 	local _port=$(cvw_xml -r software/$_slug/port)
 	local _ssl_port=$(cvw_xml -r software/$_slug/ssl_port)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _domain=${_fqdn#*.}
+	local _hstnam=${_fqdn%%.*}
 	local _cert="/etc/letsencrypt/live/$_fqdn"
 	[[ -s $_cert/cert.pem ]] || cvw_say -f "missing SSL cert"
 	local _file _alias _redir _container _base _uri _cport

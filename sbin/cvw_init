@@ -125,6 +125,10 @@ function init_init
 	else
 		cvw_say -s "no DH group file yet"
 	fi
+	if [[ -s $_src/id_rsa && -s $_src/id_rsa.pub ]] ; then
+		install -m 0600 $_src/id_rsa     /root/.ssh/
+		install -m 0644 $_src/id_rsa.pub /root/.ssh/
+	fi
 
 	if cvw_xml -t host/hostname ; then
 		cvw_say -s "setting hostname"

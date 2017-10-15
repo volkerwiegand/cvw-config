@@ -7,7 +7,7 @@
 ######               http://www.postfix.org/
 ######               http://www.dovecot.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
@@ -27,7 +27,9 @@ function usage
 {
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
-		Syntax: $_prog -i   Install or remove $_name
+		Syntax: $_prog -i          Install or remove $_name
+		    or: $_prog -m milter   Add Mail filter
+		    or: $_prog -x          Execute and cleanup
 		Called with: '$_prog $_args'
 	EOF
 
@@ -45,107 +47,302 @@ function usage
 function postfix_install
 {
 	cvw_say -h "Installing $_name"
+	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _admin=$(cvw_xml -r host/admin)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _domain=${_fqdn#*.}
 	local _cert="/etc/letsencrypt/live/$_fqdn"
-	local _dir _file _diff _restrictions _mydest _var _dest
+	local _main _master _file _smart _milter _proto _mydest _dest
 
 	cvw_rpm -i postfix
+	cvw_rpm -i mailx
 	cvw_service -d sendmail
 	cvw_service -s postfix
 	alternatives --set mta /usr/sbin/sendmail.postfix
 
-	_var="software/$_slug/smarthost"
-	if cvw_xml -c $_var ; then
-		local _host=$(cvw_xml -r $_var/host)
-		local _port=$(cvw_xml -r $_var/port)
-		local _user=$(cvw_xml -r $_var/username)
-		local _pass=$(cvw_xml -r $_var/password)
+	cvw_rpm -i dovecot
+	cvw_service -s dovecot
+
+	# install caching nameserver (needed for Spam detection)
+	cvw_rpm -i unbound
+	cvw_service -s unbound
+
+	_mydest="\$myhostname, localhost, localhost.\$mydomain, \$mydomain"
+	for _dest in $(cvw_xml -l software/$_slug/destination | sort) ; do
+		_mydest="$_mydest, $_dest"
+	done
+
+	_main=/etc/postfix/main.cf
+	cvw_file -b $_main
+	cat >$_main.tmp_VW <<-EOF
+		# Global configuration for $_fqdn
+
+		queue_directory = /var/spool/postfix
+		command_directory = /usr/sbin
+		daemon_directory = /usr/libexec/postfix
+		data_directory = /var/lib/postfix
+		mail_owner = postfix
+		myhostname = $_fqdn
+		mydomain = $_domain
+		myorigin = \$mydomain
+		inet_interfaces = all
+		inet_protocols = all
+		mydestination = $_mydest
+		local_recipient_maps = unix:passwd.byname \$alias_maps
+		unknown_local_recipient_reject_code = 550
+		mynetworks_style = host
+		relay_domains = \$mydestination
+		alias_maps = hash:/etc/aliases
+		alias_database = hash:/etc/aliases
+		home_mailbox = Maildir/
+		mailbox_command = /usr/libexec/dovecot/deliver
+		debug_peer_level = 2
+		sendmail_path = /usr/sbin/sendmail.postfix
+		newaliases_path = /usr/bin/newaliases.postfix
+		mailq_path = /usr/bin/mailq.postfix
+		setgid_group = postdrop
+		html_directory = no
+		manpage_directory = /usr/share/man
+		sample_directory = /usr/share/doc/postfix-2.10.1/examples
+		readme_directory = /usr/share/doc/postfix-2.10.1/README_FILES
+		tls_random_source = dev:/dev/urandom
+	EOF
+
+	_smart="software/$_slug/smarthost"
+	if cvw_xml -c $_smart ; then
 		cvw_say -s "using smarthost $_host"
+		local _host=$(cvw_xml -r $_smart/host)
+		local _port=$(cvw_xml -r $_smart/port)
+		local _user=$(cvw_xml -r $_smart/username)
+		local _pass=$(cvw_xml -r $_smart/password)
+		[[ -s /tmp/cvw/error ]] && exit 1
 
 		cvw_rpm -i cyrus-sasl-plain
-		cvw_rpm -i mailx
 
-		_file="/etc/postfix/sasl_passwd"
+		_file=/etc/postfix/sasl_passwd
 		echo "[$_host]:$_port $_user:$_pass" >$_file.tmp_VW
 		cvw_file -v $_file postfix
 		postmap $_file
 		chown root:postfix $_file $_file.db
 		chmod 0640 $_file $_file.db
 
-		postconf -e "myhostname = $_fqdn"
-		postconf -e "relayhost = [$_host]:$_port"
-		postconf -e "smtp_use_tls = yes"
-		postconf -e "smtp_sasl_auth_enable = yes"
-		postconf -e "smtp_sasl_password_maps = hash:$_file"
-		postconf -e "smtp_tls_CAfile = /etc/ssl/certs/ca-bundle.crt"
-		postconf -e "smtp_sasl_security_options = noanonymous"
-		postconf -e "smtp_sasl_tls_security_options = noanonymous"
-
-		cvw_say -o "$_slug"
-		exit 0
-	fi
-
-	cvw_rpm -i dovecot
-	cvw_service -s dovecot
-
-	_restrictions="permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination"
-	_mydest="\$myhostname, localhost, localhost.\$mydomain, \$mydomain"
-	for _dest in $(cvw_xml -l software/$_slug/destination | sort) ; do
-		_mydest="$_mydest, $_dest"
-	done
-
-	_file="/etc/postfix/postgrey_whitelist_clients.local"
-	if cvw_xml -t software/$_slug/postgrey ; then
-		cvw_say -s "enabling postgrey"
-		cvw_rpm -i postgrey
-		cvw_service -s postgrey
-		_restrictions="$_restrictions, check_policy_service unix:postgrey/socket"
-		cp /var/local/cfg/files/misc/postgrey.common $_file.tmp_VW 2>>/tmp/cvw/error
-		cvw_file -v $_file postgrey
+		cat >>$_main.tmp_VW <<-EOF
+			relayhost = [$_host]:$_port
+			smtp_use_tls = yes
+			smtp_sasl_auth_enable = yes
+			smtp_sasl_password_maps = hash:$_file
+			smtp_tls_CAfile = /etc/ssl/certs/ca-bundle.crt
+			smtp_sasl_security_options = noanonymous
+			smtp_sasl_tls_security_options = noanonymous
+		EOF
 	else
-		set +e
-		cvw_say -s "disabling postgrey"
-		cvw_service -d postgrey
-		rm -f $_file
-		set -e
+		cat >>$_main.tmp_VW <<-EOF
+			smtp_tls_session_cache_database = btree:\$data_directory/smtp_tls_session_cache
+			smtp_tls_security_level = may
+			smtp_tls_loglevel = 1
+			smtp_tls_CAfile = /etc/pki/tls/certs/ca-bundle.crt
+			smtpd_use_tls = yes
+			smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
+			smtpd_tls_loglevel = 1
+			smtpd_tls_cert_file = $_cert/fullchain.pem
+			smtpd_tls_key_file = $_cert/privkey.pem
+			smtpd_tls_session_cache_database = btree:\$data_directory/smtpd_tls_session_cache
+			smtpd_tls_security_level = may
+			smtpd_tls_received_header = yes
+			smtpd_sasl_type = dovecot
+			smtpd_sasl_path = private/auth
+			smtpd_sasl_auth_enable = yes
+			smtpd_sasl_authenticated_header = yes
+			smtpd_sasl_security_options = noanonymous
+			broken_sasl_auth_clients = yes
+		EOF
 	fi
 
-	_dir="/etc/postfix"
-	[[ -d $_dir.old ]] || cp -r -p $_dir $_dir.old
-	_diff="/var/local/cfg/files/diffs/postfix.diff"
-	[[ -s $_diff ]] || cvw_say -f "$_prog: missing '$_diff'"
-	if [[ ! -f $_dir/cvw.patched ]] ; then
-		patch -d $_dir -i $_diff -N -r -
-		touch $_dir/cvw.patched
-	fi
-	_file="$_dir/main.cf"
-	cvw_file -e $_file "/^myhostname /s/= .*/= $_fqdn/" postfix
-	cvw_file -e $_file "/^mydomain /s/= .*/= $_domain/" postfix
-	cvw_file -e $_file "/^mydestination /s/= .*/= $_mydest/" postfix
-	cvw_file -e $_file "/^smtpd_recipient_restrictions /s%= .*%= $_restrictions%" postfix
-	cvw_file -e $_file "/^smtpd_tls_cert_file /s%= .*%= $_cert/fullchain.pem%" postfix
-	cvw_file -e $_file "/^smtpd_tls_key_file /s%= .*%= $_cert/privkey.pem%" postfix
+	_master=/etc/postfix/master.cf
+	cvw_file -b $_master
+	cat >$_master.tmp_VW <<-EOF
+		# ==========================================================================
+		# service type  private unpriv  chroot  wakeup  maxproc command + args
+		#               (yes)   (yes)   (yes)   (never) (100)
+		# ==========================================================================
+		smtp      inet  n       -       n       -       -       smtpd
+		submission inet n       -       n       -       -       smtpd
+		  -o syslog_name=postfix/submission
+		  -o smtpd_tls_security_level=encrypt
+		  -o smtpd_sasl_auth_enable=yes
+		  -o smtpd_reject_unlisted_recipient=no
+		  -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
+		  -o milter_macro_daemon_name=ORIGINATING
+		pickup    unix  n       -       n       60      1       pickup
+		cleanup   unix  n       -       n       -       0       cleanup
+		qmgr      unix  n       -       n       300     1       qmgr
+		tlsmgr    unix  -       -       n       1000?   1       tlsmgr
+		rewrite   unix  -       -       n       -       -       trivial-rewrite
+		bounce    unix  -       -       n       -       0       bounce
+		defer     unix  -       -       n       -       0       bounce
+		trace     unix  -       -       n       -       0       bounce
+		verify    unix  -       -       n       -       1       verify
+		flush     unix  n       -       n       1000?   0       flush
+		proxymap  unix  -       -       n       -       -       proxymap
+		proxywrite unix -       -       n       -       1       proxymap
+		smtp      unix  -       -       n       -       -       smtp
+		relay     unix  -       -       n       -       -       smtp
+		showq     unix  n       -       n       -       -       showq
+		error     unix  -       -       n       -       -       error
+		retry     unix  -       -       n       -       -       error
+		discard   unix  -       -       n       -       -       discard
+		local     unix  -       n       n       -       -       local
+		virtual   unix  -       n       n       -       -       virtual
+		lmtp      unix  -       -       n       -       -       lmtp
+		anvil     unix  -       -       n       -       1       anvil
+		scache    unix  -       -       n       -       1       scache
+	EOF
 
-	_dir="/etc/dovecot/conf.d"
-	[[ -d $_dir.old ]] || cp -r -p $_dir $_dir.old
-	_diff="/var/local/cfg/files/diffs/dovecot.diff"
-	[[ -s $_diff ]] || cvw_say -f "$_prog: missing '$_diff'"
-	if [[ ! -f $_dir/cvw.patched ]] ; then
-		patch -d $_dir -i $_diff -N -r -
-		touch $_dir/cvw.patched
-	fi
-	cvw_file -e $_dir/10-ssl.conf "/^ssl_cert /s%= .*%= <$_cert/fullchain.pem%" dovecot
-	cvw_file -e $_dir/10-ssl.conf "/^ssl_key /s%= .*%= <$_cert/privkey.pem%" dovecot
-	cvw_file -e $_dir/15-lda.conf "/^postmaster_address /s/= .*/= postmaster@$_domain/" dovecot
+	_file=/etc/dovecot/conf.d/10-auth.conf
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		##
+		## Authentication processes
+		##
 
-	for _dest in pop3 pop3s imap imaps smtp submission ; do
+		auth_mechanisms = plain login
+		!include auth-system.conf.ext
+	EOF
+	cvw_file -v $_file dovecot
+
+	_file=/etc/dovecot/conf.d/10-mail.conf
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		##
+		## Mailbox locations and namespaces
+		##
+
+		mail_location = maildir:~/Maildir
+		namespace inbox {
+		  inbox = yes
+		}
+		first_valid_uid = 1000
+		mbox_write_locks = fcntl
+	EOF
+	cvw_file -v $_file dovecot
+
+	_file=/etc/dovecot/conf.d/10-master.conf
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		##
+		## Dovecot services
+		##
+
+		service imap-login {
+		  inet_listener imap {
+		  }
+		  inet_listener imaps {
+		  }
+		}
+
+		service lmtp {
+		  unix_listener lmtp {
+		  }
+		}
+
+		service imap {
+		}
+
+		service auth {
+		  unix_listener auth-userdb {
+		  }
+
+		  unix_listener /var/spool/postfix/private/auth {
+		    mode = 0660
+		    user = postfix
+		    group = postfix
+		  }
+		}
+
+		service auth-worker {
+		}
+
+		service dict {
+		  unix_listener dict {
+		  }
+		}
+	EOF
+	cvw_file -v $_file dovecot
+
+	_file=/etc/dovecot/conf.d/10-ssl.conf
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		##
+		## SSL settings
+		##
+
+		ssl = required
+		ssl_cert = <$_cert/fullchain.pem
+		ssl_key = <$_cert/privkey.pem
+	EOF
+	cvw_file -v $_file dovecot
+
+	_file=/etc/dovecot/conf.d/15-lda.conf
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		##
+		## LDA specific settings (also used by LMTP)
+		##
+
+		postmaster_address = postmaster@$_domain
+		hostname = $_fqdn
+		lda_mailbox_autocreate = yes
+		lda_mailbox_autosubscribe = yes
+		protocol lda {
+		}
+	EOF
+	cvw_file -v $_file dovecot
+
+	cvw_say -o "$_slug:initial"
+}
+
+function postfix_finish
+{
+	cvw_say -h "Finishing $_name"
+	local _main=/etc/postfix/main.cf
+	local _master=/etc/postfix/master.cf
+	local _file _milter _milters _dest _id _base
+
+	_file=/tmp/cvw/postfix.milters
+	if [[ -s $_file ]] ; then
+		_milters=""
+		for _milter in $(sort $_file | awk '{print $NF}') ; do
+			_milters="$_milters $_milter"
+			cvw_say -s "Milter: $_milter"
+		done
+		cat >>$_main.tmp_VW <<-EOF
+			smtpd_milters =$_milters
+			non_smtpd_milters = \$smtpd_milters
+			milter_default_action = accept
+			milter_protocol = 6
+			milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen} v _
+			milter_rcpt_macros = i {rcpt_addr}
+		EOF
+	fi
+
+	cvw_file -v $_main postfix
+	cvw_file -v $_master postfix
+
+	for _dest in imap imaps smtp ; do
 		cvw_firewall -s $_dest
 	done
+	cvw_firewall -t 587	# submission not among known services??
 
-	cvw_say -o "$_slug"
+	cvw_xml -i users/user | sort | while read _id ; do
+		_base="users/user:$_id"
+		_pass=$(cvw_xml -r $_base/password)
+		if cvw_xml -t $_base/imap ; then
+			cvw_say -a "User / Password .........: $_id / $_pass"
+		fi
+	done
+
+	cvw_say -o "$_slug:finish"
 }
 
 
@@ -154,13 +351,18 @@ function postfix_remove
 	if cvw_service -c postfix ; then
 		cvw_say -h "Removing $_name"
 
+		cvw_service -d unbound
+		cvw_rpm -e unbound
+
 		cvw_service -d dovecot
 		cvw_rpm -e dovecot
 		rm -rf /etc/dovecot
-		
-		cvw_service -d postfix
+
+		cvw_rpm -i sendmail
 		cvw_service -S sendmail
 		alternatives --set mta /usr/sbin/sendmail.sendmail
+
+		cvw_service -d postfix
 		cvw_rpm -e postfix
 		rm -rf /etc/postfix
 
@@ -169,13 +371,20 @@ function postfix_remove
 }
 
 
-while getopts ":i" opt ; do
+while getopts ":ix" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
 				postfix_install
 			else
 				postfix_remove
+			fi
+			exit 0
+		;;
+
+		x)
+			if cvw_xml -a software/$_slug ; then
+				postfix_finish
 			fi
 			exit 0
 		;;

@@ -6,7 +6,7 @@
 ###### cvw_rpm - RPM handling
 ######           (internal service functions)
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
@@ -20,19 +20,19 @@ _prog=${0##*/}
 _args="$*"
 
 
+_enable=""
+
 function usage
 {
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
-		Syntax: $_prog -c rpm        Check if RPM is installed
-		    or: $_prog -e rpm        Erase single RPM
-		    or: $_prog -g rpm:grp    Install group based on RPM
-		    or: $_prog -i rpm        Install single RPM
-		    or: $_prog -l list       Install RPM from XML list
-		    or: $_prog -L            List installed RPMs
-		    or: $_prog -r rpm        Query RPM version-release
-		    or: $_prog -u            /ugrade / Update all RPMs
-		    or: $_prog -v rpm        Query RPM version
+		Syntax: $_prog -c rpm             Check if RPM is installed
+		    or: $_prog -e rpm             Erase single RPM
+		    or: $_prog -g rpm:grp         Install group based on RPM
+		    or: $_prog [-r repo] -i rpm   Install single RPM [from repo]
+		    or: $_prog -l list            Install RPM from XML list
+		    or: $_prog -L                 List installed RPMs
+		    or: $_prog -u                 /ugrade / Update all RPMs
 		Called with: '$_prog $_args'
 	EOF
 
@@ -47,7 +47,7 @@ function usage
 }
 
 
-while getopts ":c:e:g:i:l:Lr:uv:" opt ; do
+while getopts ":c:e:g:i:l:Lr:u" opt ; do
 	case $opt in
 		c)
 			set +e
@@ -77,11 +77,17 @@ while getopts ":c:e:g:i:l:Lr:uv:" opt ; do
 		i)
 			rpm -q $OPTARG >/dev/null && exit 0
 			rm -f /tmp/cvw/changed
-			cvw_say -s "installing RPM $OPTARG"
-			if [ -s /tmp/cvw/debug ] ; then
-				yum install -y $OPTARG
+			if [[ -n $_enable ]] ; then
+				_plus="--enablerepo=$_enable"
+				cvw_say -s "installing RPM $OPTARG ($_enable)"
 			else
-				yum install -y -q $OPTARG
+				_plus=""
+				cvw_say -s "installing RPM $OPTARG"
+			fi
+			if [ -s /tmp/cvw/debug ] ; then
+				yum install $_plus -y $OPTARG
+			else
+				yum install $_plus -y -q $OPTARG
 			fi
 			echo "$OPTARG" >/tmp/cvw/changed
 			exit 0
@@ -107,8 +113,7 @@ while getopts ":c:e:g:i:l:Lr:uv:" opt ; do
 		;;
 
 		r)
-			rpm -q --qf='%{VERSION}-${RELEASE}' $OPTARG 2>/tmp/cvw/error
-			exit 0
+			_enable=$OPTARG
 		;;
 
 		u)
@@ -120,11 +125,6 @@ while getopts ":c:e:g:i:l:Lr:uv:" opt ; do
 			yum update -y
 			cvw_say -s "upgrading RPMs"
 			yum upgrade -y
-			exit 0
-		;;
-
-		v)
-			rpm -q --qf='%{VERSION}' $OPTARG 2>/tmp/cvw/error
 			exit 0
 		;;
 

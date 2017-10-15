@@ -45,7 +45,7 @@ function yum_activate
 	local _repo=$1
 	local _file="/etc/yum.repos.d/$(cvw_xml -r common/repo:$_repo/file).repo"
 	test -s /tmp/cvw/error && exit 1
-	local _flags _key _rpm _load _prio
+	local _flags _key _rpm _load _prio _pkgs
 
 	if [ ! -s $_file ] ; then
 		if cvw_xml -c common/repo:$_repo/flags ; then
@@ -81,6 +81,15 @@ function yum_activate
 			fi
 			cvw_file -e $_file "s/^priority=.*/priority=$_prio/"
 		fi
+	fi
+
+	if cvw_xml -c common/repo:$_repo/includepkgs ; then
+		_pkgs=$(cvw_xml -r common/repo:$_repo/includepkgs)
+		if ! grep -q "^includepkgs=" $_file ; then
+			cvw_say -s "adding includepkgs to '$_file'"
+			cvw_file -e $_file 's/^gpgcheck=.*/&\nincludepkgs=/'
+		fi
+		cvw_file -e $_file "s/^includepkgs=.*/includepkgs=$_pkgs/"
 	fi
 
 	return 0

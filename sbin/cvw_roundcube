@@ -5,6 +5,7 @@
 ######
 ###### cvw_roundcube - Install or remove Roundcube webmail
 ######                 https://roundcube.net/
+######                 https://github.com/roundcube/roundcubemail/wiki/Installation
 ######
 ###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
@@ -66,6 +67,8 @@ function roundcube_install
 		chown -R apache $_root/app/$_subdir
 	done
 
+	# TODO find better way to check if installer should run
+
 	if [[ -s /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
 	      -x /usr/local/bin/bkup.$_slug          && \
@@ -75,6 +78,7 @@ function roundcube_install
 		chmod 0700 $_root/app/installer
 		_installer="false"
 	else
+		cvw_say -a "Installer URL ...........: $(cvw_url -r $_uri)installer/"
 		_installer="true"
 	fi
 
@@ -88,15 +92,15 @@ function roundcube_install
 	_file=$_root/app/config/config.inc.php
 	cat >$_file.tmp_VW <<-EOF
 		<?php
-		\$config['db_dsnw'] = 'mysql://$_slug:$_pass@localhost/$_slug';
-		\$config['default_host'] = 'localhost';
-		\$config['support_url'] = 'mailto:postmaster@${_fqdn#*.}';
-		\$config['des_key'] = '$_key';
-		\$config['product_name'] = '$_name';
-		\$config['plugins'] = array($_plugins);
-		\$config['language'] = '$_lang';
+		\$config['db_dsnw']           = 'mysql://$_slug:$_pass@localhost/$_slug';
+		\$config['default_host']      = 'localhost';
+		\$config['support_url']       = 'mailto:postmaster@${_fqdn#*.}';
+		\$config['des_key']           = '$_key';
+		\$config['product_name']      = '$_name';
+		\$config['plugins']           = array($_plugins);
+		\$config['language']          = '$_lang';
 		\$config['spellcheck_engine'] = 'googie';
-		\$config['enable_installer'] = $_installer;
+		\$config['enable_installer']  = $_installer;
 	EOF
 	cvw_file -v $_file $(cvw_php -s)
 
@@ -105,8 +109,7 @@ function roundcube_install
 	fi
 
 	if cvw_xml -a software/apache ; then
-		_conf=$(cvw_apache -c)
-		cat >>$_conf.tmp_VW <<-EOF
+		cat >/tmp/cvw/apache.block <<-EOF
 
 			   Alias $_uri $_root/app/
 			   <Directory $_root/app>
@@ -118,6 +121,7 @@ function roundcube_install
 			      Require all granted
 			   </Directory>
 		EOF
+		cvw_apache -p $_slug
 	fi
 
 	cvw_url -a "$_name" $_uri

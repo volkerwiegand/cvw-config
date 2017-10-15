@@ -70,6 +70,7 @@ function processwire_install
 			$_root/app/site
 
 	cvw_unpack -i $_slug $_root/app index.php
+	mkdir -p $_root/app/site
 
 	_file=$_root/app/.htaccess
 	if [[ ! -r $_file ]] ; then
@@ -106,24 +107,18 @@ function processwire_install
 	EOF
 	cvw_file -v $_file
 
+	_file=$_root/app/site/init.php
+	cat >$_file.tmp_VW <<-EOF
+		<?php namespace ProcessWire;
+		setlocale(LC_ALL, '$_lang.utf8');
+	EOF
+	cvw_file -v $_file $(cvw_php -s)
+
 	_file=$_root/app/site/config.php
 	if grep -q -s $_pass $_file ; then
 		chmod 0400 $_file
 		chown -R root   $_root/app
 		chown -R apache $_root/app/site
-
-		if ! grep -q setlocale $_file ; then
-			cvw_say -s "adding setlocale '$_lang.utf8'"
-			cat >>$_file <<-EOF
-
-				/**
-				 * Post-install: update locale
-				 * 
-				 */
-				setlocale(LC_ALL, '$_lang.utf8');
-
-			EOF
-		fi
 	else
 		cvw_say -a "waiting for install .....: https://$_fqdn${_uri%/}/install.php"
 		chown -R apache $_root/app

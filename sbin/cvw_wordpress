@@ -8,7 +8,7 @@
 ######                 https://codex.wordpress.org/Installing_WordPress
 ######                 https://de.wordpress.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
@@ -51,8 +51,17 @@ function wordpress_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _title=$(cvw_xml -r software/$_slug/title)
+	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
+	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
+	local _adm_mail=$(cvw_xml -r software/$_slug/admin/email)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _subdir
+
+	cvw_say -a "Title ...................: $_title"
+	cvw_say -a "Admin User ..............: $_adm_name"
+	cvw_say -a "Admin Password ..........: $_adm_pass"
+	cvw_say -a "Admin Email .............: $_adm_mail"
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
@@ -63,8 +72,7 @@ function wordpress_install
 	cvw_unpack -i $_slug $_root/app index.php
 	mkdir -p $_root/app/wp-content/uploads
 	chown -R root:root $_root/app
-	chown -R ftp:ftp $_root/app/wp-content
-	chown -R apache:ftp $_root/app/wp-content/uploads
+	chown -R apache $_root/app/wp-content
 
 	_file=$_root/app/wp-config-sample.php
 	[[ -f $_file ]] && mv -f $_file $_file.bak_VW
@@ -100,6 +108,7 @@ function wordpress_install
 		define('WPLANG',          '$(cvw_xml -r system/language)');
 		define('FORCE_SSL_ADMIN', true);
 		define('WP_DEBUG',        false);
+		define('FS_METHOD',       'direct');
 		# define('WP_ALLOW_REPAIR', true);
 
 		if ( !defined('ABSPATH') )

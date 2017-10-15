@@ -85,7 +85,7 @@ diff -Naur postfix.old/main.cf postfix/main.cf
  
  # The mailbox_transport specifies the optional transport in master.cf
  # to use after processing aliases and .forward files. This parameter
-@@ -677,3 +678,23 @@
+@@ -677,3 +678,25 @@
  # readme_directory: The location of the Postfix README files.
  #
  readme_directory = /usr/share/doc/postfix-2.10.1/README_FILES
@@ -99,13 +99,15 @@ diff -Naur postfix.old/main.cf postfix/main.cf
 +smtpd_sasl_authenticated_header = yes
 +smtpd_sasl_security_options = noanonymous
 +smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
-+smtp_tls_session_cache_database = btree:\$data_directory/smtp_tls_session_cache
++smtp_tls_session_cache_database = btree:$data_directory/smtp_tls_session_cache
 +smtp_tls_security_level = may
 +smtp_tls_loglevel = 1
 +smtp_tls_CAfile = /etc/pki/tls/certs/ca-bundle.crt
++smtpd_use_tls = yes
++smtpd_tls_loglevel = 1
 +smtpd_tls_cert_file = /etc/pki/tls/certs/localhost.crt
 +smtpd_tls_key_file = /etc/pki/tls/private/localhost.key
-+smtpd_tls_session_cache_database = btree:\$data_directory/smtpd_tls_session_cache
++smtpd_tls_session_cache_database = btree:$data_directory/smtpd_tls_session_cache
 +smtpd_tls_security_level = may
 +smtpd_tls_received_header = yes
 +tls_random_source = dev:/dev/urandom

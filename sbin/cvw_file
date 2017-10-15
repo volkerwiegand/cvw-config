@@ -6,7 +6,7 @@
 ###### cvw_file - File handling
 ######            (internal service functions)
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
@@ -27,6 +27,7 @@ function usage
 		Syntax: $_prog -b file                             Backup file
 		    or: $_prog -e file sed-cmnd [opts] [svc ...]   Edit file
 		    or: $_prog -f file sed-file [opts] [svc ...]   Edit file
+		    or: $_prog -l dst lnk                          Create symlink
 		    or: $_prog -r file [svc ...]                   Remove file
 		    or: $_prog -v file [opts] [svc ...]            Verify file
 		Options for -e and -v:
@@ -46,7 +47,7 @@ function usage
 }
 
 
-while getopts ":b:e:f:m:r:u:v:" opt ; do
+while getopts ":b:e:f:l:m:r:u:v:" opt ; do
 	case $opt in
 		b)
 			[[ -f $OPTARG.bak_VW || ! -f $OPTARG ]] && exit 0
@@ -63,6 +64,11 @@ while getopts ":b:e:f:m:r:u:v:" opt ; do
 		f)
 			_file=$OPTARG
 			_edit_file=1
+		;;
+
+		l)
+			_file=$OPTARG
+			_link_file=1
 		;;
 
 		m)
@@ -93,6 +99,24 @@ while getopts ":b:e:f:m:r:u:v:" opt ; do
 	esac
 done
 shift $(($OPTIND-1))
+
+if [[ $_link_file ]] ; then
+	[[ $# -eq 1 ]] || usage
+	_link=$1
+	if [[ -h $_link ]] ; then
+		_curr=$(ls -l $_link | awk '{print $NF}')
+		if [[ $_curr != $_file ]] ; then
+			cvw_say "re-symlinking $_link -> $_file"
+			rm -f $_link
+			ln -s $_file $_link
+		fi
+	else
+		cvw_say -s "symlinking $_link -> $_file"
+		rm -rf $_link
+		ln -s $_file $_link
+	fi
+	exit
+fi
 
 if [[ $_edit_cmnd ]] ; then
 	[[ $# -ge 1 ]] || usage

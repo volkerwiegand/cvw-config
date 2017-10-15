@@ -51,6 +51,7 @@ function user_setup
 	local _base="users/user:$_id"
 	local _info=$(cvw_xml -r $_base/info)
 	local _home=$(cvw_xml -R $_base/home /home/$_id)
+	local _shell=$(cvw_xml -R $_base/shell /bin/bash)
 	local _file="/etc/aliases"
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _line _group _folder _subdir _path _rsakey _sshdir _auth _keys
@@ -67,6 +68,11 @@ function user_setup
 			cvw_say -s "updating home for $_id"
 			usermod -d $_home -m $_id
 		fi
+		_line=$(grep "^$_id:" /etc/passwd | cut -d: -f7)
+		if [[ "$_line" != "$_shell" ]] ; then
+			cvw_say -s "updating shell for $_id"
+			usermod -s "$_shell" $_id
+		fi
 		if ! cvw_xml -t $_base/imap ; then
 			_line=$(grep "^$_id:" /etc/shadow | cut -d: -f2)
 			if [[ "$_line" != "*" ]] ; then
@@ -76,7 +82,7 @@ function user_setup
 		fi
 	else
 		cvw_say -s "adding user '$_id'"
-		useradd -d $_home -m -c "$_info" -p "*" -s "/bin/bash" $_id
+		useradd -d $_home -m -c "$_info" -p "*" -s "$_shell" $_id
 	fi
 
 	cvw_xml -l $_base/group | sort | while read _group ; do

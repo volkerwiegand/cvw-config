@@ -3,6 +3,11 @@
       <link>http://b2evolution.net/downloads/</link>
       <url>https://github.com/b2evolution/b2evolution/archive/6.8.9.zip</url>
     </download>
+    <download id="backdrop">
+      <link>https://github.com/backdrop/backdrop/releases</link>
+      <url>https://github.com/backdrop/backdrop/releases/download/1.8.0/backdrop.zip</url>
+      <version>1.8.0</version>
+    </download>
     <download id="bitnami_lamp">
       <link>https://bitnami.com/stack/lamp/installer#linux</link>
       <url>https://bitnami.com/redirect/to/150326/bitnami-lampstack-5.6.30-3-linux-x64-installer.run</url>
@@ -57,10 +62,15 @@
       <link>http://cloudstore.codewizards.co/latest-stable/download/index.html</link>
       <url>http://cloudstore.codewizards.co/latest-stable/download/co.codewizards.cloudstore.server-0.10.0-bin.tar.gz</url>
     </download>
+    <download id="cmsimple">
+      <link>http://www.cmsmadesimple.org/downloads/</link>
+      <url>https://www.cmsimple.org/downloadcounter/dlcount/count.php?id=31</url>
+      <name>CMSimple_4-7-2.zip</name>
+    </download>
     <download id="cmsms">
       <link>http://www.cmsmadesimple.org/downloads/</link>
-      <url>http://s3.amazonaws.com/cmsms/downloads/13570/cmsms-2.1.6-install.zip</url>
-      <version>2.1.6</version>
+      <url>http://s3.amazonaws.com/cmsms/downloads/13927/cmsms-2.2.3.1-install.zip</url>
+      <version>2.2.3.1</version>
     </download>
     <download id="concrete5">
       <link>https://www.concrete5.org/download</link>
@@ -114,6 +124,10 @@
       <url>https://github.com/kivitendo/kivitendo-erp/archive/release-3.5.0.tar.gz</url>
       <sha256>10ddc17b7d7445c60ae4c622efd69292869628f3c2dacfeeedd5d94eaa1a838b</sha256>
     </download>
+    <download id="mailscanner">
+      <link>https://www.mailscanner.info/downloads/</link>
+      <url>https://s3.amazonaws.com/msv5/release/MailScanner-5.0.6-5.rhel.tar.gz</url>
+    </download>
     <download id="mantis">
       <link>http://mantisbt.org/download.php</link>
       <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.5.0/mantisbt-2.5.0.tar.gz</url>
@@ -160,6 +174,10 @@
       <link>https://www.phplist.org/download-phplist</link>
       <url>https://sourceforge.net/projects/phplist/files/phplist/3.3.1/phplist-3.3.1.tgz</url>
     </download>
+    <download id="picocms">
+      <link>https://github.com/picocms/Pico/releases/</link>
+      <url>https://github.com/picocms/Pico/releases/download/v1.0.6/pico-release-v1.0.6.tar.gz</url>
+    </download>
     <download id="piwigo">
       <link>http://piwigo.org/</link>
       <url>http://piwigo.org/download/dlcounter.php?code=2.9.0</url>
@@ -170,6 +188,10 @@
       <url>http://builds.piwik.org/piwik.zip</url>
       <version>3.0.4</version>
     </download>
+    <download id="postfixadmin">
+      <link>https://sourceforge.net/projects/postfixadmin/files/postfixadmin/</link>
+      <url>https://sourceforge.net/projects/postfixadmin/files/postfixadmin/postfixadmin-3.1/postfixadmin-3.1.tar.gz</url>
+    </download>
     <download id="prestashop">
       <link>https://www.prestashop.com/en/download</link>
       <url>https://download.prestashop.com/download/releases/prestashop_1.7.1.2.zip</url>
@@ -179,11 +201,6 @@
       <url>https://github.com/processwire/processwire/archive/master.zip</url>
       <name>processwire-3.0.62.zip</name>
       <version>3.0.62</version>
-    </download>
-    <download id="processwire_de_DE">
-      <link>https://github.com/yellowled/pw-lang-de/releases</link>
-      <url>https://github.com/yellowled/pw-lang-de/archive/v3.0.61.zip</url>
-      <name>pw-lang-de-3.0.61.zip</name>
     </download>
     <download id="puppet_master">
       <url>replace-this-text-with-the-download-link-you-received-from-puppet</url>
@@ -197,9 +214,13 @@
       <url>https://redaxo.org/download/redaxo/5.3.0.zip</url>
     </download>
     <download id="roundcube">
-      <status>currently-unknown</status>
-      <url>https://github.com/roundcube/roundcubemail/releases/download/1.2.1/roundcubemail-1.2.1-complete.tar.gz</url>
-      <sha256>271aabea275739b5a1f66510b02b79818aa218ffbac2abc9ff168e20a9031d45</sha256>
+      <link>https://roundcube.net/download/</link>
+      <url>https://github.com/roundcube/roundcubemail/releases/download/1.3.1/roundcubemail-1.3.1-complete.tar.gz</url>
+      <sha256>f071bbe84f90ba55582289dcef7b70198b81e0aedd4de8422945658bbee3da0b</sha256>
+    </download>
+    <download id="rspamd_repo">
+      <link>https://rspamd.com/downloads.html</link>
+      <url>http://rspamd.com/rpm-stable/centos-7/rspamd.repo</url>
     </download>
     <download id="seafile">
       <status>currently-unknown</status>
@@ -251,10 +272,9 @@
       <version>0.12.1-1</version>
     </download>
     <download id="wordpress">
-      <status>currently-unknown</status>
       <link>https://de.wordpress.org/releases/</link>
-      <url>https://de.wordpress.org/wordpress-4.7.3-de_DE.tar.gz</url>
-      <md5>793c2a116aff9b5ac263ec3646be6e53</md5>
+      <url>https://de.wordpress.org/wordpress-4.8.2-de_DE.tar.gz</url>
+      <md5>0b0cb538ec07360a68367e467ebd23b8</md5>
     </download>
 
     <git id="gitolite">
@@ -271,32 +291,55 @@
       <file>CentOS-Base</file>
       <prio>1</prio>
     </repo>
-    <repo id="nginx">
-      <file>nginx</file>
+    <repo id="epel">
+      <link>https://fedoraproject.org/wiki/EPEL</link>
+      <file>epel</file>
+      <prio>11</prio>
+      <key>/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7</key>
+      <fingerprint>352c64e5</fingerprint>
+    </repo>
+    <repo id="ghettoforge">
+      <link>http://ghettoforge.org/index.php/Usage</link>
+      <file>gf</file>
       <prio>13</prio>
+      <rpm>http://mirror.ghettoforge.org/distributions/gf/gf-release-latest.gf.el7.noarch.rpm</rpm>
+      <key>/etc/pki/rpm-gpg/RPM-GPG-KEY-gf.el7</key>
+      <includepkgs>postfix3*</includepkgs>
+    </repo>
+    <repo id="nginx">
+      <link>http://nginx.org/packages/centos/7/noarch/RPMS/</link>
+      <file>nginx</file>
+      <prio>31</prio>
       <rpm>http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm</rpm>
       <fingerprint>7bd9bf62</fingerprint>
+      <includepkgs>nginx*</includepkgs>
     </repo>
     <repo id="postgresql">
+      <link>https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/</link>
       <file>pgdg-96-centos</file>
-      <prio>15</prio>
+      <prio>33</prio>
       <rpm>https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/pgdg-centos96-9.6-3.noarch.rpm</rpm>
     </repo>
     <repo id="nodesource">
+      <link>https://rpm.nodesource.com/pub_4.x/el/7/x86_64/</link>
       <file>nodesource-el</file>
-      <prio>17</prio>
+      <prio>35</prio>
       <rpm>https://rpm.nodesource.com/pub_4.x/el/7/x86_64/nodesource-release-el7-1.noarch.rpm</rpm>
       <key>/etc/pki/rpm-gpg/NODESOURCE-GPG-SIGNING-KEY-EL</key>
       <flags>--nosignature</flags>
+      <includepkgs>nodejs*</includepkgs>
     </repo>
     <repo id="docker">
+      <link>https://yum.dockerproject.org/repo/main/centos/7/Packages/</link>
       <file>docker</file>
+      <prio>37</prio>
       <key>https://yum.dockerproject.org/gpg</key>
-      <prio>19</prio>
+      <includepkgs>docker*</includepkgs>
     </repo>
     <repo id="webtatic">
+      <link>https://webtatic.com/</link>
       <file>webtatic</file>
-      <prio>21</prio>
+      <prio>39</prio>
       <rpm>https://mirror.webtatic.com/yum/el7/webtatic-release.rpm</rpm>
       <key>/etc/pki/rpm-gpg/RPM-GPG-KEY-webtatic-el7</key>
       <fingerprint>62e74ca5</fingerprint>
@@ -304,29 +347,22 @@
     <repo id="ius">
       <link>https://ius.io/GettingStarted/</link>
       <file>ius</file>
-      <prio>23</prio>
+      <prio>41</prio>
       <rpm>https://centos7.iuscommunity.org/ius-release.rpm</rpm>
       <key>/etc/pki/rpm-gpg/IUS-COMMUNITY-GPG-KEY</key>
     </repo>
     <repo id="passenger">
       <link>https://www.phusionpassenger.com/library/install/apache/install/oss/el7/</link>
       <file>passenger</file>
-      <prio>25</prio>
+      <prio>43</prio>
     </repo>
-    <repo id="epel">
-      <file>epel</file>
-      <prio>51</prio>
-      <key>/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7</key>
-      <fingerprint>352c64e5</fingerprint>
-    </repo>
-    <repo id="rpmforge">
-      <prio>53</prio>
-      <key>http://apt.sw.be/RPM-GPG-KEY.dag.txt</key>
-      <rpm>http://packages.sw.be/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm</rpm>
-    </repo>
-    <repo id="rpmfusion">
-      <prio>55</prio>
-      <rpm>http://download1.rpmfusion.org/free/el/updates/6/i386/rpmfusion-free-release-6-1.noarch.rpm</rpm>
+    <repo id="rspamd">
+      <link>https://rspamd.com/downloads.html</link>
+      <file>rspamd</file>
+      <prio>43</prio>
+      <load>rspamd_repo</load>
+      <key>http://rspamd.com/rpm-stable/gpg.key</key>
+      <includepkgs>rspamd*</includepkgs>
     </repo>
 
     <rpm_list id="general">
