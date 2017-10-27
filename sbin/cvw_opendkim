@@ -1,0 +1,169 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_opendkim - Install or remove OpenDKIM
+######                http://opendkim.org/
+######                https://www.linuxtechi.com/configure-domainkeys-with-postfix-on-centos-7/
+######
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="OpenDKIM"
+_slug="opendkim"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function opendkim_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
+	cvw_xml -a software/postfix || cvw_say -f "$_prog: requires postfix"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _addr=$(cvw_xml -r host/addr)
+	local _socket=$(cvw_xml -r software/$_slug/socket)
+	local _milter=$(cvw_xml -r software/$_slug/milter)
+	local _canon=$(cvw_xml -r software/$_slug/canonicalization)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _domain=${_fqdn#*.}
+	local _file
+
+	cvw_rpm -i opendkim
+	cvw_service -s opendkim
+
+	_file=/etc/letsencrypt/opendkim.keys.tgz
+	if [[ -s $_file ]] ; then
+		tar -x -z -C /etc/opendkim/keys -f $_file
+	else
+		opendkim-default-keygen
+		tar -c -z -C /etc/opendkim/keys -f $_file .
+		cvw_say -a "please save $_name keys -> cvw -Y"
+	fi
+	cvw_say -a "$_name TXT: $(cat /etc/opendkim/keys/default.txt)"
+
+	_file=/etc/opendkim.conf
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		## BASIC OPENDKIM CONFIGURATION FILE
+		## See opendkim.conf(5) or /usr/share/doc/opendkim/opendkim.conf.sample for more
+
+		PidFile            /var/run/opendkim/opendkim.pid
+		Mode               sv
+		Syslog             yes
+		SyslogSuccess      yes
+		LogWhy             yes
+		UserID             opendkim:opendkim
+		Socket             $_socket
+		Umask              002
+		SendReports        yes
+		ReportAddress      Postmaster <postmaster@$_domain>
+		SoftwareHeader     yes
+		Canonicalization   $_canon
+		Domain             $_domain
+		Selector           default
+		MinimumKeyBits     1024
+		KeyFile            /etc/opendkim/keys/default.private
+		KeyTable           /etc/opendkim/KeyTable
+		SigningTable       refile:/etc/opendkim/SigningTable
+		ExternalIgnoreList refile:/etc/opendkim/TrustedHosts
+		OversignHeaders    From
+	EOF
+	cvw_file -v $_file opendkim
+
+	_file=/etc/opendkim/KeyTable
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		# OPENDKIM KEY TABLE
+		default._domainkey.$_domain $_domain:default:/etc/opendkim/keys/default.private
+	EOF
+	cvw_file -v $_file opendkim
+
+	_file=/etc/opendkim/SigningTable
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		# OPENDKIM SIGNING TABLE
+		*@$_domain default._domainkey.$_domain
+	EOF
+	cvw_file -v $_file opendkim
+
+	_file=/etc/opendkim/TrustedHosts
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		# OPENDKIM TRUSTED HOSTS
+		127.0.0.1
+		::1
+		$_domain
+		$_fqdn
+		$_addr
+	EOF
+	cvw_file -v $_file opendkim
+
+	echo "10 $_milter" >>/tmp/cvw/postfix.milters
+
+	cvw_say -o "$_slug"
+}
+
+
+function opendkim_remove
+{
+	local _file
+
+	if cvw_rpm -c opendkim ; then
+		cvw_say -h "Removing $_name"
+
+		cvw_rpm -e opendkim
+		rm -rf /etc/opendkim*
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				opendkim_install
+			else
+				opendkim_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

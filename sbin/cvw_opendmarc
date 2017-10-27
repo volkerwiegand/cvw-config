@@ -1,0 +1,107 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_opendmarc - Install or remove OpenDMARC
+######                 http://www.trusteddomain.org/opendmarc/
+######
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="OpenDMARC"
+_slug="opendmarc"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function opendmarc_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
+	cvw_xml -a software/postfix || cvw_say -f "$_prog: requires postfix"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _addr=$(cvw_xml -r host/addr)
+	local _socket=$(cvw_xml -r software/$_slug/socket)
+	local _milter=$(cvw_xml -r software/$_slug/milter)
+	local _email=$(cvw_xml -r software/$_slug/email)
+	local _order=$(cvw_xml -r software/$_slug/order)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _domain=${_fqdn#*.}
+	local _file
+
+	cvw_rpm -i opendmarc
+	cvw_service -s opendmarc
+
+	cvw_say -a "$_name TXT: _dmarc.$_domain. IN TXT \"v=DMARC1; p=none; rua=mailto:$_email; ruf=mailto:$_email; sp=none; ri=86400\""
+
+	_file=/etc/opendmarc.conf
+	cvw_file -e $_file "s/^\(Socket \).*/\1$_socket/" opendmarc
+
+	echo "$_order $_milter" >>/tmp/cvw/postfix.milters
+
+	cvw_say -o "$_slug"
+}
+
+
+function opendmarc_remove
+{
+	local _file
+
+	if cvw_rpm -c opendmarc ; then
+		cvw_say -h "Removing $_name"
+
+		cvw_rpm -e opendmarc
+		rm -rf /etc/opendmarc*
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				opendmarc_install
+			else
+				opendmarc_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
