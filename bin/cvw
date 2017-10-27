@@ -82,6 +82,31 @@ function finish
 }
 
 
+function combine_known_hosts
+{
+	local _dir=$HOME/.ssh
+	local _hosts=$_dir/known_hosts
+	local _file
+
+	rm -f $_hosts.tmp_VW
+
+	find $_dir -name "host_*" -print | sort | while read _file ; do
+		cat $_file >>$_hosts.tmp_VW
+	done
+
+	if [[ -s $_hosts.tmp_VW ]] ; then
+		if cmp -s $_hosts $_hosts.tmp_VW ; then
+			rm -f $_hosts.tmp_VW
+		else
+			mv -f $_hosts.tmp_VW $_hosts
+		fi
+		chmod 0600 $_hosts
+	else
+		rm -f $_hosts.tmp_VW $_hosts
+	fi
+}
+
+
 function combine_ssh_configs
 {
 	local _dir=$HOME/.ssh
@@ -468,6 +493,7 @@ if [[ $_prepare ]] ; then
 	setup_config
 	cvw_say -a "setup current SSH keys for $_fqdn"
 
+	mv -f $HOME/.ssh/known_hosts $HOME/.ssh/known_hosts.tmp
 	if [[ -n "$_copy_key" ]] ; then
 		scp $HOME/.ssh/id_rsa.pub root@$_fqdn:/root/.ssh/authorized_keys
 	fi
@@ -478,6 +504,8 @@ if [[ $_prepare ]] ; then
 	cvw_say -a "check if my ssh key has been installed"
 	ssh -t root@$_fqdn "cat /root/.ssh/authorized_keys"
 	cvw_say
+	mv -f $HOME/.ssh/known_hosts $HOME/.ssh/host_$_fqdn
+	combine_known_hosts
 
 	cvw_say -a "disable password login"
 	ssh -t root@$_fqdn "sed -i -e '/^PasswordAuthentication/s/yes/no/' /etc/ssh/sshd_config"
