@@ -69,8 +69,7 @@ function processwire_install
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
 			$_root/app/site
 
-	cvw_unpack -i $_slug $_root/app index.php
-	mkdir -p $_root/app/site
+	cvw_unpack -u apache -i $_slug $_root/app index.php
 
 	_file=$_root/app/.htaccess
 	if [[ ! -r $_file ]] ; then
@@ -107,21 +106,20 @@ function processwire_install
 	EOF
 	cvw_file -v $_file
 
-	_file=$_root/app/site/init.php
-	cat >$_file.tmp_VW <<-EOF
-		<?php namespace ProcessWire;
-		setlocale(LC_ALL, '$_lang.utf8');
-	EOF
-	cvw_file -v $_file $(cvw_php -s)
-
-	_file=$_root/app/site/config.php
-	if grep -q -s $_pass $_file ; then
-		chmod 0400 $_file
-		chown -R root   $_root/app
-		chown -R apache $_root/app/site
-	else
+	if [[ ! -d $_root/app/site ]] ; then
 		cvw_say -a "waiting for install .....: https://$_fqdn${_uri%/}/install.php"
-		chown -R apache $_root/app
+	else
+		_file=$_root/app/site/init.php
+		cat >$_file.tmp_VW <<-EOF
+			<?php namespace ProcessWire;
+			setlocale(LC_ALL, '$_lang.utf8');
+		EOF
+		cvw_file -u apache -v $_file $(cvw_php -s)
+
+		_file=$_root/app/site/config.php
+		if grep -q -s $_pass $_file ; then
+			chmod 0400 $_file
+		fi
 	fi
 
 	if cvw_xml -a software/nginx ; then
