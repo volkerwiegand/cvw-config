@@ -58,13 +58,6 @@ function processwire_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file _subdir
 
-	cvw_say -a "DB Name / User ..........: $_slug"
-	cvw_say -a "DB Pass .................: $_pass"
-	cvw_say -a "Admin Login URL .........: $(cvw_url -r $_uri)$_slug/"
-	cvw_say -a "Admin User ..............: $_adm_name"
-	cvw_say -a "Admin Password ..........: $_adm_pass"
-	cvw_say -a "Admin Email .............: $_adm_mail"
-
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
 			$_root/app/site
@@ -108,6 +101,12 @@ function processwire_install
 
 	if [[ ! -d $_root/app/site ]] ; then
 		cvw_say -a "waiting for install .....: https://$_fqdn${_uri%/}/install.php"
+		cvw_say -a "DB Name / User ..........: $_slug"
+		cvw_say -a "DB Pass .................: $_pass"
+		cvw_say -a "Admin Login URL .........: $(cvw_url -r $_uri)$_slug/"
+		cvw_say -a "Admin User ..............: $_adm_name"
+		cvw_say -a "Admin Password ..........: $_adm_pass"
+		cvw_say -a "Admin Email .............: $_adm_mail"
 	else
 		_file=$_root/app/site/init.php
 		cat >$_file.tmp_VW <<-EOF
