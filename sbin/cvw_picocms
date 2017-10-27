@@ -1,0 +1,141 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_picocms - Install or remove Pico CMS
+######               http://picocms.org/
+######               http://picocms.org/docs/#install
+######
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Pico CMS"
+_slug="picocms"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function picocms_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/php || cvw_say -f "$_prog: requires php"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _repo=$(cvw_xml -r software/$_slug/git/repo)
+	local _name=$(cvw_xml -r software/$_slug/git/name)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _subdir
+
+	cvw_unpack -m -s -i $_slug $_root/app index.php
+	pushd $_root/app >/dev/null
+	composer -q install
+	popd >/dev/null
+
+	if [[ ! -d $_root/$_name ]] ; then
+		set +e
+		(cd $_root && git clone $_repo $_name)
+		set -e
+	fi
+
+	if [[ -d $_root/$_name ]] ; then
+		for _subdir in assets config content plugins themes ; do
+			if [[ -d $_root/$_name/$_subdir ]] ; then
+				if [[ -h $_root/app/$_subdir ]] ; then
+					rm -f $_root/app/$_subdir
+				elif [[ -d $_root/app/$_subdir ]] ; then
+					mkdir -p $_root/backup
+					rm -rf $_root/backup/$_subdir
+					mv $_root/app/$_subdir $_root/backup/$_subdir
+				fi
+				cvw_say -s "symlink: $_root/app/$_subdir -> $_root/$_name/$_subdir"
+				ln -nfs $_root/$_name/$_subdir $_root/app/$_subdir
+			fi
+		done
+	else
+		if [[ ! -h $_root/app/content ]] ; then
+			cvw_say -s "symlink: $_root/app/content -> content-sample"
+			ln -nfs content-sample $_root/app/content
+		fi
+	fi
+
+	if cvw_xml -a software/nginx ; then
+		cvw_nginx -p $_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		cvw_apache -p $_slug
+	fi
+
+	cat >>/etc/profile.d/cvw_aliases.sh.tmp_VW <<-EOF
+		alias cd-pico='cd $_root/app'
+		alias upd-pico='cd $_root/$_name && git pull'
+	EOF
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "$_slug"
+}
+
+
+function picocms_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	cvw_backup -z $_slug
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				picocms_install
+			else
+				picocms_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
