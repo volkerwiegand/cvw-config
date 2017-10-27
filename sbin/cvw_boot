@@ -76,15 +76,15 @@ cvw_nginx          -i ; error_check
 cvw_apache         -i ; error_check
 cvw_php            -i ; error_check
 cvw_mysql          -i ; error_check
+cvw_sqlbuddy       -i ; error_check
+cvw_nodejs         -i ; error_check
 cvw_postgresql     -i ; error_check
-cvw_postfixadmin   -i ; error_check
 cvw_postfix        -i ; error_check
 cvw_opendkim       -i ; error_check
+cvw_opendmarc      -i ; error_check
 cvw_spamassassin   -i ; error_check
 cvw_rspamd         -i ; error_check
 cvw_clamav         -i ; error_check
-cvw_amavisd        -i ; error_check
-cvw_mailscanner    -i ; error_check
 cvw_redis          -i ; error_check
 cvw_memcache       -i ; error_check
 cvw_openldap       -i ; error_check
@@ -93,7 +93,6 @@ cvw_serendipity    -i ; error_check
 cvw_concrete5      -i ; error_check
 cvw_wordpress      -i ; error_check
 cvw_b2evolution    -i ; error_check
-cvw_backdrop       -i ; error_check
 cvw_processwire    -i ; error_check
 cvw_cmsms          -i ; error_check
 cvw_cmsimple       -i ; error_check
@@ -103,8 +102,6 @@ cvw_joomla         -i ; error_check
 cvw_openletters    -i ; error_check
 cvw_phplist        -i ; error_check
 cvw_xiopo          -i ; error_check
-cvw_sqlbuddy       -i ; error_check
-cvw_nodejs         -i ; error_check
 cvw_gogs           -i ; error_check
 cvw_gitolite       -i ; error_check
 cvw_rails          -i ; error_check
