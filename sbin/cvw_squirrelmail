@@ -43,7 +43,7 @@ function usage
 function init_squirrelmail
 {
 	cvw_say -h "Installing SquirrelMail"
-	cvw_xml -a software/apache || cvw_say -f "$_prog: requires apache"
+	cvw_xml -a software/php || cvw_say -f "$_prog: requires php"
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _lang=$(cvw_xml -r system/language)
 	test -s /tmp/cvw/error && exit 1
