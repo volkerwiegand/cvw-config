@@ -80,13 +80,6 @@ function postfix_install_standalone
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_mysql -f /var/local/cfg/files/misc/postfix.sql $_slug $_pass $_slug
 
-	_hash=$(doveadm pw -s SHA512-CRYPT -p $_pass | cut -d'}' -f2)
-	cvw_mysql -e "INSERT IGNORE INTO $_slug.Domains_tbl(DomainName) VALUES('$_domain')"
-	cvw_mysql -e "INSERT IGNORE INTO $_slug.Users_tbl(DomainId, password, Email) VALUES(1, '$_hash', 'admin@$_domain')"
-	for _addr in postmaster hostmaster webmaster ; do
-		cvw_mysql -e "INSERT IGNORE INTO $_slug.Alias_tbl(DomainId, Source, Destination) VALUES(1, '$_addr@$_domain', 'admin@$_domain')"
-	done
-
 	cat >$_vdomains <<-EOF
 		user = $_slug
 		password = $_pass
@@ -169,6 +162,13 @@ function postfix_install_standalone
 	cvw_rpm -i dovecot
 	cvw_rpm -i dovecot-mysql
 	cvw_service -s dovecot
+
+	_hash=$(doveadm pw -s SHA512-CRYPT -p $_pass | cut -d'}' -f2)
+	cvw_mysql -e "INSERT IGNORE INTO $_slug.Domains_tbl(DomainName) VALUES('$_domain')"
+	cvw_mysql -e "INSERT IGNORE INTO $_slug.Users_tbl(DomainId, password, Email) VALUES(1, '$_hash', 'admin@$_domain')"
+	for _addr in postmaster hostmaster webmaster ; do
+		cvw_mysql -e "INSERT IGNORE INTO $_slug.Alias_tbl(DomainId, Source, Destination) VALUES(1, '$_addr@$_domain', 'admin@$_domain')"
+	done
 
 	_file=/etc/dovecot/dovecot-sql.conf.ext
 	cat >$_file.tmp_VW <<-EOF
