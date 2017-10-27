@@ -90,10 +90,7 @@ function init_init
 	cvw_file -v $_file
 
 	if [[ ! -s /root/initial_rpm_list ]] ; then
-		cvw_say -o "coldstart"
 		cvw_rpm -L
-		# FIXME polkit breaks firewalld and docker - why???
-		cvw_rpm -e polkit
 		echo "initial" >>/tmp/cvw/updating
 	fi
 
