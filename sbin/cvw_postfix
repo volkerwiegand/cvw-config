@@ -79,6 +79,7 @@ function postfix_install_standalone
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_mysql -f /var/local/cfg/files/misc/postfix.sql $_slug $_pass $_slug
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_vmail_dir
 
 	cat >$_vdomains <<-EOF
 		user = $_slug
