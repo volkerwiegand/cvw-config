@@ -90,7 +90,7 @@ function postfix_install_standalone
 	rm -rf $_root/app
 
 	cvw_unpack -m -s -i postfix_go $_root/app postfix-go
-	cvw_service -s postfix-go
+	cvw_service -r postfix-go
 
 	if cvw_xml -t software/$_slug/public ; then
 		_addr="0.0.0.0:$_port"
@@ -111,6 +111,7 @@ function postfix_install_standalone
 		DB_Connect:    "$_slug:$_pass@/$_slug"
 		Web_Addr:      "$_addr"
 		Web_Token:     "_Postfix+Dovecot+Golang+PureCSS_"
+		Base_URL:      "${_uri%/}/"
 	EOF
 	if cvw_xml -t software/$_slug/public ; then
 		cat >>$_file.tmp_VW <<-EOF
@@ -150,20 +151,17 @@ function postfix_install_standalone
 
 	if cvw_xml -t software/$_slug/public ; then
 		cvw_firewall -t $_port
-		cvw_url -a "$_name" ":$_port/home"
+		cvw_url -a "$_name" ":$_port/"
 	else
 		if cvw_xml -a software/apache ; then
 			_file=/tmp/cvw/apache.block
 			cat >>$_file <<-EOF
 
-				   <Location $_uri>
-				      ProxyPass http://127.0.0.1:$_port/
-				      ProxyPassReverse http://127.0.0.1:$_port/
-				   </Location>
+				   ProxyPass $_uri http://127.0.0.1:$_port$_uri
 			EOF
 			cvw_apache -p $_slug
 		fi
-		cvw_url -a "$_name" ${_uri%/}/home
+		cvw_url -a "$_name" $_uri
 	fi
 
 
