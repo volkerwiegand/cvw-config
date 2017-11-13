@@ -97,7 +97,7 @@ function user_setup
 	if cvw_xml -t $_base/imap ; then
 		cvw_xml -r $_base/password | passwd --stdin $_id >/dev/null
 		cvw_file -e $_file.tmp_VW "s/^$_id:/#$_id:/"
-		cvw_xml -l $_base/alias | while read _alias ; do
+		cvw_xml -l $_base/alias | sort | while read _alias ; do
 			cvw_file -e $_file.tmp_VW "s/^$_alias:/#$_alias:/"
 			echo "$_alias:	$_id" >>$_file.tmp_VW
 		done

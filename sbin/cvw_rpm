@@ -95,7 +95,7 @@ while getopts ":c:e:g:i:l:Lr:u" opt ; do
 
 		l)
 			_changed=""
-			cvw_xml -l common/rpm_list:$OPTARG/rpm | while read _rpm ; do
+			cvw_xml -l common/rpm_list:$OPTARG/rpm | sort | while read _rpm ; do
 				cvw_rpm -i $_rpm
 				test -s /var/local/cfg/changed || continue
 				_changed=$(cat /var/local/cfg/changed)

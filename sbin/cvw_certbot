@@ -71,7 +71,7 @@ function certbot_install
 	else
 		_list="-d $_fqdn"
 		[[ $_fqdn =~ ^www\. ]] && _list="$_list -d ${_fqdn#*.}"
-		for _san in $(cvw_xml -l software/$_slug/san) ; do
+		for _san in $(cvw_xml -l software/$_slug/san | sort) ; do
 			_list="$_list -d $_san"
 			[[ $_san =~ ^www\. ]] && _list="$_list -d ${_san#*.}"
 		done
