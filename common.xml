@@ -188,9 +188,10 @@
       <url>http://builds.piwik.org/piwik.zip</url>
       <version>3.0.4</version>
     </download>
-    <download id="postfixadmin">
-      <link>https://sourceforge.net/projects/postfixadmin/files/postfixadmin/</link>
-      <url>https://sourceforge.net/projects/postfixadmin/files/postfixadmin/postfixadmin-3.1/postfixadmin-3.1.tar.gz</url>
+    <download id="postfix_go">
+      <link>https://github.com/volkerwiegand/postfix-go</link>
+      <url>https://github.com/volkerwiegand/postfix-go/raw/master/postfix-go-1.0.4.tgz</url>
+      <md5>07bd3932b9ab4a46e9c4df52fbbe9bc6</md5>
     </download>
     <download id="prestashop">
       <link>https://www.prestashop.com/en/download</link>

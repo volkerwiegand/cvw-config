@@ -169,8 +169,6 @@ function gogs_install
 		[[ -s $_conf ]] || cvw_say -f "$_prog: missing $_conf"
 		cat >>$_conf <<-EOF
 
-			   ProxyPreserveHost On
-			   ProxyRequests off
 			   ProxyPass $_uri http://127.0.0.1:$_port
 			   ProxyPassReverse $_uri http://127.0.0.1:$_port
 		EOF

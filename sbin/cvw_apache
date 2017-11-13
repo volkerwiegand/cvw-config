@@ -186,12 +186,13 @@ function apache_initial
 
 		<VirtualHost *:$_ssl_port>
 		$(cat /tmp/cvw/apache.names)
-		   UseCanonicalName Off
-		   ErrorLog         logs/ssl_error_log
-		   TransferLog      logs/ssl_transfer_log
-		   LogLevel         $_loglvl
-		   DocumentRoot     __DOC_ROOT__
-		   ProxyRequests    off
+		   UseCanonicalName  Off
+		   ErrorLog          logs/ssl_error_log
+		   TransferLog       logs/ssl_transfer_log
+		   LogLevel          $_loglvl
+		   DocumentRoot      __DOC_ROOT__
+		   ProxyPreserveHost On
+		   ProxyRequests     off
 
 		   SSLEngine             on
 		   SSLCertificateFile    $_cert/cert.pem
