@@ -48,6 +48,7 @@ function automx_install
 	cvw_xml -a software/certbot  || cvw_say -f "$_prog: requires certbot"
 	cvw_xml -a software/memcache || cvw_say -f "$_prog: requires memcache"
 	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _addr=$(cvw_xml -r host/addr)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _account_name=$(cvw_xml -r software/$_slug/account/name)
@@ -138,8 +139,8 @@ function automx_install
 		cvw_apache -p $_slug
 	fi
 
-	cvw_say -s "$_name DNS CNAME: 'autoconfig   IN CNAME $_fqdn.'"
-	cvw_say -s "$_name DNS CNAME: 'autodiscover IN CNAME $_fqdn.'"
+	cvw_say -s "$_name DNS record: 'autoconfig   IN A $_addr'"
+	cvw_say -s "$_name DNS record: 'autodiscover IN A $_addr'"
 
 	cvw_say -o "$_slug"
 }
