@@ -59,15 +59,16 @@ function opendkim_install
 	cvw_rpm -i opendkim
 	cvw_service -s opendkim
 
-	_file=/etc/letsencrypt/opendkim.keys.tgz
+	_file="/var/local/cfg/files/misc/opendkim.tar.gz"
 	if [[ -s $_file ]] ; then
-		tar -x -z -C /etc/opendkim/keys -f $_file
+		cvw_say -s "extracting opendkim.tar.gz"
+		tar -x -z -C /etc -f $_file
 	else
 		opendkim-default-keygen
 		tar -c -z -C /etc/opendkim/keys -f $_file .
-		cvw_say -a "please save $_name keys -> cvw -Y"
+		cvw_say -a "don't forget to save the $_name config -> cvw -y"
+		cvw_say -s "$_name DNS TXT: '$(cat /etc/opendkim/keys/default.txt)'"
 	fi
-	cvw_say -s "$_name DNS TXT: '$(cat /etc/opendkim/keys/default.txt)'"
 
 	_file=/etc/opendkim.conf
 	cvw_file -b $_file

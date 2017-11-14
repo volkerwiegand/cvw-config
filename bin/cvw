@@ -48,11 +48,12 @@ function usage
 		    or: $_prog -l [cmd]          Remote login as root
 		    or: $_prog -L user [cmd]     Remote login as user
 		    or: $_prog -p len            Generate random password
-		    or: $_prog -P [-y] [-D]      Prepare for setup [copy SSH key, disable ipv6]
+		    or: $_prog -P [-C] [-D]      Prepare for setup [copy SSH key, disable ipv6]
 		    or: $_prog -r [svc]          Restart service
 		    or: $_prog -t                Compile and test config.xml
 		    or: $_prog -x flag cmd       Run cvw_xml -flag cmd (verbose)
 		    or: $_prog -X flag cmd       Run cvw_xml -flag cmd (only output)
+		    or: $_prog -y                Archive and fetch /etc/opendkim
 		    or: $_prog -Y                Archive and fetch /etc/letsencrypt
 		    or: $_prog -z                Zap (delete) remote cvw_... commands
 		Called with: '$_prog $_args'
@@ -228,11 +229,11 @@ function wipe_config
 	local _fqdn=$(cvw_xml -r host/fqdn)
 
 	cvw_say -a "remove remote CVW files"
-	ssh -t root@$_fqdn "rm -rf /var/local/cfg /tmp/cvw /tmp/letsencrypt.tar.gz"
+	ssh -t root@$_fqdn "rm -rf /var/local/cfg /tmp/cvw /tmp/letsencrypt.tar.gz /tmp/opendkim.tar.gz"
 }
 
 
-while getopts ":abBcdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -251,6 +252,10 @@ while getopts ":abBcdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 		c)
 			_compose=1
 			_finito=1
+		;;
+
+		C)
+			_copy_key=1
 		;;
 
 		d)
@@ -327,7 +332,7 @@ while getopts ":abBcdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 		;;
 
 		y)
-			_copy_key=1
+			_opendkim=1
 		;;
 
 		Y)
@@ -585,6 +590,18 @@ fi
 if [[ $_run_XML ]] ; then
 	setup_config >/dev/null
 	cvw_xml -$_run_XML $@
+	exit
+fi
+
+
+if [[ $_opendkim ]] ; then
+	setup_config
+	copy_config
+	cvw_say -a "securing OpenDKIM files"
+	ssh -t root@$_fqdn "tar -c -v -z -f /tmp/opendkim.tar.gz -C /etc opendkim"
+	scp root@$_fqdn:/tmp/opendkim.tar.gz cfg/files/misc/opendkim.tar.gz
+	wipe_config
+	ssh -t root@$_fqdn "cat /etc/opendkim/keys/default.txt"
 	exit
 fi
 

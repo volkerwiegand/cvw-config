@@ -56,6 +56,8 @@ function certbot_install
 	if [[ -s $_file ]] ; then
 		cvw_say -s "extracting letsencrypt.tar.gz"
 		tar -x -z -C /etc -f $_file
+	else
+		cvw_say -a "don't forget to save the $_name config -> cvw -Y"
 	fi
 
 	# FIXME check why "certbot --webroot" seems to fail
