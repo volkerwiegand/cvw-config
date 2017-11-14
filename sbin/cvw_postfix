@@ -473,6 +473,8 @@ function postfix_finish_standalone
 
 	cvw_service -r postfix
 
+	cvw_say -s "$_name DNS TXT: '@ IN TXT \"v=spf1 +mx -all\"'"
+
 	cvw_say -o "$_slug:finish (standalone)"
 }
 

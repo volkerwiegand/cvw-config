@@ -59,12 +59,12 @@ function opendmarc_install
 	cvw_rpm -i opendmarc
 	cvw_service -s opendmarc
 
-	cvw_say -a "$_name TXT: _dmarc.$_domain. IN TXT \"v=DMARC1; p=none; rua=mailto:$_email; ruf=mailto:$_email; sp=none; ri=86400\""
-
 	_file=/etc/opendmarc.conf
 	cvw_file -e $_file "s/^\(Socket \).*/\1$_socket/" opendmarc
 
 	echo "$_order $_milter" >>/tmp/cvw/postfix.milters
+
+	cvw_say -s "$_name DNS TXT: '_dmarc.$_domain. IN TXT \"v=DMARC1; p=none; rua=mailto:$_email; ruf=mailto:$_email; sp=none; ri=86400\"'"
 
 	cvw_say -o "$_slug"
 }

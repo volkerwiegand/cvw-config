@@ -67,7 +67,7 @@ function opendkim_install
 		tar -c -z -C /etc/opendkim/keys -f $_file .
 		cvw_say -a "please save $_name keys -> cvw -Y"
 	fi
-	cvw_say -a "$_name TXT: $(cat /etc/opendkim/keys/default.txt)"
+	cvw_say -s "$_name DNS TXT: '$(cat /etc/opendkim/keys/default.txt)'"
 
 	_file=/etc/opendkim.conf
 	cvw_file -b $_file
