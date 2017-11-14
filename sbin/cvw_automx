@@ -23,6 +23,9 @@ _name="automx"
 _slug="automx"
 
 
+_PYTHON=/usr/lib/python2.7/site-packages
+
+
 function usage
 {
 	rm -rf /tmp/cvw_error
@@ -53,6 +56,7 @@ function automx_install
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _account_name=$(cvw_xml -r software/$_slug/account/name)
 	local _account_short=$(cvw_xml -r software/$_slug/account/short)
+	local _debug=$(cvw_xml -R software/$_slug/debug no)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _domain=${_fqdn#*.}
 	local _cert="/etc/letsencrypt/live/$_fqdn"
@@ -67,8 +71,12 @@ function automx_install
 	cp $_root/download/src/automx_wsgi.py $_root/app
 
 	cp $_root/download/src/automx-test /usr/local/bin
-	cp -r $_root/download/src/automx /usr/lib/python2.7/site-packages
+	cp -r $_root/download/src/automx $_PYTHON
 	cp -a $_root/download/doc/man/ /usr/local/share
+
+	if [[ $_debug == "yes" ]] ; then
+		install -o apache -g apache -d /var/log/automx
+	fi
 
 	_file=/etc/automx.conf
 	cat >$_file.tmp_VW <<-EOF
@@ -80,7 +88,7 @@ function automx_install
 		provider = $_domain
 		domains = $_domain
 
-		debug = yes
+		debug = $_debug
 		logfile = /var/log/automx/automx.log
 
 		memcache = 127.0.0.1:11211
@@ -151,8 +159,8 @@ function automx_remove
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 
 	rm -f /usr/local/bin/automx-test /etc/automx.conf
-	rm -rf /usr/lib/python2.7/site-packages/automx
 	rm -f /usr/local/share/man/*/automx*
+	rm -rf $_PYTHON/automx /var/log/automx
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
