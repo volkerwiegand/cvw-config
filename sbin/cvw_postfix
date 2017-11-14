@@ -157,7 +157,9 @@ function postfix_install_standalone
 			_file=/tmp/cvw/apache.block
 			cat >>$_file <<-EOF
 
-				   ProxyPass $_uri http://127.0.0.1:$_port$_uri
+				   <Location $_uri>
+				      ProxyPass http://127.0.0.1:$_port$_uri
+				   </Location>
 			EOF
 			cvw_apache -p $_slug
 		fi
