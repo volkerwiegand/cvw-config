@@ -1,4 +1,8 @@
   <common>
+    <download id="automx">
+      <link>https://github.com/sys4/automx/releases</link>
+      <url>https://github.com/sys4/automx/archive/v0.10.2.tar.gz</url>
+    </download>
     <download id="b2evolution">
       <link>http://b2evolution.net/downloads/</link>
       <url>https://github.com/b2evolution/b2evolution/archive/6.8.9.zip</url>
@@ -440,10 +444,6 @@
       <rpm>libicu-devel</rpm>
       <rpm>libyaml-devel</rpm>
     </rpm_list>
-    <rpm_list id="java">
-      <rpm>java-1.8.0-openjdk</rpm>
-      <rpm>maven</rpm>
-    </rpm_list>
     <rpm_list id="python">
       <rpm>python-setuptools</rpm>
       <rpm>python-pip</rpm>
@@ -517,15 +517,12 @@
       <rpm>php56u-soap</rpm>
       <rpm>php56u-xml</rpm>
     </rpm_list>
-    <rpm_list id="clamav">
-      <rpm>clamav</rpm>
-      <rpm>clamav-lib</rpm>
-      <rpm>clamav-data</rpm>
-      <rpm>clamav-devel</rpm>
-      <rpm>clamav-update</rpm>
-      <rpm>clamav-server</rpm>
-      <rpm>clamav-server-systemd</rpm>
-      <rpm>clamav-scanner-systemd</rpm>
-      <rpm>clamav-filesystem</rpm>
+    <rpm_list id="automx">
+      <rpm>mod_wsgi</rpm>
+      <rpm>python-dateutil</rpm>
+      <rpm>python-ipaddr</rpm>
+      <rpm>python-lxml</rpm>
+      <rpm>python-memcached</rpm>
+      <rpm>m2crypto</rpm>
     </rpm_list>
   </common>

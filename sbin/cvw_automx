@@ -1,0 +1,185 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_automx - Install or remove automx
+######              https://automx.org/de/
+######              https://github.com/sys4/automx/blob/master/INSTALL
+######
+###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="automx"
+_slug="automx"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function automx_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/certbot  || cvw_say -f "$_prog: requires certbot"
+	cvw_xml -a software/memcache || cvw_say -f "$_prog: requires memcache"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _account_name=$(cvw_xml -r software/$_slug/account/name)
+	local _account_short=$(cvw_xml -r software/$_slug/account/short)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _domain=${_fqdn#*.}
+	local _cert="/etc/letsencrypt/live/$_fqdn"
+	[[ -s $_cert/fullchain.pem ]] || cvw_say -f "missing SSL cert"
+	local _file
+
+	cvw_rpm -l $_slug
+
+	cvw_unpack -i $_slug $_root/download setup.py
+
+	mkdir -p $_root/app
+	cp $_root/download/src/automx_wsgi.py $_root/app
+
+	cp $_root/download/src/automx-test /usr/local/bin
+	cp -r $_root/download/src/automx /usr/lib/python2.7/site-packages
+	cp -a $_root/download/doc/man/ /usr/local/share
+
+	_file=/etc/automx.conf
+	cat >$_file.tmp_VW <<-EOF
+		#
+		# Configuration for $_fqdn
+		#
+
+		[automx]
+		provider = $_domain
+		domains = $_domain
+
+		debug = yes
+		logfile = /var/log/automx/automx.log
+
+		memcache = 127.0.0.1:11211
+		memcache_ttl = 600
+		client_error_limit = 20
+		rate_limit_exception_networks = 127.0.0.0/8, ::1/128
+
+		[DEFAULT]
+		account_type = email
+		account_name = $_account_name
+		account_name_short = $_account_short
+
+
+		[global]
+		backend = static
+		action = settings
+
+		sign_mobileconfig = yes
+		sign_cert = $_cert/fullchain.pem
+		sign_key = $_cert/privkey.pem
+
+		smtp = yes
+		smtp_server = $_fqdn
+		smtp_port = 587
+		smtp_encryption = starttls
+		smtp_auth = plaintext
+		smtp_refresh_ttl = 6
+		smtp_default = yes
+
+		imap = yes
+		imap_server = $_fqdn
+		imap_port = 143
+		imap_encryption = starttls
+		imap_auth = plaintext
+		imap_refresh_ttl = 6
+
+		pop = no
+
+		[$_domain]
+		backend = global
+	EOF
+	cvw_file -v $_file $(cvw_php -s)
+
+	if cvw_xml -a software/apache ; then
+		_file=/tmp/cvw/apache.block
+		cat >>$_file <<-EOF
+
+			   <IfModule mod_wsgi.c>
+			      WSGIScriptAliasMatch (?i)^/.+/(autodiscover|config-v1.1).xml $_root/app/automx_wsgi.py
+			      WSGIScriptAlias /mobileconfig $_root/app/automx_wsgi.py
+			      <Directory $_root/app>
+			         Require all granted
+			      </Directory>
+			   </IfModule>
+		EOF
+		cvw_apache -p $_slug
+	fi
+
+	cvw_say -s "$_name DNS CNAME: 'autoconfig   IN CNAME $_fqdn.'"
+	cvw_say -s "$_name DNS CNAME: 'autodiscover IN CNAME $_fqdn.'"
+
+	cvw_say -o "$_slug"
+}
+
+
+function automx_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	rm -f /usr/local/bin/automx-test /etc/automx.conf
+	rm -rf /usr/lib/python2.7/site-packages/automx
+	rm -f /usr/local/share/man/*/automx*
+
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				automx_install
+			else
+				automx_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
