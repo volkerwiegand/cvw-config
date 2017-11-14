@@ -109,9 +109,13 @@ function roundcube_install
 	fi
 
 	if cvw_xml -a software/apache ; then
-		cat >/tmp/cvw/apache.block <<-EOF
-
-			   Alias $_uri $_root/app/
+		_file=/tmp/cvw/apache.block
+		echo "" >$_file
+		echo "   Alias $_uri $_root/app" >>$_file
+		for _alias in $(cvw_xml -l software/$_slug/alias | sort) ; do
+			echo "   Alias $_alias $_root/app" >>$_file
+		done
+		cat >>$_file <<-EOF
 			   <Directory $_root/app>
 			      Options Indexes FollowSymLinks MultiViews
 			      <IfModule mod_passenger.c>
@@ -125,6 +129,9 @@ function roundcube_install
 	fi
 
 	cvw_url -a "$_name" $_uri
+	for _alias in $(cvw_xml -l software/$_slug/alias | sort) ; do
+		cvw_url -a "$_name" $_alias
+	done
 
 	cvw_say -o "$_slug"
 }

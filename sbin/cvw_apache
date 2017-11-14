@@ -55,7 +55,7 @@ function apache_add_php
 	local _uri=$(cvw_xml -r software/$_base/uri)
 	local _conf=$(cvw_apache -c)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _rails
+	local _alias _rails
 
 	if [[ -r /tmp/cvw/apache.block ]] ; then
 		cat /tmp/cvw/apache.block >>$_conf.tmp_VW
@@ -70,25 +70,18 @@ function apache_add_php
 		EOF
 		echo "$_root/app" >/tmp/cvw/apache.doc.root
 	else
-		cat >>$_conf.tmp_VW <<-EOF
-
-		   Alias $_uri $_root/app
-		   <Directory $_root/app>
-		EOF
-	fi
-
-	if cvw_xml -a software/rails ; then
-		_rails=$(cvw_xml -r software/rails/server)
-		if [[ $_rails == "passenger" ]] ; then
-			cat >>$_conf.tmp_VW <<-EOF
-			      <IfModule mod_passenger.c>
-			         PassengerEnabled off
-			      </IfModule>
-			EOF
-		fi
+		echo "" >>$_conf.tmp_VW
+		echo "   Alias $_uri $_root/app" >>$_conf.tmp_VW
+		for _alias in $(cvw_xml -l software/$_base/alias | sort) ; do
+			echo "   Alias $_alias $_root/app" >>$_conf.tmp_VW
+		done
+		echo "   <Directory $_root/app>" >>$_conf.tmp_VW
 	fi
 
 	cat >>$_conf.tmp_VW <<-EOF
+	      <IfModule mod_passenger.c>
+	         PassengerEnabled off
+	      </IfModule>
 	      AllowOverride all
 	      Require all granted
 	   </Directory>
