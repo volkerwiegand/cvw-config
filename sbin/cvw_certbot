@@ -27,6 +27,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
 		Called with: '$_prog $_args'
 	EOF
 
@@ -38,6 +39,22 @@ function usage
 	rm -f /tmp/cvw_error
 
 	exit 1
+}
+
+
+function certbot_generate
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _domain=${_fqdn#*.}
+
+	cat <<-EOF
+	    <certbot active="true">
+	      <san>autoconfig.$_domain</san>
+	      <san>autodiscover.$_domain</san>
+	    </certbot>
+
+	EOF
+	exit 0
 }
 
 
@@ -102,7 +119,7 @@ function certbot_remove
 }
 
 
-while getopts ":i" opt ; do
+while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -110,6 +127,11 @@ while getopts ":i" opt ; do
 			else
 				certbot_remove
 			fi
+			exit 0
+		;;
+
+		g)
+			certbot_generate
 			exit 0
 		;;
 
