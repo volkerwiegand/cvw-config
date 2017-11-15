@@ -41,7 +41,8 @@ function usage
 		    or: $_prog -d [cmd [args]]   Run remote docker command
 		    or: $_prog -e [-D]           Execute config [debug]
 		    or: $_prog -E [-D]           Execute with upgrade [debug]
-		    or: $_prog -f file [name]    Fetch file from server [local name]
+		    or: $_prog -f file [name]    Fetch <file> from server [local name]
+		    or: $_prog -g app            Generate sceleton config for <app>
 		    or: $_prog -h bits           Generate Diffie-Hellman group
 		    or: $_prog -k [port]         Set remote SSH port in ~/.ssh/config
 		    or: $_prog -K                Delete remote SSH port
@@ -49,7 +50,7 @@ function usage
 		    or: $_prog -L user [cmd]     Remote login as user
 		    or: $_prog -p len            Generate random password
 		    or: $_prog -P [-C] [-D]      Prepare for setup [copy SSH key, disable ipv6]
-		    or: $_prog -r [svc]          Restart service
+		    or: $_prog -r [svc]          Restart all or single service(s)
 		    or: $_prog -t                Compile and test config.xml
 		    or: $_prog -x flag cmd       Run cvw_xml -flag cmd (verbose)
 		    or: $_prog -X flag cmd       Run cvw_xml -flag cmd (only output)
@@ -233,7 +234,7 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:g:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -277,6 +278,11 @@ while getopts ":abBcCdDeEf:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 
 		f)
 			_fetch=$OPTARG
+		;;
+
+		g)
+			_app=$OPTARG
+			_finito=1
 		;;
 
 		h)
@@ -391,6 +397,12 @@ if [[ $_restore ]] ; then
 	fi
 	sleep 5
 	$_cmd
+	exit
+fi
+
+
+if [[ $_app ]] ; then
+	cvw_$_app -g
 	exit
 fi
 
