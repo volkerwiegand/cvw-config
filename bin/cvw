@@ -144,26 +144,26 @@ function setup_config
 	[[ -d ../sbin       ]] || failure "missing ../sbin dir"
 	[[ -d ../files      ]] || failure "missing ../files dir"
 
-	echo "--> creating /tmp/cvw"
+	[[ -z $1 ]] && echo "--> creating /tmp/cvw"
 	rm -rf /tmp/cvw
 	mkdir /tmp/cvw
 
-	echo "--> updating /usr/local/sbin"
+	[[ -z $1 ]] && echo "--> updating /usr/local/sbin"
 	chmod 0755 ../sbin/cvw_*
 	sudo rm -f /usr/local/sbin/cvw_*
 	sudo rsync -a --no-owner --no-group ../sbin/ /usr/local/sbin 2>/tmp/cvw/error
 
-	echo "--> updating /var/local/cfg"
+	[[ -z $1 ]] && echo "--> updating /var/local/cfg"
 	xmllint --output cfg/config.xml --xinclude config.in.xml
 	rsync -a ../files/ cfg/files
 	sudo ln -nfs $(pwd)/cfg /var/local/cfg 2>/tmp/cvw/error
 
 	if [[ -d cvw ]] ; then
-		echo "--> updating /var/local/cvw"
+		[[ -z $1 ]] && echo "--> updating /var/local/cvw"
 		sudo rsync -a --delete --no-owner --no-group cvw/ /var/local/cvw 2>/tmp/cvw/error
 	fi
 
-	echo "--> setting up access to host"
+	[[ -z $1 ]] && echo "--> setting up access to host"
 	_fqdn=$(cvw_xml -r host/fqdn)
 	_domain=${_fqdn#*.}
 	_addr=$(cvw_xml -r host/addr)
@@ -402,6 +402,8 @@ fi
 
 
 if [[ $_app ]] ; then
+	setup_config quiet
+	rm -rf /tmp/cvw
 	cvw_$_app -g
 	exit
 fi

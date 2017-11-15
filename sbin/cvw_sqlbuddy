@@ -27,6 +27,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
 		Called with: '$_prog $_args'
 	EOF
 
@@ -38,6 +39,18 @@ function usage
 	rm -f /tmp/cvw_error
 
 	exit 1
+}
+
+
+function sqlbuddy_generate
+{
+	cat <<-EOF
+	    <sqlbuddy active="true">
+	      <uri>/sql</uri>
+	    </sqlbuddy>
+
+	EOF
+	exit 0
 }
 
 
@@ -97,7 +110,7 @@ function sqlbuddy_remove
 }
 
 
-while getopts ":i" opt ; do
+while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -105,6 +118,11 @@ while getopts ":i" opt ; do
 			else
 				sqlbuddy_remove
 			fi
+			exit 0
+		;;
+
+		g)
+			sqlbuddy_generate
 			exit 0
 		;;
 
