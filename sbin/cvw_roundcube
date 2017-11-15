@@ -7,9 +7,9 @@
 ######                 https://roundcube.net/
 ######                 https://github.com/roundcube/roundcubemail/wiki/Installation
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -28,6 +28,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
 		Called with: '$_prog $_args'
 	EOF
 
@@ -39,6 +40,24 @@ function usage
 	rm -f /tmp/cvw_error
 
 	exit 1
+}
+
+
+function roundcube_generate
+{
+	local _pass=$(cvw -p 20)
+	local _key="$(cvw -p 10).--.$(cvw -p 10)"
+
+	cat <<-EOF
+	    <roundcube active="true">
+	      <uri>/webmail</uri>
+	      <alias>/roundcube</alias>
+	      <password>$_pass</password>
+	      <key>$_key</key>
+	    </roundcube>
+
+	EOF
+	exit 0
 }
 
 
@@ -152,7 +171,7 @@ function roundcube_remove
 	rm -f /tmp/cvw/error
 }
 
-while getopts ":i" opt ; do
+while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -160,6 +179,11 @@ while getopts ":i" opt ; do
 			else
 				roundcube_remove
 			fi
+			exit 0
+		;;
+
+		g)
+			roundcube_generate
 			exit 0
 		;;
 

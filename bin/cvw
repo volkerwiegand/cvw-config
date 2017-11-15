@@ -19,16 +19,19 @@ _prog=${0##*/}
 _args="$*"
 
 
-if [[ -s /tmp/cvw.lock ]] ; then
-	_pid=$(cat /tmp/cvw.lock)
-	if kill -0 $_pid 2>/dev/null ; then
-		echo "another cvw process is running (PID $_pid)" >&2
-		exit 1
+function check_singleton
+{
+	if [[ -s /tmp/cvw.lock ]] ; then
+		_pid=$(cat /tmp/cvw.lock)
+		if kill -0 $_pid 2>/dev/null ; then
+			echo "another cvw process is running (PID $_pid)" >&2
+			exit 1
+		fi
+		rm -f /tmp/cvw.lock
 	fi
-	rm -f /tmp/cvw.lock
-fi
-echo $$ >/tmp/cvw.lock || exit 1
-trap 'rm /tmp/cvw.lock' 0
+	echo $$ >/tmp/cvw.lock || exit 1
+	trap 'rm /tmp/cvw.lock' 0
+}
 
 
 function usage
@@ -453,6 +456,7 @@ fi
 
 
 if [[ $_update ]] ; then
+	check_singleton
 	setup_config
 	copy_config
 	cvw_say -a "updating $_fqdn $_debug"
@@ -462,6 +466,7 @@ fi
 
 
 if [[ $_upgrade ]] ; then
+	check_singleton
 	setup_config
 	copy_config
 	cvw_say -a "upgrading $_fqdn $_debug"
@@ -602,7 +607,7 @@ fi
 
 
 if [[ $_run_XML ]] ; then
-	setup_config >/dev/null
+	setup_config quiet
 	cvw_xml -$_run_XML $@
 	exit
 fi
