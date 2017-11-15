@@ -90,11 +90,11 @@ while getopts ":ig" opt ; do
 			exit 0
 		;;
 
-
 		g)
 			redis_generate
 			exit 0
 		;;
+
 		\?)
 			usage
 		;;
