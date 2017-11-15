@@ -7,9 +7,9 @@
 ######              https://automx.org/de/
 ######              https://github.com/sys4/automx/blob/master/INSTALL
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -31,6 +31,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
 		Called with: '$_prog $_args'
 	EOF
 
@@ -42,6 +43,23 @@ function usage
 	rm -f /tmp/cvw_error
 
 	exit 1
+}
+
+
+function automx_generate
+{
+	cat <<-EOF
+	    <automx active="true">
+	      <uri>/autodiscover</uri>
+	      <debug>yes</debug>
+	      <account>
+	        <name>Long name of the Company</name>
+	        <short>Company</short>
+	      </account>
+	    </automx>
+
+	EOF
+	exit 0
 }
 
 
@@ -172,7 +190,7 @@ function automx_remove
 }
 
 
-while getopts ":i" opt ; do
+while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -180,6 +198,11 @@ while getopts ":i" opt ; do
 			else
 				automx_remove
 			fi
+			exit 0
+		;;
+
+		g)
+			automx_generate
 			exit 0
 		;;
 

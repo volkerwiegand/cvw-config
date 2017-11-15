@@ -5,9 +5,9 @@
 ######
 ###### cvw - CVW config system master command
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -407,7 +407,7 @@ fi
 if [[ $_app ]] ; then
 	setup_config quiet
 	rm -rf /tmp/cvw
-	cvw_$_app -g
+	cvw_${_app#cvw_} -g
 	exit
 fi
 
