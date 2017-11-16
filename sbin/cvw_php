@@ -55,16 +55,23 @@ function php_install
 	local _info=$(cvw_xml -R software/$_slug/info "")
 	local _geoip=$(cvw_xml -r system/app_root)/GeoIP
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _file _var
+	local _php _file _var
 
-	cvw_yum -a ius
-	cvw_rpm -l $_slug
-	cvw_xml -a software/nginx      && cvw_rpm -i php56u-fpm
-	cvw_xml -a software/mysql      && cvw_rpm -i php56u-mysqlnd
-	cvw_xml -a software/postgresql && cvw_rpm -i php56u-pgsql
-	cvw_xml -a software/openldap   && cvw_rpm -i php56u-ldap
+	if cvw_xml -t software/$_slug/ius ; then
+		cvw_say -s "using PHP 5.6 from IUS"
+		cvw_yum -a ius
+		_php="php56u"
+	else
+		cvw_say -s "using PHP 5.4 from CentOS"
+		_php="php"
+	fi
+	cvw_rpm -l $_php
+	cvw_xml -a software/nginx      && cvw_rpm -i ${_php}-fpm
+	cvw_xml -a software/mysql      && cvw_rpm -i ${_php}-mysqlnd
+	cvw_xml -a software/postgresql && cvw_rpm -i ${_php}-pgsql
+	cvw_xml -a software/openldap   && cvw_rpm -i ${_php}-ldap
 
-	cvw_rpm -i composer
+	# cvw_rpm -i composer
 
 	if cvw_xml -a software/nginx ; then
 		cvw_service -s php-fpm
@@ -138,7 +145,7 @@ function php_install
 		cvw_file -v $_file $(cvw_php -s)
 
 		cvw_rpm -i GeoIP-devel
-		cvw_rpm -i php56u-pecl-geoip
+		cvw_rpm -i ${_php}-pecl-geoip
 	fi
 
 	cvw_say -o "$_slug"
@@ -147,9 +154,7 @@ function php_install
 
 function php_remove
 {
-	if cvw_rpm -c php56u ; then
-		cvw_say -s "$_slug:remove"
-	fi
+	cvw_say -s "$_slug:remove (not implemented)"
 }
 
 
