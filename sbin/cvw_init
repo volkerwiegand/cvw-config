@@ -5,9 +5,9 @@
 ######
 ###### cvw_init - Config initialisation
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -22,8 +22,7 @@ _args="$*"
 function usage
 {
 	cat >&2 <<-EOF
-		Syntax: $_prog -i [-d]   Prepare normal run [debug]
-		    or: $_prog -u [-d]   Prepare upgrade run [debug]
+		Syntax: $_prog [-u] [-d] [-i]  Prepare [upgrade] run [debug] [info]
 		Called with: '$_prog $_args'
 	EOF
 	exit 1
@@ -38,7 +37,6 @@ function failure
 
 function init_init
 {
-	local _mode=$1
 	local _fqdn _addr _lang _curr _want _file _host _cert _src_dst _swap
 
 	rm -rf /tmp/cvw
@@ -65,9 +63,8 @@ function init_init
 		/etc/sysconfig/network-scripts
 	EOF
 
-	if [[ $_debug ]] ; then
-		echo "debug" >/tmp/cvw/debug
-	fi
+	[[ $_debug ]] && echo "debug" >/tmp/cvw/debug
+	[[ $_info  ]] && cvw_say -h "Info summary" >/tmp/cvw/info
 
 	cvw_say -h "Checking coldstart"
 
@@ -236,7 +233,7 @@ while getopts ":diu" opt ; do
 		;;
 
 		i)
-			_update=1
+			_info=1
 		;;
 
 		u)

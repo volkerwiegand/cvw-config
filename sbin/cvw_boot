@@ -23,7 +23,7 @@ _args="$*"
 function usage
 {
 	cat >&2 <<-EOF
-		Syntax: $_prog [-d] [-u]   Run CVW Config [debug] [upgrade]
+		Syntax: $_prog [-d] [-u] [-i]  Run CVW Config [debug] [upgrade] [info]
 		Called with: '$_prog $_args'
 	EOF
 	exit 1
@@ -43,17 +43,18 @@ function error_check
 }
 
 
-_d=""
-_m="-i"
-
-while getopts ":du" opt ; do
+while getopts ":diu" opt ; do
 	case $opt in
 		d)
-			_d="-d"
+			_debug="-d"
+		;;
+
+		i)
+			_info="-i"
 		;;
 
 		u)
-			_m="-u"
+			_upgrade="-u"
 		;;
 
 		\?)
@@ -63,7 +64,7 @@ while getopts ":du" opt ; do
 done
 shift $(($OPTIND-1))
 
-cvw_init $_m $_d
+cvw_init $_debug $_info $_upgrade
 error_check
 
 cvw_yum            -i ; error_check
@@ -117,6 +118,7 @@ cvw_mantis         -i ; error_check
 cvw_dokuwiki       -i ; error_check
 cvw_modified       -i ; error_check
 cvw_randshop       -i ; error_check
+cvw_simpelwebshop  -i ; error_check
 cvw_simpleinvoices -i ; error_check
 cvw_open3a         -i ; error_check
 cvw_opencart       -i ; error_check
@@ -144,6 +146,10 @@ fi
 cvw_tripwire       -i ; error_check
 cvw_backup         -s ; error_check
 cvw_url            -s ; error_check
+
+if [[ -s /tmp/cvw/info ]] ; then
+	cat /tmp/cvw/info
+fi
 
 rm -rf /var/local/cfg /tmp/cvw
 echo "<<< All done, exiting."
