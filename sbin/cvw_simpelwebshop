@@ -3,7 +3,7 @@
 
 #################################################################################
 ######
-###### cvw_simpelwebshop - Install or remove SimpelWebShop
+###### cvw_simpelwebshop - Install or remove SimpelWebshop
 ######                     http://www.simpelwebshop.de/index.html
 ######
 ###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
@@ -18,7 +18,7 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="SimpelWebShop"
+_name="SimpelWebshop"
 _slug="simpelwebshop"
 
 
@@ -89,9 +89,9 @@ function simpelwebshop_install
 	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	#cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-	#		$_root/app/include \
-	#		$_root/app/artikel
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_root/app/include \
+			$_root/app/artikel
 
 	cvw_unpack -m -s -i $_slug $_root/download update.pdf
 	test -d $_root/app || mv $_root/download/stsshop $_root/app
@@ -101,22 +101,6 @@ function simpelwebshop_install
 		chown -R apache $_root/app/$_subdir
 	done
 
-if false ; then
-	_file=$_root/app/sitemap.xml
-	[[ -s $_file ]] || touch $_file
-	chown apache:apache $_file
-
-	_file=$_root/app/conf/config.inc.php
-	if grep -q "INSTALL.*true" $_file ; then
-		cvw_say -a "$_name waiting for install and admin protection"
-		chown apache:apache $_file
-	elif [[ -d $_root/app/install ]] ; then
-		cvw_say -s "hiding install directory"
-		rm -rf $_root/install # just in case
-		mv $_root/app/install $_root/install
-		chown -R root:root $_root/install
-	fi
-
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
 	      -x /usr/local/bin/bkup.$_slug          && \
@@ -124,7 +108,15 @@ if false ; then
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
 	fi
-fi
+
+	_file=$_root/app/include/config.php
+	if grep -q "__DB_SERVER__" $_file ; then
+		cvw_say -a "$_name waiting for installation"
+	elif [[ -s $_root/app/install.php ]] ; then
+		cvw_say -s "hiding install script"
+		rm -rf $_root/install.php # just in case
+		mv $_root/app/install.php $_root/install.php
+	fi
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
