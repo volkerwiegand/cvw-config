@@ -245,6 +245,11 @@
       <link>http://en.community.shopware.com/Downloads_cat_725.html</link>
       <url>http://releases.s3.shopware.com.s3.amazonaws.com/install_5.2.24_2056ea7f0d0363e0d4c0678a4a68fc35db547965.zip</url>
     </download>
+    <download id="simpelwebshop">
+      <link>http://www.simpelwebshop.de/download.html</link>
+      <url>http://www.simpelwebshop.de/Simpelwebshop5.zip</url>
+      <version>5.9.6</version>
+    </download>
     <download id="simpleinvoices">
       <link>http://simpleinvoices.org/start</link>
       <url>https://bitbucket.org/simpleinvoices/simpleinvoices/downloads/simpleinvoices.2011.1.zip</url>
@@ -278,8 +283,8 @@
     </download>
     <download id="wordpress">
       <link>https://de.wordpress.org/releases/</link>
-      <url>https://de.wordpress.org/wordpress-4.8.2-de_DE.tar.gz</url>
-      <md5>0b0cb538ec07360a68367e467ebd23b8</md5>
+      <url>https://de.wordpress.org/wordpress-4.8.3-de_DE.tar.gz</url>
+      <md5>978717bd7a67bef42d8f8364f39a6bb7</md5>
     </download>
 
     <git id="gitolite">
@@ -499,6 +504,25 @@
       <rpm>perl-YAML</rpm>
     </rpm_list>
     <rpm_list id="php">
+      <rpm>php</rpm>
+      <rpm>php-bcmath</rpm>
+      <rpm>php-cli</rpm>
+      <rpm>php-common</rpm>
+      <rpm>php-devel</rpm>
+      <rpm>php-gd</rpm>
+      <rpm>php-imap</rpm>
+      <rpm>php-intl</rpm>
+      <rpm>php-mbstring</rpm>
+      <rpm>php-mcrypt</rpm>
+      <rpm>php-opcache</rpm>
+      <rpm>php-pdo</rpm>
+      <rpm>php-pecl-apcu</rpm>
+      <rpm>php-pecl-redis</rpm>
+      <rpm>php-pecl-memcache</rpm>
+      <rpm>php-soap</rpm>
+      <rpm>php-xml</rpm>
+    </rpm_list>
+    <rpm_list id="php56u">
       <rpm>php56u</rpm>
       <rpm>php56u-bcmath</rpm>
       <rpm>php56u-cli</rpm>
