@@ -42,8 +42,8 @@ function usage
 		    or: $_prog -B [app [day]]    Restore (selected) backups to host
 		    or: $_prog -c [cmd [args]]   Run remote docker-compose command for app
 		    or: $_prog -d [cmd [args]]   Run remote docker command
-		    or: $_prog -e [-D]           Execute config [debug]
-		    or: $_prog -E [-D]           Execute with upgrade [debug]
+		    or: $_prog -e [-D] [i]       Execute config [debug] [info]
+		    or: $_prog -E [-D] [i]       Execute with upgrade [debug] [info]
 		    or: $_prog -f file [name]    Fetch <file> from server [local name]
 		    or: $_prog -g app            Generate sceleton config for <app>
 		    or: $_prog -h bits           Generate Diffie-Hellman group
@@ -237,7 +237,7 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:g:h:kKlL:p:Pr:tx:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:g:h:ikKlL:p:Pr:tx:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -296,6 +296,10 @@ while getopts ":abBcCdDeEf:g:h:kKlL:p:Pr:tx:X:yYz" opt ; do
 				failure "DH param must be 1024, 2048 or 4096"
 			fi
 			exit
+		;;
+
+		i)
+			_info="-i"
 		;;
 
 		k)
@@ -459,8 +463,8 @@ if [[ $_update ]] ; then
 	check_singleton
 	setup_config
 	copy_config
-	cvw_say -a "updating $_fqdn $_debug"
-	time ssh -t root@$_fqdn "cvw_boot $_debug"
+	cvw_say -a "updating $_fqdn $_debug $_info"
+	time ssh -t root@$_fqdn "cvw_boot $_debug $_info"
 	exit
 fi
 
@@ -469,8 +473,8 @@ if [[ $_upgrade ]] ; then
 	check_singleton
 	setup_config
 	copy_config
-	cvw_say -a "upgrading $_fqdn $_debug"
-	time ssh -t root@$_fqdn "cvw_boot -u $_debug"
+	cvw_say -a "upgrading $_fqdn $_debug $_info"
+	time ssh -t root@$_fqdn "cvw_boot -u $_debug $_info"
 	exit
 fi
 
