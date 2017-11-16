@@ -152,7 +152,7 @@ function automx_install
 
 	if cvw_xml -a software/apache ; then
 		_file=/tmp/cvw/apache.block
-		cat >>$_file <<-EOF
+		cat >$_file <<-EOF
 
 			   <IfModule mod_wsgi.c>
 			      WSGIScriptAliasMatch (?i)^/.+/(autodiscover|config-v1.1).xml $_root/app/automx_wsgi.py
