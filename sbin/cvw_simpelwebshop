@@ -1,0 +1,183 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_simpelwebshop - Install or remove SimpelWebShop
+######                     http://www.simpelwebshop.de/index.html
+######
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="SimpelWebShop"
+_slug="simpelwebshop"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function simpelwebshop_generate
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _pass=$(cvw -p 20)
+
+	cat <<-EOF
+	    <simpelwebshop active="true">
+	      <uri>/shop</uri>
+	      <password>$_pass</password>
+	      <company>Company</company>
+	      <admin>
+	        <name>Shop Admin</name>
+	        <email>admin@${_fqdn#*.}</email>
+	      </admin>
+	    </simpelwebshop>
+
+	EOF
+	exit 0
+}
+
+
+function simpelwebshop_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
+	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _company=$(cvw_xml -r software/$_slug/company)
+	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
+	local _adm_mail=$(cvw_xml -r software/$_slug/admin/email)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file _subdir
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			    Company .................: $_company
+			    Admin Name ..............: $_adm_name
+			    Admin Email .............: $_adm_mail
+			    Database Name ...........: $_slug
+			    Database Password .......: $_pass
+		EOF
+	fi
+
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	#cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+	#		$_root/app/include \
+	#		$_root/app/artikel
+
+	cvw_unpack -m -s -i $_slug $_root/download update.pdf
+	test -d $_root/app || mv $_root/download/stsshop $_root/app
+
+	for _subdir in include artikel ; do
+		mkdir -p $_root/app/$_subdir
+		chown -R apache $_root/app/$_subdir
+	done
+
+if false ; then
+	_file=$_root/app/sitemap.xml
+	[[ -s $_file ]] || touch $_file
+	chown apache:apache $_file
+
+	_file=$_root/app/conf/config.inc.php
+	if grep -q "INSTALL.*true" $_file ; then
+		cvw_say -a "$_name waiting for install and admin protection"
+		chown apache:apache $_file
+	elif [[ -d $_root/app/install ]] ; then
+		cvw_say -s "hiding install directory"
+		rm -rf $_root/install # just in case
+		mv $_root/app/install $_root/install
+		chown -R root:root $_root/install
+	fi
+
+	if [[ -d /var/local/backup/$_slug/last/mysql && \
+	      -d /var/local/backup/$_slug/last/dirs  && \
+	      -x /usr/local/bin/bkup.$_slug          && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+fi
+
+	if cvw_xml -a software/nginx ; then
+		cvw_nginx -p $_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		cvw_apache -p $_slug
+	fi
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "$_slug"
+}
+
+
+function simpelwebshop_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	cvw_backup -z $_slug
+	cvw_mysql -z $_slug $_slug
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":ig" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				simpelwebshop_install
+			else
+				simpelwebshop_remove
+			fi
+			exit 0
+		;;
+
+		g)
+			simpelwebshop_generate
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
