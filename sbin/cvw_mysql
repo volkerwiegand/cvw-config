@@ -6,9 +6,9 @@
 ###### cvw_mysql - Install MySQL (actually MariaDB) server
 ######             https://mariadb.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -18,6 +18,8 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
+_name="MariaDB"
+_slug="mysql"
 
 
 function usage
@@ -58,29 +60,36 @@ function mysql_check
 
 function mysql_socket
 {
-	local _pswd=$(cvw_xml -r software/mysql/password)
+	local _pass=$(cvw_xml -r software/mysql/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 
-	mysqladmin -uroot -p$_pswd version | awk '/^UNIX socket/ { print $NF }'
+	mysqladmin -uroot -p$_pass version | awk '/^UNIX socket/ { print $NF }'
 }
 
 
 function mysql_initial
 {
 	cvw_say -h "Installing MySQL (MariaDB)"
-	local _pswd=$(cvw_xml -r software/mysql/password)
+	local _pass=$(cvw_xml -r software/mysql/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file _list
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			    Password ................: $_pass
+		EOF
+	fi
 
 	cvw_rpm -i mariadb-server
 	cvw_rpm -i mariadb-devel
 	cvw_service -S mariadb
 
 	set +e
-	mysql -uroot -p$_pswd -e "SHOW DATABASES" >/dev/null 2>&1
+	mysql -uroot -p$_pass -e "SHOW DATABASES" >/dev/null 2>&1
 	if [[ $? -ne 0 ]] ; then
 		cvw_say -s "setting MySQL root password"
-		mysqladmin -uroot password $_pswd
+		mysqladmin -uroot password $_pass
 		if [[ $? -ne 0 ]] ; then
 			cvw_say -f "$_prog: can't set MySQL password"
 			exit 1
@@ -139,10 +148,10 @@ while getopts ":c:e:f:isxz:" opt ; do
 		e)
 			rm -f /tmp/cvw/error
 			mysql_check
-			_pswd=$(cvw_xml -r software/mysql/password)
+			_pass=$(cvw_xml -r software/mysql/password)
 			[[ -s /tmp/cvw/error ]] && exit 1
-			cvw_say -d "mysql ($_pswd) -> '$OPTARG'"
-			mysql -uroot -p$_pswd -e "$OPTARG" 2>>/tmp/cvw/error
+			cvw_say -d "mysql ($_pass) -> '$OPTARG'"
+			mysql -uroot -p$_pass -e "$OPTARG" 2>>/tmp/cvw/error
 			exit
 		;;
 

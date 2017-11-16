@@ -65,8 +65,6 @@ function sqlbuddy_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf
 
-	cvw_say -a "Password ................: $_pass"
-
 	cvw_unpack -i $_slug $_root/app index.php
 
 	if cvw_xml -a software/nginx ; then
@@ -74,8 +72,8 @@ function sqlbuddy_install
 	fi
 
 	if cvw_xml -a software/apache ; then
-		_conf=$(cvw_apache -c)
-		cat >>$_conf.tmp_VW <<-EOF
+		_file=/tmp/cvw/apache.block
+		cat >$_file <<-EOF
 
 			   Alias $_uri $_root/app
 			   <Directory $_root/app>
@@ -87,6 +85,7 @@ function sqlbuddy_install
 			      Require all granted
 			   </Directory>
 		EOF
+		cvw_apache -p $_slug
 	fi
 
 	cvw_url -a "$_name" $_uri
