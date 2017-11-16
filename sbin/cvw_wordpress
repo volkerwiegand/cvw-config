@@ -8,9 +8,9 @@
 ######                 https://codex.wordpress.org/Installing_WordPress
 ######                 https://de.wordpress.org/
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -20,7 +20,7 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="Wordpress"
+_name="WordPress"
 _slug="wordpress"
 
 
@@ -29,6 +29,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
 		Called with: '$_prog $_args'
 	EOF
 
@@ -40,6 +41,36 @@ function usage
 	rm -f /tmp/cvw_error
 
 	exit 1
+}
+
+
+function wordpress_generate
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _domain=${_fqdn#*.}
+
+	cat <<-EOF
+	    <wordpress active="true">
+	      <uri>/</uri>
+	      <password>$(cvw -p 20)</password>
+	      <title>WordPress Blog</title>
+	      <admin>
+	        <name>Blog Admin</name>
+	        <password>$(cvw -p 20)</password>
+	        <email>admin@$_domain</email>
+	      </admin>
+	      <key_1>$(cvw -p 40)</key_1>
+	      <key_2>$(cvw -p 40)</key_2>
+	      <key_3>$(cvw -p 40)</key_3>
+	      <key_4>$(cvw -p 40)</key_4>
+	      <key_5>$(cvw -p 40)</key_5>
+	      <key_6>$(cvw -p 40)</key_6>
+	      <key_7>$(cvw -p 40)</key_7>
+	      <key_8>$(cvw -p 40)</key_8>
+	    </wordpress>
+
+	EOF
+	exit 0
 }
 
 
@@ -58,10 +89,15 @@ function wordpress_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _subdir
 
-	cvw_say -a "Title ...................: $_title"
-	cvw_say -a "Admin User ..............: $_adm_name"
-	cvw_say -a "Admin Password ..........: $_adm_pass"
-	cvw_say -a "Admin Email .............: $_adm_mail"
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			    Title ...................: $_title
+			    Admin User ..............: $_adm_name
+			    Admin Password ..........: $_adm_pass
+			    Admin Email .............: $_adm_mail
+		EOF
+	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
@@ -164,7 +200,7 @@ function wordpress_remove
 }
 
 
-while getopts ":i" opt ; do
+while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -172,6 +208,11 @@ while getopts ":i" opt ; do
 			else
 				wordpress_remove
 			fi
+			exit 0
+		;;
+
+		g)
+			wordpress_generate
 			exit 0
 		;;
 
