@@ -7,9 +7,9 @@
 ######                   https://processwire.com/
 ######                   https://processwire.com/docs/install/new/
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -28,6 +28,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
 		Called with: '$_prog $_args'
 	EOF
 
@@ -42,21 +43,50 @@ function usage
 }
 
 
+function processwire_generate
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+
+	cat <<-EOF
+	    <processwire active="true">
+	      <uri>/</uri>
+	      <password>$(cvw -p 20)</password>
+	      <admin>
+	        <name>pwadmin</name>
+	        <password>$(cvw -p 20)</password>
+	        <email>pwadmin@${_fqdn#*.}</email>
+	      </admin>
+	    </processwire>
+
+	EOF
+	exit 0
+}
+
+
 function processwire_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _lang=$(cvw_xml -r system/language)
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
-	local _fqdn=$(cvw_xml -r host/fqdn)
-	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
-	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
-	local _adm_mail=$(cvw_xml -r software/$_slug/admin/email)
+	local _lang=$(cvw_xml -r system/language)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file _subdir
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      DB Name / User ..........: $_slug
+			      DB Pass .................: $_pass
+			      Admin Login URL .........: $(cvw_url -r $_uri)pw/
+			      Admin User ..............: $(cvw_xml -r software/$_slug/admin/name)
+			      Admin Password ..........: $(cvw_xml -r software/$_slug/admin/password)
+			      Admin Email .............: $(cvw_xml -r software/$_slug/admin/email)
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
@@ -100,13 +130,7 @@ function processwire_install
 	cvw_file -v $_file
 
 	if [[ ! -d $_root/app/site ]] ; then
-		cvw_say -a "waiting for install .....: https://$_fqdn${_uri%/}/install.php"
-		cvw_say -a "DB Name / User ..........: $_slug"
-		cvw_say -a "DB Pass .................: $_pass"
-		cvw_say -a "Admin Login URL .........: $(cvw_url -r $_uri)$_slug/"
-		cvw_say -a "Admin User ..............: $_adm_name"
-		cvw_say -a "Admin Password ..........: $_adm_pass"
-		cvw_say -a "Admin Email .............: $_adm_mail"
+		cvw_say -a "waiting for install .....: $(cvw_url -r $_uri)install.php"
 	else
 		_file=$_root/app/site/init.php
 		cat >$_file.tmp_VW <<-EOF
@@ -141,6 +165,8 @@ function processwire_remove
 
 	cvw_backup -z $_slug
 	cvw_mysql -z $_slug $_slug
+	rm -f /etc/profile.d/alias_$_slug.sh
+
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
 		rm -rf $_root
@@ -151,7 +177,7 @@ function processwire_remove
 }
 
 
-while getopts ":i" opt ; do
+while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -159,6 +185,11 @@ while getopts ":i" opt ; do
 			else
 				processwire_remove
 			fi
+			exit 0
+		;;
+
+		g)
+			processwire_generate
 			exit 0
 		;;
 
