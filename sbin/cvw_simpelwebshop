@@ -80,23 +80,25 @@ function simpelwebshop_install
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
-			    Company .................: $_company
-			    Admin Name ..............: $_adm_name
-			    Admin Email .............: $_adm_mail
-			    Database Name ...........: $_slug
-			    Database Password .......: $_pass
+			      Company .................: $_company
+			      Admin Name ..............: $_adm_name
+			      Admin Email .............: $_adm_mail
+			      Database Name ...........: $_slug
+			      Database Password .......: $_pass
 		EOF
 	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
 			$_root/app/include \
-			$_root/app/artikel
+			$_root/app/artikel \
+			$_root/app/bilder \
+			$_root/app/backup
 
 	cvw_unpack -m -s -i $_slug $_root/download update.pdf
 	test -d $_root/app || mv $_root/download/stsshop $_root/app
 
-	for _subdir in include artikel ; do
+	for _subdir in include artikel bilder backup ; do
 		mkdir -p $_root/app/$_subdir
 		chown -R apache $_root/app/$_subdir
 	done
@@ -112,10 +114,10 @@ function simpelwebshop_install
 	_file=$_root/app/include/config.php
 	if grep -q "__DB_SERVER__" $_file ; then
 		cvw_say -a "$_name waiting for installation"
-	elif [[ -s $_root/app/install.php ]] ; then
+	elif [[ -s $_root/app/include/install.php ]] ; then
 		cvw_say -s "hiding install script"
 		rm -rf $_root/install.php # just in case
-		mv $_root/app/install.php $_root/install.php
+		mv $_root/app/include/install.php $_root/install.php
 	fi
 
 	if cvw_xml -a software/nginx ; then
