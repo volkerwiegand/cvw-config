@@ -7,9 +7,9 @@
 ######               https://www.phplist.org/
 ######               https://www.phplist.org/manual/ch028_installation.xhtml
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -28,6 +28,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
 		Called with: '$_prog $_args'
 	EOF
 
@@ -42,6 +43,22 @@ function usage
 }
 
 
+function phplist_generate
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _domain=${_fqdn#*.}
+
+	cat <<-EOF
+	    <phplist active="true">
+	      <uri>/list</uri>
+	      <password>$(cvw -p 20)</password>
+	    </phplist>
+
+	EOF
+	exit 0
+}
+
+
 function phplist_install
 {
 	cvw_say -h "Installing $_name"
@@ -51,8 +68,22 @@ function phplist_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _test=$(cvw_xml -R software/$_slug/test 1)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _conf _file _subdir
+	local _conf _file _dir
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Upload Directory ........: $_root/app/uploadimages
+			      Test Mode (0 or 1) ......: $_test
+			      Admin URL ...............: $(cvw_url -r $_uri)admin
+			      Admin User ..............: $(cvw_xml -r software/$_slug/admin/name)
+			      Admin Password ..........: $(cvw_xml -r software/$_slug/admin/password)
+			      Admin Email .............: $(cvw_xml -r software/$_slug/admin/email)
+		EOF
+	fi
+	[[ -s /tmp/cvw/error ]] && exit 1
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
@@ -65,6 +96,11 @@ function phplist_install
 	chmod -R go-w $_root/app
 	rm -f $_root/app/index.html
 
+	for _dir in uploadimages ; do
+		mkdir -p $_root/app/$_dir
+		chown -R apache $_root/app/$_dir
+	done
+
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
 	      -x /usr/local/bin/bkup.$_slug          && \
@@ -72,6 +108,8 @@ function phplist_install
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
 	fi
+
+	# TODO setup language according to config
 
 	_file="$_root/app/config/config.php"
 	cat >$_file.tmp_VW <<-EOF
@@ -86,8 +124,7 @@ function phplist_install
 		\$database_password = '$_pass';
 
 		define('PHPMAILERHOST', '');
-
-		define('TEST', 1);
+		define('TEST', $_test);
 
 		\$pageroot = '$_uri';
 	EOF
@@ -123,7 +160,7 @@ function phplist_remove
 }
 
 
-while getopts ":i" opt ; do
+while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -134,6 +171,10 @@ while getopts ":i" opt ; do
 			exit 0
 		;;
 
+		g)
+			phplist_generate
+			exit 0
+		;;
 		\?)
 			usage
 		;;
