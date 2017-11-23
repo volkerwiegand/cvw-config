@@ -144,8 +144,9 @@
     </download>
     <download id="nextcloud">
       <link>https://download.nextcloud.com/server/releases/</link>
-      <url>https://download.nextcloud.com/server/releases/nextcloud-12.0.0.tar.bz2</url>
-      <sha256>1b9d9cf05e657cd564a552b418fbf42d669ca51e0fd1f1f118fe44cbf93a243f</sha256>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-12.0.3.tar.bz2</url>
+      <md5>2b8b816a64dfdc4a6c3dbddcbf836b98</md5>
+      <sha256>88bcaccba886d0e5a145b15fe216d652ab68a0a4c089a102f1fa1e78e6ddfb71</sha256>
     </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
@@ -283,7 +284,9 @@
     </download>
     <download id="wordpress">
       <link>https://de.wordpress.org/releases/</link>
+      <!--url>https://de.wordpress.org/wordpress-4.9-de_DE.tar.gz</url-->
       <url>https://de.wordpress.org/wordpress-4.8.3-de_DE.tar.gz</url>
+      <!--md5>29e54da696b6fc4e508fd4ca3bc5a178</md5-->
       <md5>978717bd7a67bef42d8f8364f39a6bb7</md5>
     </download>
 
