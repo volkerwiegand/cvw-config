@@ -47,6 +47,7 @@ function usage
 		    or: $_prog -f file [name]    Fetch <file> from server [local name]
 		    or: $_prog -g app            Generate sceleton config for <app>
 		    or: $_prog -h bits           Generate Diffie-Hellman group
+		    or: $_prog -H                Generate RSA keys on server and fetch them
 		    or: $_prog -k [port]         Set remote SSH port in ~/.ssh/config
 		    or: $_prog -K                Delete remote SSH port
 		    or: $_prog -l [cmd]          Remote login as root
@@ -237,7 +238,7 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:g:h:ikKlL:p:Pr:tx:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pr:tx:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -296,6 +297,10 @@ while getopts ":abBcCdDeEf:g:h:ikKlL:p:Pr:tx:X:yYz" opt ; do
 				failure "DH param must be 1024, 2048 or 4096"
 			fi
 			exit
+		;;
+
+		H)
+			_gen_ssh=1
 		;;
 
 		i)
@@ -565,6 +570,17 @@ if [[ $_fetch ]] ; then
 		usage
 	fi
 	scp root@$_fqdn:$_fetch $_local
+	exit
+fi
+
+
+if [[ $_gen_ssh ]] ; then
+	setup_config
+	cvw_say -a "generate keys on $_fqdn"
+	ssh -t root@$_fqdn "ssh-keygen"
+	cvw_say -a "Fetch id_rsa{.pub} from $_fqdn"
+	scp root@$_fqdn:/root/.ssh/id_rsa cfg/files/keys/id_rsa
+	scp root@$_fqdn:/root/.ssh/id_rsa.pub cfg/files/keys/id_rsa.pub
 	exit
 fi
 
