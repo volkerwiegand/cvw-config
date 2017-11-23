@@ -6,9 +6,9 @@
 ###### cvw_git - Git cloning and updating
 ######           (internal service functions)
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -24,7 +24,7 @@ function usage
 {
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
-		Syntax: $_prog -i id [-d dir] [-u user]  Clone or pull a Git repo
+		Syntax: $_prog [-i id | -r repo] [-f] [-d dir] [-u user]  Clone or pull a Git repo
 		Called with: '$_prog $_args'
 	EOF
 
@@ -39,14 +39,22 @@ function usage
 }
 
 
-while getopts ":d:i:u:" opt ; do
+while getopts ":d:fi:r:u:" opt ; do
 	case $opt in
 		d)
 			_dir=$OPTARG
 		;;
 
+		f)
+			_force=1
+		;;
+
 		i)
 			_id=$OPTARG
+		;;
+
+		r)
+			_repo=$OPTARG
 		;;
 
 		u)
@@ -60,6 +68,9 @@ while getopts ":d:i:u:" opt ; do
 done
 shift $(($OPTIND-1))
 
+grep -q -s upgrade /tmp/cvw/updating && _force=1
+
+
 if [[ $_id ]] ; then
 	_repo=$(cvw_xml -r common/git:$_id/url)
 	if [[ -z $_dir ]] ; then
@@ -68,13 +79,16 @@ if [[ $_id ]] ; then
 	[[ -s /tmp/cvw/error ]] && exit 1
 
 	cvw_say -d "id.....: $_id"
+fi
+
+if [[ -n $_repo && -n $_dir ]] ; then
 	cvw_say -d "repo...: $_repo"
 	cvw_say -d "dir....: $_dir"
 
 	if [[ $_user ]] ; then
 		cvw_say -d "user...: $_user"
 		if [[ -d $_dir/.git ]] ; then
-			if grep -q -s upgrade /tmp/cvw/updating ; then
+			if [[ $_force ]] ; then
 				cvw_user -r $_user "cd $_dir && git pull"
 			fi
 		else
@@ -83,7 +97,7 @@ if [[ $_id ]] ; then
 	else
 		cvw_say -d "user...: <none>"
 		if [[ -d $_dir/.git ]] ; then
-			if grep -q -s upgrade /tmp/cvw/updating ; then
+			if [[ $_force ]] ; then
 				cvw_say -s "git: pulling $_dir"
 				cd $_dir && git pull
 			fi
