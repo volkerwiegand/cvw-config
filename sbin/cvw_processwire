@@ -73,7 +73,7 @@ function processwire_install
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	local _lang=$(cvw_xml -r system/language)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _file _subdir
+	local _file _conf
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
@@ -90,7 +90,8 @@ function processwire_install
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/site
+			$_root/app/site/modules \
+			$_root/app/site/templates
 
 	cvw_unpack -u apache -i $_slug $_root/app index.php
 
@@ -120,18 +121,14 @@ function processwire_install
 		# shell aliases for processwire
 		#
 
-		alias pw-p='cd /var/local/processwire/app'
-		alias pw-w='cd /var/local/processwire/app/wire'
+		alias pw-a='cd /var/local/processwire/app'
 		alias pw-s='cd /var/local/processwire/app/site'
-		alias pw-a='cd /var/local/processwire/app/site/assets'
 		alias pw-m='cd /var/local/processwire/app/site/modules'
 		alias pw-t='cd /var/local/processwire/app/site/templates'
 	EOF
 	cvw_file -v $_file
 
-	if [[ ! -d $_root/app/site ]] ; then
-		cvw_say -a "waiting for install .....: $(cvw_url -r $_uri)install.php"
-	else
+	if [[ -d $_root/app/site ]] ; then
 		_file=$_root/app/site/init.php
 		cat >$_file.tmp_VW <<-EOF
 			<?php namespace ProcessWire;
@@ -139,10 +136,17 @@ function processwire_install
 		EOF
 		cvw_file -u apache -v $_file $(cvw_php -s)
 
+		_conf=/var/local/cfg/files/misc/pw_config.php
 		_file=$_root/app/site/config.php
+		if [[ -s $_conf ]] ; then
+			cp $_conf $_file.tmp_VW
+			cvw_file -u apache -v $_file $(cvw_php -s)
+		fi
 		if grep -q -s $_pass $_file ; then
 			chmod 0400 $_file
 		fi
+	else
+		cvw_say -a "waiting for install .....: $(cvw_url -r $_uri)install.php"
 	fi
 
 	if cvw_xml -a software/nginx ; then
