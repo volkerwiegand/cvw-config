@@ -22,7 +22,8 @@ _name="Apache httpd"
 _slug="apache"
 
 
-_CONF_FILE="/etc/httpd/conf.d/vhost.conf"
+_CONF_DIR="/etc/httpd/conf.d"
+_CONF_FILE="$_CONF_DIR/vhost.conf"
 
 
 function usage
@@ -174,7 +175,7 @@ function apache_initial
 		   LogLevel         $_loglvl
 		   RewriteEngine    On
 		   RewriteCond      %{HTTPS} off
-		   RewriteRule      ^ https://%{HTTP_HOST}${_redir}%{REQUEST_URI}
+		   RewriteRule      ^ https://$_fqdn${_redir}%{REQUEST_URI}
 		</VirtualHost>
 
 		<VirtualHost *:$_ssl_port>
@@ -253,11 +254,12 @@ function apache_finish
 {
 	cvw_say -h "Finishing $_name"
 	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _loglvl=$(cvw_xml -r software/$_slug/loglevel)
 	local _port=$(cvw_xml -r software/$_slug/port)
 	local _ssl_port=$(cvw_xml -r software/$_slug/ssl_port)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _root=$(cat /tmp/cvw/apache.doc.root)
-	local _file _uri
+	local _file _uri _vhost _name _redir
 
 	echo "</VirtualHost>" >>$_CONF_FILE.tmp_VW
 
@@ -265,6 +267,40 @@ function apache_finish
 	mkdir -p $_root
 	cvw_file -v $_CONF_FILE httpd
 	cvw_apache -e $_CONF_FILE
+
+	if [[ $_ssl_port -eq 443 ]] ; then
+		_redir=""
+	else
+		_redir=":$_ssl_port"
+	fi
+
+	for _vhost in $(cvw_xml -l software/$_slug/vhost | sort) ; do
+		_file="/tmp/cvw/apache.vhost"
+		echo "   ServerName  $_vhost" >$_file
+		if [[ $_vhost =~ ^www\. ]] ; then
+			echo "   ServerAlias ${_vhost#www.}" >>$_file
+		fi
+		_name=$(echo $_vhost | tr ' .-' '___')
+		_file="$_CONF_DIR/$_name.conf"
+		cat >$_file.tmp_VW <<-EOF
+			<VirtualHost *:$_port>
+			$(cat /tmp/cvw/apache.vhost)
+			   Redirect    / https://$_fqdn
+			   TransferLog logs/${_name}_log
+			   LogLevel    info
+			</VirtualHost>
+
+			<VirtualHost *:$_ssl_port>
+			$(cat /tmp/cvw/apache.vhost)
+			   Redirect    / https://$_fqdn
+			   TransferLog logs/${_name}_log
+			   LogLevel    info
+			</VirtualHost>
+		EOF
+
+		cvw_file -v $_file httpd
+		cvw_apache -e $_file
+	done
 
 	find /etc/httpd/conf.d -maxdepth 1 -name "*.conf" | while read _file ; do
 		grep -q -s "$_file" /tmp/cvw/apache.enabled && continue
