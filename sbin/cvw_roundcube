@@ -43,18 +43,15 @@ function usage
 }
 
 
-function roundcube_generate
+function generate
 {
-	local _pass=$(cvw -p 20)
-	local _key="$(cvw -p 10).--.$(cvw -p 10)"
-
 	cat <<-EOF
-	    <roundcube active="true">
+	    <$_slug active="true">
 	      <uri>/webmail</uri>
 	      <alias>/roundcube</alias>
-	      <password>$_pass</password>
-	      <key>$_key</key>
-	    </roundcube>
+	      <password>$(cvw -p 20)</password>
+	      <key>$(cvw -p 10).--.$(cvw -p 10)</key>
+	    </$_slug>
 
 	EOF
 	exit 0
@@ -72,8 +69,18 @@ function roundcube_install
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	local _key=$(cvw_xml -r software/$_slug/key)
+	local _admin=$(cvw_xml -R software/$_slug/admin admin)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _installer _plugin _plugins
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Admin Email .............: $_admin@${_fqdn#*.}
+			      Admin Password ..........: $(cvw_user -p $_admin)
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
@@ -159,12 +166,25 @@ function roundcube_install
 function roundcube_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _bkup=/var/local/backup/$_slug
 
 	cvw_backup -z $_slug
 	cvw_mysql -z $_slug $_slug
-	if [[ -d $_root ]] ; then
+
+	if [[ -d $_root || -d $_bkup ]] ; then
 		cvw_say -h "Removing $_name"
-		rm -rf $_root
+
+		if [[ -d $_root ]] ; then
+			rm -rf $_root
+		fi
+
+		if grep -q -s upgrade /tmp/cvw/updating ; then
+			if [[ -d $_bkup ]] ; then
+				cvw_say -s "deleting backup"
+				rm -rf $_bkup
+			fi
+		fi
+
 		cvw_say -o "$_slug:remove"
 	fi
 
@@ -183,7 +203,7 @@ while getopts ":ig" opt ; do
 		;;
 
 		g)
-			roundcube_generate
+			generate
 			exit 0
 		;;
 
