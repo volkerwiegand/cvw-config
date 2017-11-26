@@ -53,7 +53,7 @@ function usage
 		    or: $_prog -l [cmd]          Remote login as root
 		    or: $_prog -L user [cmd]     Remote login as user
 		    or: $_prog -p len            Generate random password
-		    or: $_prog -P [-C] [-D]      Prepare for setup [copy SSH key, disable ipv6]
+		    or: $_prog -P [-C]           Prepare for setup [copy SSH key]
 		    or: $_prog -r [svc]          Restart all or single service(s)
 		    or: $_prog -t                Compile and test config.xml
 		    or: $_prog -x flag cmd       Run cvw_xml -flag cmd (verbose)
@@ -95,6 +95,7 @@ function combine_known_hosts
 	local _file
 
 	rm -f $_hosts.tmp_VW
+	touch $_hosts
 
 	find $_dir -name "host_*" -print | sort | while read _file ; do
 		cat $_file >>$_hosts.tmp_VW
@@ -106,10 +107,10 @@ function combine_known_hosts
 		else
 			mv -f $_hosts.tmp_VW $_hosts
 		fi
-		chmod 0600 $_hosts
 	else
 		rm -f $_hosts.tmp_VW $_hosts
 	fi
+	chmod 0600 $_hosts
 }
 
 
@@ -120,6 +121,7 @@ function combine_ssh_configs
 	local _file
 
 	rm -f $_conf.tmp_VW
+	touch $_conf
 
 	find $_dir -name "config_*" -print | sort | while read _file ; do
 		cat $_file >>$_conf.tmp_VW
@@ -131,7 +133,6 @@ function combine_ssh_configs
 		else
 			mv -f $_conf.tmp_VW $_conf
 		fi
-		chmod 0600 $_conf
 
 		echo ">>> $_conf"
 		cat $_conf
@@ -139,6 +140,7 @@ function combine_ssh_configs
 	else
 		rm -f $_conf.tmp_VW $_conf
 	fi
+	chmod 0600 $_conf
 }
 
 
@@ -526,13 +528,11 @@ if [[ $_prepare ]] ; then
 	setup_config
 	cvw_say -a "setup current SSH keys for $_fqdn"
 
-	mv -f $HOME/.ssh/known_hosts $HOME/.ssh/known_hosts.tmp
+	if [[ -s $HOME/.ssh/known_hosts ]] ; then
+		mv -f $HOME/.ssh/known_hosts $HOME/.ssh/known_hosts.tmp
+	fi
 	if [[ -n "$_copy_key" ]] ; then
 		scp $HOME/.ssh/id_rsa.pub root@$_fqdn:/root/.ssh/authorized_keys
-	fi
-	if [[ -n "$_debug" ]] ; then
-		ssh -t root@$_fqdn "sysctl -w net.ipv6.conf.all.disable_ipv6=1"
-		ssh -t root@$_fqdn "sysctl -w net.ipv6.conf.default.disable_ipv6=1"
 	fi
 	cvw_say -a "check if my ssh key has been installed"
 	ssh -t root@$_fqdn "cat /root/.ssh/authorized_keys"
