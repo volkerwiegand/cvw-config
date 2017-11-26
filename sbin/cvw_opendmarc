@@ -6,9 +6,9 @@
 ###### cvw_opendmarc - Install or remove OpenDMARC
 ######                 http://www.trusteddomain.org/opendmarc/
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -27,6 +27,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
 		Called with: '$_prog $_args'
 	EOF
 
@@ -38,6 +39,23 @@ function usage
 	rm -f /tmp/cvw_error
 
 	exit 1
+}
+
+
+function generate
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+
+	cat <<-EOF
+	    <$_slug active="true">
+	      <socket>inet:8893@localhost</socket>
+	      <milter>inet:localhost:8893</milter>
+	      <email>admin@${_fqdn#*.}</email>
+	      <order>15</order>
+	    </$_slug>
+
+	EOF
+	exit 0
 }
 
 
@@ -56,6 +74,13 @@ function opendmarc_install
 	local _domain=${_fqdn#*.}
 	local _file
 
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      DNS TXT .................: _dmarc IN TXT "v=DMARC1; p=none; rua=mailto:$_email; ruf=mailto:$_email; sp=none; ri=86400"
+		EOF
+	fi
+
 	cvw_rpm -i opendmarc
 	cvw_service -s opendmarc
 
@@ -63,8 +88,6 @@ function opendmarc_install
 	cvw_file -e $_file "s/^\(Socket \).*/\1$_socket/" opendmarc
 
 	echo "$_order $_milter" >>/tmp/cvw/postfix.milters
-
-	cvw_say -s "$_name DNS TXT: '_dmarc.$_domain. IN TXT \"v=DMARC1; p=none; rua=mailto:$_email; ruf=mailto:$_email; sp=none; ri=86400\"'"
 
 	cvw_say -o "$_slug"
 }
@@ -85,7 +108,7 @@ function opendmarc_remove
 }
 
 
-while getopts ":i" opt ; do
+while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -93,6 +116,11 @@ while getopts ":i" opt ; do
 			else
 				opendmarc_remove
 			fi
+			exit 0
+		;;
+
+		g)
+			generate
 			exit 0
 		;;
 
