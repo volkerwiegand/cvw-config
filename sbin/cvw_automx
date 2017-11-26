@@ -46,17 +46,17 @@ function usage
 }
 
 
-function automx_generate
+function generate
 {
 	cat <<-EOF
-	    <automx active="true">
+	    <$_slug active="true">
 	      <uri>/autodiscover</uri>
 	      <debug>yes</debug>
 	      <account>
 	        <name>Long name of the Company</name>
 	        <short>Company</short>
 	      </account>
-	    </automx>
+	    </$_slug>
 
 	EOF
 	exit 0
@@ -80,6 +80,15 @@ function automx_install
 	local _cert="/etc/letsencrypt/live/$_fqdn"
 	[[ -s $_cert/fullchain.pem ]] || cvw_say -f "missing SSL cert"
 	local _file
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      DNS record ..............: autoconfig   IN A $_addr
+			      DNS record ..............: autodiscover IN A $_addr
+
+		EOF
+	fi
 
 	cvw_rpm -l $_slug
 
@@ -165,9 +174,6 @@ function automx_install
 		cvw_apache -p $_slug
 	fi
 
-	cvw_say -s "$_name DNS record: 'autoconfig   IN A $_addr'"
-	cvw_say -s "$_name DNS record: 'autodiscover IN A $_addr'"
-
 	cvw_say -o "$_slug"
 }
 
@@ -202,7 +208,7 @@ while getopts ":ig" opt ; do
 		;;
 
 		g)
-			automx_generate
+			generate
 			exit 0
 		;;
 
