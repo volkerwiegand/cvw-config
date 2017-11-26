@@ -10,9 +10,9 @@
 ######               https://github.com/volkerwiegand/postfix-go
 ######               https://devops.profitbricks.com/tutorials/configure-a-postfix-relay-through-gmail-on-centos-7/
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -63,10 +63,6 @@ function postfix_install_standalone
 	local _vmail_dir=$(cvw_user -h vmail)
 	local _pass=$(cvw_user -p vmail)
 	local _mail_gid=$(id -g mail)
-	local _smtp_host=$(cvw_xml -r software/$_slug/smtp/host)
-	local _smtp_port=$(cvw_xml -r software/$_slug/smtp/port)
-	local _smtp_username=$(cvw_xml -r software/$_slug/smtp/username)
-	local _smtp_password=$(cvw_xml -r software/$_slug/smtp/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _domain=${_fqdn#*.}
 	local _cert="/etc/letsencrypt/live/$_fqdn"
@@ -74,6 +70,14 @@ function postfix_install_standalone
 	local _vmailbox=/etc/postfix/sql-vmailbox.cf
 	local _valias=/etc/postfix/sql-valias.cf
 	local _file _master _milter _hash _addr _prod
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      DNS record ..............: @ IN TXT "v=spf1 +mx -all"
+
+		EOF
+	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_vmail_dir
@@ -121,13 +125,14 @@ function postfix_install_standalone
 	fi
 	cat >>$_file.tmp_VW <<-EOF
 		Def_Domain:    "$_domain"
-		SMTP_Host:     "$_smtp_host"
-		SMTP_Port:     $_smtp_port
-		SMTP_Username: "$_smtp_username"
-		SMTP_Password: "$_smtp_password"
+		SMTP_Host:     "$(cvw_xml -r software/$_slug/smtp/host)"
+		SMTP_Port:     $(cvw_xml -r software/$_slug/smtp/port)
+		SMTP_Username: "$(cvw_xml -r software/$_slug/smtp/username)"
+		SMTP_Password: "$(cvw_xml -r software/$_slug/smtp/password)"
 		ProdMode:      $_prod
 		Verbose:       false
 	EOF
+	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_file -v $_file postfix-go
 
 	_file=/etc/systemd/system/postfix-go.service
@@ -474,8 +479,6 @@ function postfix_finish_standalone
 	cvw_firewall -t 587	# submission not among known services??
 
 	cvw_service -r postfix
-
-	cvw_say -s "$_name DNS TXT: '@ IN TXT \"v=spf1 +mx -all\"'"
 
 	cvw_say -o "$_slug:finish (standalone)"
 }
