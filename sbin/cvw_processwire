@@ -166,21 +166,23 @@ function processwire_install
 function processwire_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _bkup=/var/local/backup/$_slug
 
 	cvw_backup -z $_slug
 	cvw_mysql -z $_slug $_slug
 	rm -f /etc/profile.d/alias_$_slug.sh
 
-	if [[ -d $_root || -d /var/backup/$_slug ]] ; then
+	if [[ -d $_root || -d $_bkup ]] ; then
 		cvw_say -h "Removing $_name"
+
 		if [[ -d $_root ]] ; then
 			rm -rf $_root
 		fi
 
 		if grep -q -s upgrade /tmp/cvw/updating ; then
-			if [[ -d /var/backup/$_slug ]] ; then
+			if [[ -d $_bkup ]] ; then
 				cvw_say -s "deleting backup"
-				rm -rf /var/backup/$_slug
+				rm -rf $_bkup
 			fi
 		fi
 
