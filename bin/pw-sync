@@ -1,0 +1,67 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### pw-sync - Update remote processwire site
+######
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error 
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+
+RSYNC_FLAGS="-avz --delete --no-group --no-owner"
+
+
+function failure
+{
+	echo "$_prog: $*" >&2
+	exit 1
+}
+
+
+function usage
+{
+	cat >&2 <<-EOF
+		Syntax: $_prog -g   Get current site tree
+		    or: $_prog -p   Put current site tree
+		Called with: '$_prog $_args'
+	EOF
+	exit 1
+}
+
+
+
+[[ $PW_TARGET_URL ]] || failure "missing PW_TARGET_URL env-var"
+
+
+while getopts ":gp" opt ; do
+	case $opt in
+		g)
+			rsync $RSYNC_FLAGS $PW_TARGET_URL/ .
+			exit
+		;;
+
+		p)
+			[[ -d ./templates ]] || failure "missing templates directory"
+			rsync ./ $RSYNC_FLAGS $PW_TARGET_URL
+			exit
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
