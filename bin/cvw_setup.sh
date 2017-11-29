@@ -71,7 +71,7 @@ say "make sure $HOME/bin exists"
 mkdir -p -m 0750 $HOME/bin
 
 say "link files"
-for _file in cvw ; do
+for _file in cvw pw-sync ; do
 	_src="$_dir/$_file"
 	_dst="$HOME/bin/$_file"
 	chmod 0750 $_src
