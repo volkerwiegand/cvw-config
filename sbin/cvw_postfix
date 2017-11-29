@@ -415,7 +415,7 @@ function postfix_install_smarthost
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _domain=${_fqdn#*.}
-	local _file
+	local _maps=/etc/postfix/sasl_passwd
 
 	cvw_rpm -i postfix
 	cvw_rpm -i mailx
@@ -427,22 +427,21 @@ function postfix_install_smarthost
 	cvw_file -b /etc/postfix/main.cf
 	cvw_file -b /etc/postfix/master.cf
 
+	echo "[$_host]:$_port $_user:$_pass" >$_maps.tmp_VW
+	cvw_file -m 0640 -u root:postfix -v $_maps postfix
+	postmap $_maps
+	chown root:postfix $_maps.db
+	chmod 0640 $_maps.db
+
 	postconf -e "myhostname=$_fqdn"
 	postconf -e "mydomain=$_domain"
 	postconf -e "relayhost=[$_host]:$_port"
 	postconf -e "smtp_use_tls=yes"
-	postconf -e "smtp_sasl_password_maps=hash:$_file"
+	postconf -e "smtp_sasl_password_maps=hash:$_maps"
 	postconf -e "smtp_sasl_auth_enable=yes"
 	postconf -e "smtp_tls_CAfile=/etc/ssl/certs/ca-bundle.crt"
 	postconf -e "smtp_sasl_security_options=noanonymous"
 	postconf -e "smtp_sasl_tls_security_options=noanonymous"
-
-	_file=/etc/postfix/sasl_passwd
-	echo "[$_host]:$_port $_user:$_pass" >$_file.tmp_VW
-	cvw_file -m 0640 -u root:postfix -v $_file postfix
-	postmap $_file
-	chown root:postfix $_file.db
-	chmod 0640 $_file.db
 
 	cvw_service -r postfix
 
