@@ -92,8 +92,8 @@ function nextcloud_install
 			    ====== $_name ======
 			      Database password .......: $_pass
 			      Login URL ...............: $(cvw_url -r $_uri)index.php/login
-			      Admin Name ..............: $_adm_pass
-			      Admin Password ..........: $_adm_name
+			      Admin Name ..............: $_adm_name
+			      Admin Password ..........: $_adm_pass
 		EOF
 	fi
 	[[ -s /tmp/cvw/error ]] && exit 1
