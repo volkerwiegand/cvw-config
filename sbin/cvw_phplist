@@ -43,15 +43,20 @@ function usage
 }
 
 
-function phplist_generate
+function generate
 {
 	local _fqdn=$(cvw_xml -r host/fqdn)
-	local _domain=${_fqdn#*.}
 
 	cat <<-EOF
 	    <phplist active="true">
-	      <uri>/list</uri>
+	      <uri>/news</uri>
 	      <password>$(cvw -p 20)</password>
+	      <test>0</test>
+	      <admin>
+	        <name>newsadmin</name>
+	        <password>$(cvw -p 20)</password>
+	        <email>newsadmin@${_fqdn#*.}</email>
+	      </admin>
 	    </phplist>
 
 	EOF
@@ -172,7 +177,7 @@ while getopts ":ig" opt ; do
 		;;
 
 		g)
-			phplist_generate
+			generate
 			exit 0
 		;;
 		\?)
