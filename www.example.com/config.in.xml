@@ -61,12 +61,12 @@
     </certbot>
 
     <postfix active="true">
-      <smarthost>
+      <server>
         <host>smtp.example.com</host>
         <port>587</port>
         <username>user</username>
         <password>pass</password>
-      </smarthost>
+      </server>
     </postfix>
 
     <docker active="false">
