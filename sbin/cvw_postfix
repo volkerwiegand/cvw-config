@@ -125,10 +125,10 @@ function postfix_install_standalone
 	fi
 	cat >>$_file.tmp_VW <<-EOF
 		Def_Domain:    "$_domain"
-		SMTP_Host:     "$(cvw_xml -r software/$_slug/smtp/host)"
-		SMTP_Port:     $(cvw_xml -r software/$_slug/smtp/port)
-		SMTP_Username: "$(cvw_xml -r software/$_slug/smtp/username)"
-		SMTP_Password: "$(cvw_xml -r software/$_slug/smtp/password)"
+		SMTP_Host:     "$(cvw_xml -r software/$_slug/server/host)"
+		SMTP_Port:     $(cvw_xml -r software/$_slug/server/port)
+		SMTP_Username: "$(cvw_xml -r software/$_slug/server/username)"
+		SMTP_Password: "$(cvw_xml -r software/$_slug/server/password)"
 		ProdMode:      $_prod
 		Verbose:       false
 	EOF
@@ -409,10 +409,10 @@ function postfix_install_smarthost
 	cvw_say -h "Installing $_name (smarthost)"
 	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
 	local _fqdn=$(cvw_xml -r host/fqdn)
-	local _host=$(cvw_xml -r software/$_slug/host)
-	local _port=$(cvw_xml -r software/$_slug/port)
-	local _user=$(cvw_xml -r software/$_slug/username)
-	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _host=$(cvw_xml -r software/$_slug/server/host)
+	local _port=$(cvw_xml -r software/$_slug/server/port)
+	local _user=$(cvw_xml -r software/$_slug/server/username)
+	local _pass=$(cvw_xml -r software/$_slug/server/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _domain=${_fqdn#*.}
 	local _maps=/etc/postfix/sasl_passwd
