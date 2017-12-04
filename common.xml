@@ -195,8 +195,8 @@
     </download>
     <download id="postfix_go">
       <link>https://github.com/volkerwiegand/postfix-go</link>
-      <url>https://github.com/volkerwiegand/postfix-go/raw/master/postfix-go-1.0.17.tgz</url>
-      <md5>d462f42b9300acf2bf90c70b615ab731</md5>
+      <url>https://github.com/volkerwiegand/postfix-go/raw/master/postfix-go-1.0.18.tgz</url>
+      <md5>915699629fff547adf15fee1e7c5fdc4</md5>
     </download>
     <download id="prestashop">
       <link>https://www.prestashop.com/en/download</link>
