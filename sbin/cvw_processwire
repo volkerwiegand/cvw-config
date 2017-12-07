@@ -29,6 +29,7 @@ function usage
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
 		    or: $_prog -g   Generate config template
+		    or: $_prog -q   Query download URL (for update check)
 		Called with: '$_prog $_args'
 	EOF
 
@@ -43,7 +44,7 @@ function usage
 }
 
 
-function processwire_generate
+function generate_template
 {
 	local _fqdn=$(cvw_xml -r host/fqdn)
 
@@ -59,6 +60,13 @@ function processwire_generate
 	    </processwire>
 
 	EOF
+	exit 0
+}
+
+
+function query_url
+{
+	echo "Link ............: $(cvw_xml -r common/download:$_slug/link)"
 	exit 0
 }
 
@@ -193,7 +201,7 @@ function processwire_remove
 }
 
 
-while getopts ":ig" opt ; do
+while getopts ":igq" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -205,7 +213,12 @@ while getopts ":ig" opt ; do
 		;;
 
 		g)
-			processwire_generate
+			generate_template
+			exit 0
+		;;
+
+		q)
+			query_url
 			exit 0
 		;;
 
