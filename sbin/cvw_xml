@@ -58,6 +58,7 @@ function check
 	local _path="$1"
 
 	xmlstarlet sel -Q -t -c "$_path" $_xml && return 0
+	mkdir -p /tmp/cvw
 	echo "$_prog: $_path not found" >>/tmp/cvw/error
 	exit 1
 }
