@@ -1,0 +1,213 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_radicale - Install or remove Radicale
+######                http://radicale.org/
+######                http://radicale.org/setup/
+######
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Radicale"
+_slug="radicale"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
+		    or: $_prog -q   Query download URL (for update check)
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function generate_template
+{
+	cat <<-EOF
+	    <!-- users -->
+	    <user id="$_slug" active="false">
+	      <info>CardDAV and CalDAV User</info>
+	      <password>$(cvw -p 20)</password>
+	      <home>/var/local/$_slug</home>
+	    </user>
+
+	    <!-- software -->
+	    <$_slug active="true">
+	      <port>5232</port>
+	    </$_slug>
+
+	EOF
+	exit 0
+}
+
+
+function query_url
+{
+	echo "Link ............: http://radicale.org/download/"
+	exit 0
+}
+
+
+function radicale_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _port=$(cvw_xml -r software/$_slug/port)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	cvw_user -s $_slug
+	local _home=$(cvw_user -h $_slug)
+	local _pass=$(cvw_user -p $_slug)
+	local _conf=/etc/$_slug
+	local _cert=/etc/letsencrypt/live/$_fqdn
+	local _file
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      WebGUI ..................: https://$_fqdn:$_port/
+			      Username ................: $_slug
+			      Password ................: $_pass
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
+
+	cvw_backup $_slug $_home/collections
+
+	cvw_yum -a ius
+	cvw_rpm -i python36u-pip
+	python3.6 -m pip install --upgrade "passlib[bcrypt]"
+	python3.6 -m pip install --upgrade $_slug
+	mkdir -p $_conf
+	install -o $_slug -g $_slug -d $_home/collections
+
+	htpasswd -B -c -b $_conf/password $_slug $_pass
+
+	if [[ -d /var/local/backup/$_slug/last/dirs && \
+	      -x /usr/local/bin/bkup.$_slug         && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+
+	_file=$_conf/config
+	cat >$_file.tmp_VW <<-EOF
+		[server]
+		hosts = 0.0.0.0:$_port
+		ssl = true
+		certificate = $_cert/fullchain.pem
+		key = $_cert/privkey.pem
+
+		[auth]
+		type = htpasswd
+		htpasswd_filename = $_conf/password
+		htpasswd_encryption = bcrypt
+
+		[storage]
+		filesystem_folder = $_home/collections
+	EOF
+	cvw_file -v $_file $_slug
+
+	_file=/etc/systemd/system/$_slug.service
+	cat >$_file.tmp_VW <<-EOF
+		[Unit]
+		Description=A simple CalDAV (calendar) and CardDAV (contact) server
+		After=network.target
+		Requires=network.target
+
+		[Service]
+		ExecStart=/usr/bin/env python3.6 -m $_slug
+		Restart=on-failure
+		User=$_slug
+		# Deny other users access to the calendar data
+		UMask=0027
+		# Optional security settings
+		PrivateTmp=true
+		ProtectSystem=strict
+		ProtectHome=true
+		PrivateDevices=true
+		ProtectKernelTunables=true
+		ProtectKernelModules=true
+		ProtectControlGroups=true
+		NoNewPrivileges=true
+		ReadWritePaths=$_home/collections
+
+		[Install]
+		WantedBy=multi-user.target
+	EOF
+	cvw_file -v $_file $_slug
+
+	cvw_service -s $_slug
+	cvw_firewall -t $_port
+
+	cvw_say -o "$_slug"
+}
+
+
+function radicale_remove
+{
+	if cvw_service -c radicaled ; then
+		cvw_say -h "Removing $_name"
+
+		cvw_service -d radicaled
+		cvw_rpm -e radicaled-devel
+		cvw_rpm -e radicaled
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":igq" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				radicale_install
+			else
+				radicale_remove
+			fi
+			exit 0
+		;;
+
+		g)
+			generate_template
+			exit 0
+		;;
+
+		q)
+			query_url
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
