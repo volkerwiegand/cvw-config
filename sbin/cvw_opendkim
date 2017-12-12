@@ -49,6 +49,7 @@ function opendkim_install
 	cvw_xml -a software/postfix || cvw_say -f "$_prog: requires postfix"
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _addr=$(cvw_xml -r host/addr)
+	local _addr6=$(cvw_xml -r host/addr6)
 	local _socket=$(cvw_xml -r software/$_slug/socket)
 	local _milter=$(cvw_xml -r software/$_slug/milter)
 	local _canon=$(cvw_xml -r software/$_slug/canonicalization)
@@ -69,6 +70,8 @@ function opendkim_install
 		cvw_say -a "don't forget to save the $_name config -> cvw -y"
 		cvw_say -s "$_name DNS TXT: '$(cat /etc/opendkim/keys/default.txt)'"
 	fi
+	chown -R opendkim:opendkim /etc/opendkim
+	chmod 0600 /etc/opendkim/keys/default.private
 
 	_file=/etc/opendkim.conf
 	cvw_file -b $_file
@@ -85,7 +88,7 @@ function opendkim_install
 		Socket             $_socket
 		Umask              002
 		SendReports        yes
-		ReportAddress      Postmaster <postmaster@$_domain>
+		ReportAddress      Postmaster <admin@$_domain>
 		SoftwareHeader     yes
 		Canonicalization   $_canon
 		Domain             $_domain
@@ -95,9 +98,10 @@ function opendkim_install
 		KeyTable           /etc/opendkim/KeyTable
 		SigningTable       refile:/etc/opendkim/SigningTable
 		ExternalIgnoreList refile:/etc/opendkim/TrustedHosts
+		InternalHosts      refile:/etc/opendkim/TrustedHosts
 		OversignHeaders    From
 	EOF
-	cvw_file -v $_file opendkim
+	cvw_file -u opendkim -v $_file opendkim
 
 	_file=/etc/opendkim/KeyTable
 	cvw_file -b $_file
@@ -105,7 +109,7 @@ function opendkim_install
 		# OPENDKIM KEY TABLE
 		default._domainkey.$_domain $_domain:default:/etc/opendkim/keys/default.private
 	EOF
-	cvw_file -v $_file opendkim
+	cvw_file -u opendkim -v $_file opendkim
 
 	_file=/etc/opendkim/SigningTable
 	cvw_file -b $_file
@@ -113,7 +117,7 @@ function opendkim_install
 		# OPENDKIM SIGNING TABLE
 		*@$_domain default._domainkey.$_domain
 	EOF
-	cvw_file -v $_file opendkim
+	cvw_file -u opendkim -v $_file opendkim
 
 	_file=/etc/opendkim/TrustedHosts
 	cvw_file -b $_file
@@ -124,8 +128,9 @@ function opendkim_install
 		$_domain
 		$_fqdn
 		$_addr
+		$_addr6
 	EOF
-	cvw_file -v $_file opendkim
+	cvw_file -u opendkim -v $_file opendkim
 
 	echo "10 $_milter" >>/tmp/cvw/postfix.milters
 

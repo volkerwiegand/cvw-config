@@ -68,7 +68,6 @@ function opendmarc_install
 	local _addr=$(cvw_xml -r host/addr)
 	local _socket=$(cvw_xml -r software/$_slug/socket)
 	local _milter=$(cvw_xml -r software/$_slug/milter)
-	local _email=$(cvw_xml -r software/$_slug/email)
 	local _order=$(cvw_xml -r software/$_slug/order)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _domain=${_fqdn#*.}
@@ -77,7 +76,7 @@ function opendmarc_install
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
-			      DNS TXT .................: _dmarc IN TXT "v=DMARC1; p=none; rua=mailto:$_email; ruf=mailto:$_email; sp=none; ri=86400"
+			      DNS TXT .................: _dmarc IN TXT "v=DMARC1; p=none; rua=mailto:admin@$_domain; ruf=mailto:admin@$_domain; sp=none; ri=86400"
 		EOF
 	fi
 
@@ -86,6 +85,8 @@ function opendmarc_install
 
 	_file=/etc/opendmarc.conf
 	cvw_file -e $_file "s/^\(Socket \).*/\1$_socket/" opendmarc
+	cvw_file -e $_file "s/^# \(IgnoreAuthenticatedClients\).*/\1 true/" opendmarc
+	cvw_file -e $_file "s/^\(IgnoreAuthenticatedClients\).*/\1 true/" opendmarc
 
 	echo "$_order $_milter" >>/tmp/cvw/postfix.milters
 

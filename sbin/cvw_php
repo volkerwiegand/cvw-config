@@ -6,9 +6,9 @@
 ###### cvw_php - Install or remove PHP
 ######           https://secure.php.net/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 ######          TODO implement removing PHP
 ######
@@ -28,8 +28,9 @@ function usage
 {
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
-		Syntax: $_prog -i   Install or remove $_name
-		    or: $_prog -s   List active web servers
+		Syntax: $_prog -i       Install or remove $_name
+		    or: $_prog -s       List active web servers
+		    or: $_prog -z app   Delete (zap) PHP/MySQL app
 		Called with: '$_prog $_args'
 	EOF
 
@@ -158,7 +159,38 @@ function php_remove
 }
 
 
-while getopts ":is" opt ; do
+function php_zap_app
+{
+	local _app=$1
+	local _root=$(cvw_xml -r system/app_root)/$_app
+	local _bkup=/var/local/backup/$_app
+
+	if [[ -d $_root || -d $_bkup ]] ; then
+		cvw_say -h "Removing $_app"
+
+		cvw_backup -z $_app
+		cvw_mysql -z $_app $_app
+		rm -f /etc/profile.d/alias_$_app.sh
+
+		if [[ -d $_root ]] ; then
+			rm -rf $_root
+		fi
+
+		if grep -q -s upgrade /tmp/cvw/updating ; then
+			if [[ -d $_bkup ]] ; then
+				cvw_say -s "deleting backup"
+				rm -rf $_bkup
+			fi
+		fi
+
+		cvw_say -o "$_app:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":isz:" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
@@ -179,6 +211,11 @@ while getopts ":is" opt ; do
 				_servers="$_servers nginx php-fpm"
 			fi
 			echo -n $_servers
+			exit 0
+		;;
+
+		z)
+			php_zap_app $OPTARG
 			exit 0
 		;;
 

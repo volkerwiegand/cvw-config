@@ -1,0 +1,131 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_ntp - Install or remove NTP
+######           http://www.ntp.org/
+######
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="NTP"
+_slug="ntp"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function ntp_template
+{
+	cat <<-EOF
+	    <ntp active="true">
+	      <server>0.de.pool.ntp.org</server>
+	      <server>1.de.pool.ntp.org</server>
+	      <server>2.de.pool.ntp.org</server>
+	      <server>3.de.pool.ntp.org</server>
+	    </ntp>
+
+	EOF
+	exit 0
+}
+
+
+function ntp_query_url
+{
+	echo "Link ............: http://support.ntp.org/bin/view/Servers/StratumOneTimeServers"
+	exit 0
+}
+
+
+function ntp_install
+{
+	cvw_say -h "Installing $_name"
+	local _file=/etc/ntp.conf
+
+	cvw_rpm -i ntp
+	cvw_firewall -s ntp
+	cvw_service -s ntpd
+
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		$(grep -v "^server " $_file)
+		$(cvw_xml -l system/ntp/server | sort | sed -e "s/\(.*\)/server \1 iburst/")
+	EOF
+	cvw_file -v $_file ntpd
+
+	cvw_say -o "$_slug"
+}
+
+
+function ntp_remove
+{
+	local _file=/etc/ntp.conf
+
+	if [[ -s $_file.bak_VW ]] ; then
+		cvw_say -h "Removing $_name"
+
+		mv $_file.bak_VW $_file
+		cvw_service -r ntpd
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":igq" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a system/$_slug ; then
+				ntp_install
+			else
+				ntp_remove
+			fi
+			exit 0
+		;;
+
+		g)
+			ntp_generate
+			exit 0
+		;;
+
+		q)
+			ntp_query_url
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

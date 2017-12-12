@@ -67,6 +67,7 @@ shift $(($OPTIND-1))
 cvw_init $_debug $_info $_upgrade
 error_check
 
+cvw_ntp            -i ; error_check
 cvw_yum            -i ; error_check
 cvw_docker         -i ; error_check
 cvw_user           -i ; error_check
@@ -102,6 +103,7 @@ cvw_redaxo         -i ; error_check
 cvw_joomla         -i ; error_check
 cvw_openletters    -i ; error_check
 cvw_phplist        -i ; error_check
+cvw_dadamail       -i ; error_check
 cvw_xiopo          -i ; error_check
 cvw_gogs           -i ; error_check
 cvw_gitolite       -i ; error_check

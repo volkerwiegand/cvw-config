@@ -64,7 +64,6 @@ function init_init
 	EOF
 
 	[[ $_debug ]] && echo "debug" >/tmp/cvw/debug
-	[[ $_info  ]] && cvw_say -h "Info summary" >/tmp/cvw/info
 
 	cvw_say -h "Checking coldstart"
 
@@ -96,11 +95,25 @@ function init_init
 	cvw_say -h "Configuring / verifying basics"
 	_fqdn=$(cvw_xml -r host/fqdn)
 	_addr=$(cvw_xml -r host/addr)
+	_addr6=$(cvw_xml -r host/addr6)
 	_lang=$(cvw_xml -r system/language)
 	_zone=$(cvw_xml -r system/timezone)
 	_root=$(cvw_xml -r system/app_root)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	rm -rf $HOME/.cpanm
+
+	if [[ $_info ]] ; then
+		cat >/tmp/cvw/info <<-EOF
+			==> Info summary
+			    ====== Init ======
+			      FQDN ....................: $_fqdn
+			      IPv4 Addr ...............: $_addr
+			      IPv6 Addr ...............: $_addr6
+			      Language ................: $_lang
+			      Time Zone ...............: $_zone
+			      App root ................: $_root
+		EOF
+	fi
 
 	_src="/var/local/cfg/files/keys"
 	_dst="/etc/pki/tls/dhparam.pem"
@@ -142,15 +155,6 @@ function init_init
 		cvw_rpm -e firewalld
 	fi
 
-	if cvw_xml -t host/ntp ; then
-		cvw_say -s "enabling NTP"
-		cvw_rpm -i ntp
-		cvw_firewall -s ntp
-		cvw_service -s ntpd
-	else
-		cvw_say -s "disabling ntp not implemented yet"
-	fi
-
 	if cvw_xml -c host/ssh_port ; then
 		_ssh_port=$(cvw_xml -r host/ssh_port)
 		cvw_say -s "SSH port is $_ssh_port"
@@ -168,8 +172,37 @@ function init_init
 			chmod 0600 /mnt/swap.0
 			mkswap /mnt/swap.0
 		fi
-		grep -q "swap.0" /etc/fstab || echo "/mnt/swap.0 swap swap defaults 0 0" >>/etc/fstab
+		if ! grep -q mnt.swap.0 /etc/fstab ; then
+			cat >/etc/fstab.tmp_VW <<-EOF
+				$(grep -v mnt.swap.0 /etc/fstab)
+				/mnt/swap.0 swap swap defaults 0 0
+			EOF
+			cvw_file -v /etc/fstab
+		fi
 		swapon -a
+	fi
+
+	if cvw_xml -a system/backup ; then
+		cvw_rpm -i cifs-utils
+		mkdir -p /mnt/backup
+		chmod 0700 /mnt/backup
+		_file=/root/.cred_backup
+		cat >$_file.tmp_VW <<-EOF
+			username=$(cvw_xml -r system/backup/username)
+			password=$(cvw_xml -r system/backup/password)
+		EOF
+		_addr=$(cvw_xml -r system/backup/remote)
+		[[ -s /tmp/cvw/error ]] && exit 1
+		cvw_file -m 0600 -v /root/.cred_backup
+		if ! grep -q mnt.backup /etc/fstab ; then
+			cat >/etc/fstab.tmp_VW <<-EOF
+				$(grep -v mnt.backup /etc/fstab)
+				$_addr /mnt/backup cifs rw,credentials=$_file,uid=0,gid=0,iocharset=utf8 0 0
+			EOF
+			cvw_file -v /etc/fstab
+		fi
+		mount -a
+		cvw_say -s "backup to $_addr"
 	fi
 
 	cvw_say -s "language is $_lang"

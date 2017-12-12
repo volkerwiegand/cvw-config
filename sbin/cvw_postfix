@@ -74,7 +74,7 @@ function postfix_install_standalone
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
-			      DNS record ..............: @ IN TXT "v=spf1 +mx -all"
+			      DNS record ..............: @ IN TXT "v=spf1 +a +mx ~all"
 
 		EOF
 	fi
@@ -468,7 +468,7 @@ function postfix_finish_standalone
 		postconf -e "non_smtpd_milters=\$smtpd_milters"
 		postconf -e "milter_default_action=accept"
 		postconf -e "milter_protocol=6"
-		postconf -e "milter_mail_macros=i {mail_addr} {client_addr} {client_name} {auth_authen} v _"
+		postconf -e "milter_mail_macros=i {mail_addr} {client_addr} {client_name} {auth_authen} {auth_authen} {auth_type} v _"
 		postconf -e "milter_rcpt_macros=i {rcpt_addr}"
 	fi
 

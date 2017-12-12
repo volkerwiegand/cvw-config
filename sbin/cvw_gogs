@@ -182,12 +182,11 @@ function gogs_install
 
 function gogs_remove
 {
-	cvw_service -z $_slug
-	cvw_backup -z $_slug
-	cvw_mysql -z $_slug $_slug
-
 	if id gogs >/dev/null 2>&1 ; then
 		cvw_say -h "Removing Gogs"
+		cvw_service -z $_slug
+		cvw_backup -z $_slug
+		cvw_mysql -z $_slug $_slug
 		userdel -fr gogs 2>/tmp/cvw/error
 		cvw_say -o "$_slug:remove"
 	fi

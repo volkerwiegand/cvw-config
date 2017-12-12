@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <config xmlns:xi="http://www.w3.org/2001/XInclude">
-  <host ipv6="true" hostname="true" firewall="true" ntp="true">
+  <host ipv6="true" hostname="true" firewall="true">
     <os>centos7</os>
     <fqdn>www.example.com</fqdn>
     <addr>192.168.12.34</addr>
@@ -42,17 +42,24 @@
     <language>de_DE</language>
     <timezone>Europe/Berlin</timezone>
 
-    <web>
-      <server>apache</server>
-      <port>80</port>
-      <ssl_port>443</ssl_port>
-    </web>
-
     <tripwire active="true">
       <sitephrase>very_long_string_that_no_one_would_guess_if_she_had_to_64_bytes1</sitephrase>
       <localphrase>very_long_string_that_no_one_would_guess_if_she_had_to_64_bytes2</localphrase>
       <mail>security@example.com</mail>
     </tripwire>
+
+    <backup active="true">
+      <remote>//storage.example.com/subdir</remote>
+      <username>user</username>
+      <password>pass</password>
+    </backup>
+
+    <ntp active="true">
+      <server>server 0.centos.pool.ntp.org</server>
+      <server>server 1.centos.pool.ntp.org</server>
+      <server>server 2.centos.pool.ntp.org</server>
+      <server>server 3.centos.pool.ntp.org</server>
+    </ntp>
   </system>
 
   <software development="false" go="true">
@@ -91,11 +98,14 @@
       </container>
     </nginx>
 
-    <apache active="true" php="true">
+    <apache active="true" php="true" public="true">
       <loglevel>debug</loglevel>
+      <port>80</port>
+      <ssl_port>443</ssl_port>
     </apache>
 
-    <php active="true" ius56="true">
+    <php active="true" ius="true" geoip="false">
+      <opcache>10000</opcache>
     </php>
 
     <memcache active="true">
@@ -117,7 +127,6 @@
     </mysql>
 
     <sqlbuddy active="true">
-      <app_name>SQL Buddy</app_name>
       <uri>/sqlbuddy</uri>
     </sqlbuddy>
 
@@ -136,7 +145,7 @@
 
     <webdav active="false">
       <uri>/webdav</uri>
-      <username>wiegand</username>
+      <username>user</username>
       <password>secret901password</password>
     </webdav>
 

@@ -100,10 +100,10 @@ function oscommerce_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 
-	cvw_backup -z $_slug
-	cvw_mysql -z $_slug $_slug
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
+		cvw_backup -z $_slug
+		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

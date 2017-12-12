@@ -6,9 +6,9 @@
 ###### cvw_piwik - Install or remove Piwik analytics
 ######             http://piwik.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -59,10 +59,6 @@ function piwik_install
 	cvw_unpack -i $_slug $_root/app index.php
 	for _subdir in config tmp ; do
 		mkdir -p $_root/app/$_subdir
-		chown -R apache $_root/app/$_subdir
-	done
-	for _file in piwik.js ; do
-		chown apache $_root/app/$_file
 	done
 	for _subdir in plugins/Morpheus/icons/submodules ; do
 		if [[ -d $_root/app/$_subdir ]] ; then
@@ -71,6 +67,7 @@ function piwik_install
 			mv $_root/app/$_subdir $_root
 		fi
 	done
+	chown -R apache $_root/app
 
 	if [[ -s /var/local/backup/$_slug/last/sql.gz       && \
 	      -s /var/local/backup/$_slug/last/files.tar.gz && \
@@ -97,10 +94,10 @@ function piwik_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 
-	cvw_backup -z $_slug
-	cvw_mysql -z $_slug $_slug
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
+		cvw_backup -z $_slug
+		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi
