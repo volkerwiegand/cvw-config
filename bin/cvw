@@ -54,6 +54,7 @@ function usage
 		    or: $_prog -L user [cmd]     Remote login as user
 		    or: $_prog -p len            Generate random password
 		    or: $_prog -P [-C]           Prepare for setup [copy SSH key]
+		    or: $_prog -q app            Display URL for <app> update check
 		    or: $_prog -r [svc]          Restart all or single service(s)
 		    or: $_prog -t                Compile and test config.xml
 		    or: $_prog -x flag cmd       Run cvw_xml -flag cmd (verbose)
@@ -240,7 +241,7 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pr:tx:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tx:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -287,7 +288,7 @@ while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pr:tx:X:yYz" opt ; do
 		;;
 
 		g)
-			_app=$OPTARG
+			_template=$OPTARG
 			_finito=1
 		;;
 
@@ -332,6 +333,11 @@ while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pr:tx:X:yYz" opt ; do
 
 		P)
 			_prepare=1
+		;;
+
+		q)
+			_query_url=$OPTARG
+			_finito=1
 		;;
 
 		r)
@@ -415,10 +421,20 @@ if [[ $_restore ]] ; then
 fi
 
 
-if [[ $_app ]] ; then
+if [[ $_template ]] ; then
 	setup_config quiet
 	rm -rf /tmp/cvw
-	cvw_${_app#cvw_} -g
+	cvw_${_template#cvw_} -g
+	exit
+fi
+
+
+if [[ $_query_url ]] ; then
+	setup_config quiet
+	rm -rf /tmp/cvw
+	echo ""
+	cvw_${_query_url#cvw_} -q
+	echo ""
 	exit
 fi
 

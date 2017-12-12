@@ -6,9 +6,9 @@
 ###### cvw_url - Collect and print installed URLs
 ######           (internal service functions)
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -25,6 +25,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -a app uri   Add URL for app
+		    or: $_prog -q app       Query download URL
 		    or: $_prog -r uri       Print URL root
 		    or: $_prog -s           Print summary
 		Called with: '$_prog $_args'
@@ -78,10 +79,15 @@ function url_root
 }
 
 
-while getopts ":a:r:s" opt ; do
+while getopts ":a:q:r:s" opt ; do
 	case $opt in
 		a)
 			_app=$OPTARG
+		;;
+
+		q)
+			echo "Link ............: $(cvw_xml -r common/download:$OPTARG/link)"
+			exit 0
 		;;
 
 		r)
