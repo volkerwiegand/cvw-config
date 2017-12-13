@@ -29,7 +29,7 @@ function usage
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
 		    or: $_prog -g   Generate config template
-		    or: $_prog -q   Query download URL (for update check)
+		    or: $_prog -q   Query download URL
 		Called with: '$_prog $_args'
 	EOF
 
@@ -44,7 +44,7 @@ function usage
 }
 
 
-function generate_template
+function processwire_template
 {
 	local _fqdn=$(cvw_xml -r host/fqdn)
 
@@ -64,13 +64,6 @@ function generate_template
 }
 
 
-function query_url
-{
-	echo "Link ............: $(cvw_xml -r common/download:$_slug/link)"
-	exit 0
-}
-
-
 function processwire_install
 {
 	cvw_say -h "Installing $_name"
@@ -81,7 +74,7 @@ function processwire_install
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	local _lang=$(cvw_xml -r system/language)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _file _conf
+	local _file _conf _site
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
@@ -144,7 +137,7 @@ function processwire_install
 		EOF
 		cvw_file -u apache -v $_file $(cvw_php -s)
 
-		_conf=/var/local/cfg/files/misc/pw_config.php
+		_conf=/var/local/cfg/files/processwire/config.php
 		_file=$_root/app/site/config.php
 		if [[ -s $_conf ]] ; then
 			cp $_conf $_file.tmp_VW
@@ -154,6 +147,16 @@ function processwire_install
 			chmod 0400 $_file
 		fi
 	else
+		for _site in $(cvw_xml -l software/$_slug/site | sort) ; do
+			cvw_say -s "adding site $_site"
+			if [[ $_site =~ \.zip$ ]] ; then
+				_file=/tmp/cvw/pw_site.zip
+				wget -q -O - $_site >$_file
+				unzip -q -o -d $_root/app $_file
+				rm -f $_file
+			fi
+			chown -R apache:apache $_root/app
+		done
 		cvw_say -a "waiting for install .....: $(cvw_url -r $_uri)install.php"
 	fi
 
@@ -171,54 +174,24 @@ function processwire_install
 }
 
 
-function processwire_remove
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _bkup=/var/local/backup/$_slug
-
-	if [[ -d $_root || -d $_bkup ]] ; then
-		cvw_say -h "Removing $_name"
-
-		cvw_backup -z $_slug
-		cvw_mysql -z $_slug $_slug
-		rm -f /etc/profile.d/alias_$_slug.sh
-
-		if [[ -d $_root ]] ; then
-			rm -rf $_root
-		fi
-
-		if grep -q -s upgrade /tmp/cvw/updating ; then
-			if [[ -d $_bkup ]] ; then
-				cvw_say -s "deleting backup"
-				rm -rf $_bkup
-			fi
-		fi
-
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 while getopts ":igq" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
 				processwire_install
 			else
-				processwire_remove
+				cvw_php -z $_slug
 			fi
 			exit 0
 		;;
 
 		g)
-			generate_template
+			processwire_template
 			exit 0
 		;;
 
 		q)
-			query_url
+			cvw_url -q $_slug
 			exit 0
 		;;
 
