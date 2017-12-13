@@ -4,11 +4,12 @@
 #################################################################################
 ######
 ###### cvw_mantis - Install or remove Mantis BT
-######              https://www.mantisbt.org/
+######              http://mantisbt.org/index.php
+######              http://mantisbt.org/docs/master/en-US/Admin_Guide/html-single/#admin.install
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -41,6 +42,21 @@ function usage
 }
 
 
+function mantis_template
+{
+	cat <<-EOF
+	    <mantis active="true">
+	      <uri>/tracker</uri>
+	      <password>$(cvw -p 20)</password>
+	      <salt>$(cvw -p 44)</salt>
+	      <title>Example Bug Tracker</title>
+	    </mantis>
+
+	EOF
+	exit 0
+}
+
+
 function mantis_install
 {
 	cvw_say -h "Installing $_name"
@@ -56,6 +72,15 @@ function mantis_install
 	local _domain=${_fqdn#*.}
 	local _conf _file _subdir
 
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Username / Database .....: $_slug
+			      Password ................: $_pass
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
 			$_root/app/plugins \
@@ -64,8 +89,8 @@ function mantis_install
 	cvw_unpack -i $_slug $_root/app index.php
 	for _subdir in plugins uploads ; do
 		mkdir -p $_root/app/$_subdir
-		chown -R apache $_root/app/$_subdir
 	done
+	chown -R apache $_root/app
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
@@ -74,7 +99,6 @@ function mantis_install
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
 	fi
-	chmod 755 $_root/app
 
 	_file=$_root/app/config/config_inc.php
 	cat >$_file.tmp_VW <<-EOF
@@ -133,6 +157,16 @@ function mantis_install
 	EOF
 	cvw_file -v $_file $(cvw_php -s)
 
+	if [[ $(mysqlshow -u$_slug -p$_pass $_slug | wc -l) -gt 10 ]] ; then
+		if [[ -d $_root/app/admin ]] ; then
+			cvw_say -s "hiding admin directory"
+			rm -rf $_root/admin # just in case
+			mv $_root/app/admin $_root/admin
+		fi
+	else
+		cvw_say -a "waiting for install .....: $(cvw_url -r $_uri)admin/install.php"
+	fi
+
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi
@@ -147,30 +181,24 @@ function mantis_install
 }
 
 
-function mantis_remove
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
-while getopts ":i" opt ; do
+while getopts ":igq" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
 				mantis_install
 			else
-				mantis_remove
+				cvw_php -z $_slug
 			fi
+			exit 0
+		;;
+
+		g)
+			mantis_template
+			exit 0
+		;;
+
+		q)
+			cvw_url -q $_slug
 			exit 0
 		;;
 
