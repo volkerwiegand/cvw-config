@@ -3,11 +3,11 @@
 
 #################################################################################
 ######
-###### cvw_cmsimple - Install or remove CMSimple CMS
-######                https://www.cmsimple.org/en/
-######                https://www.cmsimple.org/doku/?Installation
+###### cvw_grav - Install or remove Grav CMS
+######            https://getgrav.org/
+######            https://learn.getgrav.org/basics/installation
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2018 Volker Wiegand <volker.wiegand@cvw.de>
 ######          This file is part of "CVW Config"
 ######          See LICENSE for copyright information
 ######
@@ -19,8 +19,8 @@ set -e -o pipefail
 # Remember the args
 _prog=${0##*/}
 _args="$*"
-_name="CMSimple CMS"
-_slug="cmsimple"
+_name="Grav CMS"
+_slug="grav"
 
 
 function usage
@@ -42,7 +42,7 @@ function usage
 }
 
 
-function cmsimple_install
+function grav_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/php || cvw_say -f "$_prog: requires php"
@@ -58,32 +58,32 @@ function cmsimple_install
 	local _file _subdir
 
 if false ; then
-	cvw_say -a "Admin Login URL .........: $(cvw_url -r $_uri)$_slug/"
-	cvw_say -a "Admin User ..............: $_adm_name"
-	cvw_say -a "Admin Password ..........: $_adm_pass"
-	cvw_say -a "Admin Email .............: $_adm_mail"
+	#cvw_say -a "Admin Login URL .........: $(cvw_url -r $_uri)$_slug/"
+	#cvw_say -a "Admin User ..............: $_adm_name"
+	#cvw_say -a "Admin Password ..........: $_adm_pass"
+	#cvw_say -a "Admin Email .............: $_adm_mail"
 
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
 			$_root/app/site
 fi
 
-	cvw_unpack -i $_slug $_root/app index.php
-	for _subdir in 2author 2lang 2site 2site2lang ; do
+	cvw_unpack -u apache -i $_slug $_root/app index.php
+if false ; then
+	for _subdir in 2author 2lang 2site 2site2lang readme.php ; do
 		if [[ -d $_root/app/$_subdir ]] ; then
 			rm -rf $_root/$_subdir
 			mv $_root/app/$_subdir $_root/$_subdir
 		fi
 	done
-	for _subdir in content userfiles cmsimple/languages templates ; do
+	for _subdir in content userfiles grav/languages templates ; do
 		mkdir -p $_root/app/$_subdir
 		chown -R apache $_root/app/$_subdir
 	done
-	for _file in disabled_plugins.txt cmsimple/config.php cmsimple/log.txt ; do
+	for _file in disabled_plugins.txt grav/config.php grav/log.txt ; do
 		touch $_root/app/$_file
 		chown apache $_root/app/$_file
 	done
 
-if false ; then
 	_file=$_root/app/.htaccess
 	if [[ ! -r $_file ]] ; then
 		cp $_root/app/htaccess.txt $_file.tmp_VW
@@ -107,15 +107,15 @@ if false ; then
 	_file="/etc/profile.d/alias_$_slug.sh"
 	cat >$_file.tmp_VW <<-EOF
 		#
-		# shell aliases for cmsimple
+		# shell aliases for grav
 		#
 
-		alias pw-p='cd /var/local/cmsimple/app'
-		alias pw-w='cd /var/local/cmsimple/app/wire'
-		alias pw-s='cd /var/local/cmsimple/app/site'
-		alias pw-a='cd /var/local/cmsimple/app/site/assets'
-		alias pw-m='cd /var/local/cmsimple/app/site/modules'
-		alias pw-t='cd /var/local/cmsimple/app/site/templates'
+		alias pw-p='cd /var/local/grav/app'
+		alias pw-w='cd /var/local/grav/app/wire'
+		alias pw-s='cd /var/local/grav/app/site'
+		alias pw-a='cd /var/local/grav/app/site/assets'
+		alias pw-m='cd /var/local/grav/app/site/modules'
+		alias pw-t='cd /var/local/grav/app/site/templates'
 	EOF
 	cvw_file -v $_file
 
@@ -144,7 +144,7 @@ fi
 }
 
 
-function cmsimple_remove
+function grav_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 
@@ -164,9 +164,9 @@ while getopts ":i" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
-				cmsimple_install
+				grav_install
 			else
-				cmsimple_remove
+				grav_remove
 			fi
 			exit 0
 		;;
