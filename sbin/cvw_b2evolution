@@ -6,9 +6,9 @@
 ###### cvw_b2evolution - Install or remove b2evolution CMS
 ######                   http://b2evolution.net/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2018 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -46,22 +46,37 @@ function b2evolution_install
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _mail=$(cvw_xml -r software/$_slug/email)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _app=$_root/app
 	local _conf _file _subdir _dest
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Installer URL ...........: https://$_fqdn${_uri%/}/install/index.php
+			      DB Name / User ..........: $_slug
+			      DB Pass .................: $_pass
+			      Base URL ................: https://$_fqdn$_uri
+			      Admin E-Mail ............: $_mail
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/conf \
-			$_root/app/media \
-			$_root/app/plugins
+			$_app/conf \
+			$_app/media \
+			$_app/plugins
 
-	cvw_unpack -i $_slug $_root/app index.php
+	cvw_unpack -i $_slug $_app index.php
 	for _subdir in _cache media ; do
-		mkdir -p $_root/app/$_subdir
-		chown -R apache $_root/app/$_subdir
+		mkdir -p $_app/$_subdir
+		chown -R apache $_app/$_subdir
 	done
 
 	_subdir="/var/local/cfg/files/b2evolution/skins"
@@ -69,7 +84,7 @@ function b2evolution_install
 	if [[ -d $_subdir ]] ; then
 		find $_subdir -name "*.zip" -print | while read _file ; do
 			cvw_say -s "found skin ${_file##*/}"
-			unzip -q -u -o -d $_root/app/skins $_file
+			unzip -q -u -o -d $_app/skins $_file
 		done
 	fi
 
@@ -81,7 +96,7 @@ function b2evolution_install
 		/usr/local/bin/bkup.$_slug
 	fi
 
-	find $_root/app -name sample.htaccess -print | while read _file ; do
+	find $_app -name sample.htaccess -print | while read _file ; do
 		_dest="${_file%sample.htaccess}.htaccess"
 		if [[ ! -s $_dest ]] ; then
 			cp $_file $_dest.tmp_VW
@@ -89,18 +104,18 @@ function b2evolution_install
 		fi
 	done
 
-	_file=$_root/app/conf/_basic_config.php
+	_file=$_app/conf/_basic_config.php
 	if [[ -s $_file ]] ; then
-		chown root $_root/app/conf
-		if [[ -d $_root/app/install ]] ; then
+		chown root $_app/conf
+		if [[ -d $_app/install ]] ; then
 			cvw_say -s "hiding install directory"
 			mkdir -p $_root 2>>/tmp/cvw/error
 			rm -rf $_root/install # just in case
-			mv $_root/app/install $_root/install
+			mv $_app/install $_root/install
 		fi
 	else
-		cvw_say -s "waiting for installation"
-		chown apache $_root/app/conf
+		cvw_say -a "waiting for installation"
+		chown apache $_app/conf
 	fi
 	cvw_file -v $_file -u root $(cvw_php -s)
 
@@ -118,29 +133,13 @@ function b2evolution_install
 }
 
 
-function b2evolution_remove
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 while getopts ":i" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
 				b2evolution_install
 			else
-				b2evolution_remove
+				cvw_php -z $_slug
 			fi
 			exit 0
 		;;
