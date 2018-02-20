@@ -194,6 +194,7 @@
     <download id="picocms">
       <link>https://github.com/picocms/Pico/releases/</link>
       <url>https://github.com/picocms/Pico/releases/download/v1.0.6/pico-release-v1.0.6.tar.gz</url>
+      <md5>3b82dea8ad3faf1c70862d2d98e7afa1</md5>
     </download>
     <download id="piwigo">
       <link>http://piwigo.org/</link>

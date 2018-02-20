@@ -7,9 +7,9 @@
 ######               http://picocms.org/
 ######               http://picocms.org/docs/#install
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2017-2018 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -47,43 +47,55 @@ function picocms_install
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/php || cvw_say -f "$_prog: requires php"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _zone=$(cvw_xml -r system/timezone)
 	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _repo=$(cvw_xml -r software/$_slug/git/repo)
-	local _name=$(cvw_xml -r software/$_slug/git/name)
+	local _title=$(cvw_xml -r software/$_slug/title)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _subdir
+	local _app=$_root/app
+	local _theme _tname _file
 
-	cvw_unpack -m -s -i $_slug $_root/app index.php
-	pushd $_root/app >/dev/null
-	composer -q install
-	popd >/dev/null
-
-	if [[ ! -d $_root/$_name ]] ; then
-		set +e
-		(cd $_root && git clone $_repo $_name)
-		set -e
-	fi
-
-	if [[ -d $_root/$_name ]] ; then
-		for _subdir in assets config content plugins themes ; do
-			if [[ -d $_root/$_name/$_subdir ]] ; then
-				if [[ -h $_root/app/$_subdir ]] ; then
-					rm -f $_root/app/$_subdir
-				elif [[ -d $_root/app/$_subdir ]] ; then
-					mkdir -p $_root/backup
-					rm -rf $_root/backup/$_subdir
-					mv $_root/app/$_subdir $_root/backup/$_subdir
-				fi
-				cvw_say -s "symlink: $_root/app/$_subdir -> $_root/$_name/$_subdir"
-				ln -nfs $_root/$_name/$_subdir $_root/app/$_subdir
-			fi
-		done
+	if cvw_xml -c software/$_slug/theme ; then
+		_theme=$(cvw_xml -r software/$_slug/theme)
+		_tname=${_theme##*/}
+		_tname=${_tname%.git}
+		cvw_git -r $_theme -d $_app/themes/$_tname
 	else
-		if [[ ! -h $_root/app/content ]] ; then
-			cvw_say -s "symlink: $_root/app/content -> content-sample"
-			ln -nfs content-sample $_root/app/content
-		fi
+		_theme="default"
 	fi
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Site Title ..............: $_title
+			      Theme ...................: $_tname
+			      Timezone ................: $_zone
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
+
+	cvw_unpack -m -s -i $_slug $_app index.php
+
+	_file="$_app/config/config.php"
+	cat >$_file.tmp_VW <<-EOF
+		<?php
+		\$config['site_title'] = '$_title';
+		\$config['theme']      = '$_tname';
+		\$config['timezone']   = '$_zone';
+	EOF
+	cvw_file -v $_file $(cvw_php -s)
+
+	_file="/etc/profile.d/alias_$_slug.sh"
+	cat >$_file.tmp_VW <<-EOF
+		#
+		# shell aliases for $_name
+		#
+		alias pi-a='cd $_app'
+		alias pi-c='cd $_app/content'
+		alias pi-o='cd $_app/config'
+		alias pi-p='cd $_app/plugins'
+		alias pi-t='cd $_app/themes'
+	EOF
+	cvw_file -v $_file
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
@@ -93,29 +105,9 @@ function picocms_install
 		cvw_apache -p $_slug
 	fi
 
-	cat >>/etc/profile.d/cvw_aliases.sh.tmp_VW <<-EOF
-		alias cd-pico='cd $_root/app'
-		alias upd-pico='cd $_root/$_name && git pull'
-	EOF
-
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
-}
-
-
-function picocms_remove
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
 }
 
 
@@ -125,7 +117,7 @@ while getopts ":i" opt ; do
 			if cvw_xml -a software/$_slug ; then
 				picocms_install
 			else
-				picocms_remove
+				cvw_php -z $_slug
 			fi
 			exit 0
 		;;
