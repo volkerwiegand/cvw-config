@@ -49,29 +49,38 @@ function serendipity_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
-	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
-	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _app=$_root/app
 	local _conf _file _subdir
 
-	cvw_say -a "Database password .......: $_pass"
-	cvw_say -a "Login URL ...............: $(cvw_url -r $_uri)index.php?/admin"
-	cvw_say -a "Admin user name .........: $_adm_name"
-	cvw_say -a "Admin password ..........: $_adm_pass"
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      DB Name / User ..........: $_slug
+			      DB Pass .................: $_pass
+			      Admin Login .............: $(cvw_xml -r software/$_slug/admin/username)
+			      Admin Password ..........: $(cvw_xml -r software/$_slug/admin/password)
+			      Admin Fullname ..........: $(cvw_xml -r software/$_slug/admin/fullname)
+			      Admin E-Mail ............: $(cvw_xml -r software/$_slug/admin/email)
+			      Blog-Title ..............: $(cvw_xml -r software/$_slug/title)
+			      Blog-Beschreibung .......: $(cvw_xml -r software/$_slug/subtitle)
+			      Login URL ...............: $(cvw_url -r $_uri)index.php?/admin"
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/archives \
-			$_root/app/plugins \
-			$_root/app/templates_c \
-			$_root/app/uploads \
-			$_root/app/spamblock
+			$_app/archives \
+			$_app/plugins \
+			$_app/templates_c \
+			$_app/uploads \
+			$_app/spamblock
 
-	cvw_unpack -i $_slug $_root/app index.php
-	chmod -R go-w $_root/app
+	cvw_unpack -i $_slug $_app index.php
+	chmod -R go-w $_app
 	for _subdir in archives plugins templates_c uploads spamblock ; do
-		mkdir -p $_root/app/$_subdir
-		chown -R apache $_root/app/$_subdir
+		mkdir -p $_app/$_subdir
 	done
 
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
@@ -83,16 +92,15 @@ function serendipity_install
 	fi
 
 	_file="serendipity_config_local.inc.php"
-	if [[ -s $_root/app/.htaccess ]] ; then
-		chown apache $_root/app/.htaccess $_root/app/$_file
-		chmod 0644   $_root/app/.htaccess $_root/app/$_file
-		chmod 0755   $_root/app
-		cp $_root/app/.htaccess $_root/htaccess
-		cp $_root/app/$_file $_root/$_file
+	if [[ -s $_app/.htaccess ]] ; then
+		chmod 0644   $_app/.htaccess $_app/$_file
+		chmod 0755   $_app
+		cp $_app/.htaccess $_root/htaccess
+		cp $_app/$_file $_root/$_file
 	else
-		cvw_say -s "waiting for installation"
-		chmod 0777 $_root/app
+		cvw_say -a "waiting for installation"
 	fi
+	chown -R apache:apache $_app
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug

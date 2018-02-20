@@ -47,58 +47,36 @@ function grav_install
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/php || cvw_say -f "$_prog: requires php"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _lang=$(cvw_xml -r system/language)
+	#local _lang=$(cvw_xml -r system/language)
 	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _pass=$(cvw_xml -r software/$_slug/password)
-	local _fqdn=$(cvw_xml -r host/fqdn)
-	#local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
-	#local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
-	#local _adm_mail=$(cvw_xml -r software/$_slug/admin/email)
+	#local _fqdn=$(cvw_xml -r host/fqdn)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _app=$_root/app
 	local _file _subdir
 
-if false ; then
-	#cvw_say -a "Admin Login URL .........: $(cvw_url -r $_uri)$_slug/"
-	#cvw_say -a "Admin User ..............: $_adm_name"
-	#cvw_say -a "Admin Password ..........: $_adm_pass"
-	#cvw_say -a "Admin Email .............: $_adm_mail"
-
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/site
-fi
-
-	cvw_unpack -u apache -i $_slug $_root/app index.php
-if false ; then
-	for _subdir in 2author 2lang 2site 2site2lang readme.php ; do
-		if [[ -d $_root/app/$_subdir ]] ; then
-			rm -rf $_root/$_subdir
-			mv $_root/app/$_subdir $_root/$_subdir
-		fi
-	done
-	for _subdir in content userfiles grav/languages templates ; do
-		mkdir -p $_root/app/$_subdir
-		chown -R apache $_root/app/$_subdir
-	done
-	for _file in disabled_plugins.txt grav/config.php grav/log.txt ; do
-		touch $_root/app/$_file
-		chown apache $_root/app/$_file
-	done
-
-	_file=$_root/app/.htaccess
-	if [[ ! -r $_file ]] ; then
-		cp $_root/app/htaccess.txt $_file.tmp_VW
-		cvw_file -v $_file $(cvw_php -s)
-	fi
-	if [[ "$_uri" == "/" ]] ; then
-		cvw_file -e $_file "s|^ \( RewriteBase\).*|  #\1 /pw/|" $(cvw_php -s)
-	else
-		cvw_file -e $_file "s|# \(RewriteBase /pw/\)|\1|" $(cvw_php -s)
-		cvw_file -e $_file "s|^\(  RewriteBase\).*|\1 $_uri/|" $(cvw_php -s)
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Username ................: $(cvw_xml -r software/$_slug/admin/username)
+			      Email ...................: $(cvw_xml -r software/$_slug/admin/email)
+			      Password ................: $(cvw_xml -r software/$_slug/admin/password)
+			      Full name ...............: $(cvw_xml -r software/$_slug/admin/fullname)
+			      Title ...................: $(cvw_xml -r software/$_slug/title)
+			      Login URL ...............: $(cvw_url -r $_uri)admin"
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
+	cvw_backup $_slug $_app
+
+	cvw_unpack -u apache -i $_slug $_app index.php
+
+	_file=$_app/.htaccess
+	cvw_file -u apache -e $_file "s|^# \(RewriteBase .*\)|\1|" $(cvw_php -s)
+	cvw_file -u apache -e $_file "s|^\(RewriteBase\).*|\1 $_uri|" $(cvw_php -s)
+
+	if [[ -d /var/local/backup/$_slug/last/dirs && \
+	      -x /usr/local/bin/bkup.$_slug         && \
 	      -x /usr/local/bin/rstr.$_slug ]] ; then
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
@@ -107,28 +85,19 @@ if false ; then
 	_file="/etc/profile.d/alias_$_slug.sh"
 	cat >$_file.tmp_VW <<-EOF
 		#
-		# shell aliases for grav
+		# shell aliases for $_name
 		#
-
-		alias pw-p='cd /var/local/grav/app'
-		alias pw-w='cd /var/local/grav/app/wire'
-		alias pw-s='cd /var/local/grav/app/site'
-		alias pw-a='cd /var/local/grav/app/site/assets'
-		alias pw-m='cd /var/local/grav/app/site/modules'
-		alias pw-t='cd /var/local/grav/app/site/templates'
+		alias g-a='cd $_app'
+		alias g-c='cd $_app/user/config'
+		alias g-i='cd $_app/images'
+		alias g-l='cd $_app/system/languages'
+		alias g-s='cd $_app/system'
+		alias g-t='cd $_app/system/templates'
+		alias g-u='cd $_app/user'
+		#
+		alias g-='cat $_file'
 	EOF
 	cvw_file -v $_file
-
-	_file=$_root/app/site/config.php
-	if grep -q -s $_pass $_file ; then
-		chmod 0400 $_file
-		chown -R root   $_root/app
-		chown -R apache $_root/app/site
-	else
-		cvw_say -a "waiting for install .....: https://$_fqdn${_uri%/}/install.php"
-		chown -R apache $_root/app
-	fi
-fi
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug

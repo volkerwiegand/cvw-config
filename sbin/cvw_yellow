@@ -42,27 +42,124 @@ function usage
 }
 
 
+function yellow_user
+{
+	local _app=$(cvw_xml -r system/app_root)/$_slug/app
+	local _lang=$(cvw_xml -r system/language)
+	local _name="$1"
+	local _mail="$2"
+	local _pass="$3"
+	local _info="$4"
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		echo "      User ID .................:  $_id"   >>/tmp/cvw/info
+		echo "      User Name ...............:  $_info" >>/tmp/cvw/info
+		echo "      User E-Mail .............:  $_mail" >>/tmp/cvw/info
+		echo "      User Password ...........:  $_pass" >>/tmp/cvw/info
+	fi
+
+	cvw_user -r apache -d $_app php yellow.php user "$_mail" "$_pass" "$_id" "${_lang%_*}"
+}
+
+
 function yellow_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/php || cvw_say -f "$_prog: requires php"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
-	local _adm_mail=$(cvw_xml -r software/$_slug/admin/email)
-	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
+	local _sitename=$(cvw_xml -r software/$_slug/sitename)
+	local _author=$(cvw_xml -r software/$_slug/author)
+	local _email=$(cvw_xml -r software/$_slug/email)
+	local _language=$(cvw_xml -r system/language)
+	local _timezone=$(cvw_xml -r system/timezone)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _phar _file _subdir
+	local _app=$_root/app
+	local _file _id _mail _info _pass _base
 
-	cvw_say -s "Admin name ..............: $_adm_name"
-	cvw_say -s "Admin email .............: $_adm_mail"
-	cvw_say -s "Admin password ..........: $_adm_pass"
+	cvw_backup $_slug $_app
 
-if false ; then
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app
-fi
+	cvw_unpack -u apache -i $_slug $_app yellow.php
 
-	cvw_unpack -u apache -i $_slug $_root/app yellow.php
+	_file="$_app/system/config/config.ini"
+	cvw_file -u apache:apache -e $_file "/^Sitename:/s#:.*#: $_sitename#" $(cvw_php -s)
+	cvw_file -u apache:apache -e $_file "/^Author:/s#:.*#: $_author#" $(cvw_php -s)
+	cvw_file -u apache:apache -e $_file "/^Email:/s#:.*#: $_email#" $(cvw_php -s)
+	cvw_file -u apache:apache -e $_file "/^Language:/s#:.*#: ${_language%_*}#" $(cvw_php -s)
+	cvw_file -u apache:apache -e $_file "/^Timezone:/s#:.*#: $_timezone#" $(cvw_php -s)
+
+	if cvw_xml -t software/$_slug/multi ; then
+		cvw_file -u apache:apache -e $_file "/^MultiLanguageMode:/s#:.*#: 1#" $(cvw_php -s)
+	else
+		cvw_file -u apache:apache -e $_file "/^MultiLanguageMode:/s#:.*#: 0#" $(cvw_php -s)
+	fi
+
+	if cvw_xml -t software/$_slug/login ; then
+		cvw_file -u apache:apache -e $_file "/^EditLoginRestrictions:/s#:.*#: 0#" $(cvw_php -s)
+	else
+		cvw_file -u apache:apache -e $_file "/^EditLoginRestrictions:/s#:.*#: 1#" $(cvw_php -s)
+	fi
+
+	_base=$(awk -e '/^UpdatePluginsUrl:/ { print $2 }' $_app/system/config/config.ini)
+	[[ -n $_base ]] || cvw_say -f "missing plugin base URL"
+	_base="$_base/raw/master/zip"
+	cvw_xml -l software/$_slug/plugin | sort -u | while read _id ; do
+		cvw_say -s "adding plugin $_id"
+		mkdir -p $_root/plugins/$_id
+		wget -q -P $_root/plugins/$_id $_base/$_id.zip 2>>/tmp/cvw/error
+		cp $_root/plugins/$_id/$_id.zip $_app/system/plugins
+		chown -R apache:apache $_app/system/plugins
+	done
+	cvw_yellow -u
+
+	_base=$(awk -e '/^UpdateThemesUrl:/ { print $2 }' $_app/system/config/config.ini)
+	[[ -n $_base ]] || cvw_say -f "missing theme base URL"
+	_base="$_base/raw/master/zip"
+	cvw_xml -l software/$_slug/theme | sort -u | while read _id ; do
+		cvw_say -s "adding theme $_id"
+		mkdir -p $_root/themes/$_id
+		wget -q -P $_root/themes/$_id $_base/$_id.zip 2>>/tmp/cvw/error
+		cp $_root/themes/$_id/$_id.zip $_app/system/themes
+		chown -R apache:apache $_app/system/themes
+	done
+	cvw_yellow -u
+
+	if [[ -d /var/local/backup/$_slug/last/dirs && \
+	      -x /usr/local/bin/bkup.$_slug         && \
+	      -x /usr/local/bin/rstr.$_slug ]] ; then
+		cvw_say -s "updating / syncing backup"
+		/usr/local/bin/bkup.$_slug
+	fi
+	cvw_yellow -u
+
+	_file="/etc/profile.d/alias_$_slug.sh"
+	cat >$_file.tmp_VW <<-EOF
+		#
+		# shell aliases for $_name
+		#
+
+		alias cd-a='cd $_app'
+		alias cd-c='cd $_app/content'
+		alias cd-m='cd $_app/media'
+		alias cd-o='cd $_app/system/config'
+		alias cd-p='cd $_app/system/plugins'
+		alias cd-s='cd $_app/system'
+		alias cd-t='cd $_app/system/themes'
+		alias ch-a='chown -R apache:apache $_app'
+	EOF
+	cvw_file -v $_file
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		echo "    ====== $_name ======" >>/tmp/cvw/info
+	fi
+
+	cvw_xml -i users/user | sort | while read _id ; do
+		_mail=$(cvw_user -e $_id)
+		_info=$(cvw_user -g $_id)
+		_pass=$(cvw_user -p $_id)
+		yellow_user "$_id" "$_mail" "$_pass" "$_info"
+	done
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
@@ -78,6 +175,14 @@ fi
 }
 
 
+function yellow_update
+{
+	local _app=$(cvw_xml -r system/app_root)/$_slug/app
+
+	cvw_user -r apache -d $_app php yellow.php update
+}
+
+
 function yellow_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
@@ -85,7 +190,6 @@ function yellow_remove
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
 		cvw_backup -z $_slug
-		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi
@@ -94,13 +198,20 @@ function yellow_remove
 }
 
 
-while getopts ":i" opt ; do
+while getopts ":iu" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
 				yellow_install
 			else
 				yellow_remove
+			fi
+			exit 0
+		;;
+
+		u)
+			if cvw_xml -a software/$_slug ; then
+				yellow_update
 			fi
 			exit 0
 		;;

@@ -74,6 +74,7 @@ function processwire_install
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	local _lang=$(cvw_xml -r system/language)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _app=$_root/app
 	local _file _conf _site
 
 	if [[ -s /tmp/cvw/info ]] ; then
@@ -91,14 +92,14 @@ function processwire_install
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/site/modules \
-			$_root/app/site/templates
+			$_app/site/modules \
+			$_app/site/templates
 
-	cvw_unpack -u apache -i $_slug $_root/app index.php
+	cvw_unpack -u apache -i $_slug $_app index.php
 
-	_file=$_root/app/.htaccess
+	_file=$_app/.htaccess
 	if [[ ! -r $_file ]] ; then
-		cp $_root/app/htaccess.txt $_file.tmp_VW
+		cp $_app/htaccess.txt $_file.tmp_VW
 		cvw_file -v $_file $(cvw_php -s)
 	fi
 	if [[ "$_uri" == "/" ]] ; then
@@ -119,18 +120,18 @@ function processwire_install
 	_file="/etc/profile.d/alias_$_slug.sh"
 	cat >$_file.tmp_VW <<-EOF
 		#
-		# shell aliases for processwire
+		# shell aliases for $_name
 		#
 
-		alias pw-a='cd /var/local/processwire/app'
-		alias pw-s='cd /var/local/processwire/app/site'
-		alias pw-m='cd /var/local/processwire/app/site/modules'
-		alias pw-t='cd /var/local/processwire/app/site/templates'
+		alias pw-a='cd /var/local/$_slug/app'
+		alias pw-s='cd /var/local/$_slug/app/site'
+		alias pw-m='cd /var/local/$_slug/app/site/modules'
+		alias pw-t='cd /var/local/$_slug/app/site/templates'
 	EOF
 	cvw_file -v $_file
 
-	if [[ -d $_root/app/site ]] ; then
-		_file=$_root/app/site/init.php
+	if [[ -d $_app/site ]] ; then
+		_file=$_app/site/init.php
 		cat >$_file.tmp_VW <<-EOF
 			<?php namespace ProcessWire;
 			setlocale(LC_ALL, '$_lang.utf8');
@@ -138,7 +139,7 @@ function processwire_install
 		cvw_file -u apache -v $_file $(cvw_php -s)
 
 		_conf=/var/local/cfg/files/processwire/config.php
-		_file=$_root/app/site/config.php
+		_file=$_app/site/config.php
 		if [[ -s $_conf ]] ; then
 			cp $_conf $_file.tmp_VW
 			cvw_file -u apache -v $_file $(cvw_php -s)
@@ -152,10 +153,10 @@ function processwire_install
 			if [[ $_site =~ \.zip$ ]] ; then
 				_file=/tmp/cvw/pw_site.zip
 				wget -q -O - $_site >$_file
-				unzip -q -o -d $_root/app $_file
+				unzip -q -o -d $_app $_file
 				rm -f $_file
 			fi
-			chown -R apache:apache $_root/app
+			chown -R apache:apache $_app
 		done
 		cvw_say -a "waiting for install .....: $(cvw_url -r $_uri)install.php"
 	fi

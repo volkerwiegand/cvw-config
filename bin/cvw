@@ -57,10 +57,10 @@ function usage
 		    or: $_prog -q app            Display URL for <app> update check
 		    or: $_prog -r [svc]          Restart all or single service(s)
 		    or: $_prog -t                Compile and test config.xml
+		    or: $_prog -u                Archive and fetch /etc/opendkim
+		    or: $_prog -U                Archive and fetch /etc/letsencrypt
 		    or: $_prog -x flag cmd       Run cvw_xml -flag cmd (verbose)
 		    or: $_prog -X flag cmd       Run cvw_xml -flag cmd (only output)
-		    or: $_prog -y                Archive and fetch /etc/opendkim
-		    or: $_prog -Y                Archive and fetch /etc/letsencrypt
 		    or: $_prog -z                Zap (delete) remote cvw_... commands
 		Called with: '$_prog $_args'
 	EOF
@@ -241,7 +241,7 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tx:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tuUx:X:z" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -349,20 +349,20 @@ while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tx:X:yYz" opt ; do
 			exit
 		;;
 
+		u)
+			_opendkim=1
+		;;
+
+		U)
+			_lets_encrypt=1
+		;;
+
 		x)
 			_run_xml=$OPTARG
 		;;
 
 		X)
 			_run_XML=$OPTARG
-		;;
-
-		y)
-			_opendkim=1
-		;;
-
-		Y)
-			_lets_encrypt=1
 		;;
 
 		z)

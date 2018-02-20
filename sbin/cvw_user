@@ -25,6 +25,7 @@ function usage
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i                     Install active users
 		    or: $_prog -e user                Get user's email address
+		    or: $_prog -g user                Get user's info (gecos)
 		    or: $_prog -h user                Get user's home dir
 		    or: $_prog -p user                Get user's password
 		    or: $_prog -r user [-d dir] cmd   Run command as user
@@ -213,14 +214,24 @@ function init_users
 }
 
 
-while getopts ":d:e:h:ip:r:s:v:z:" opt ; do
+while getopts ":d:e:g:h:ip:r:s:v:z:" opt ; do
 	case $opt in
 		d)
 			_dir=$OPTARG
 		;;
 
 		e)
-			cvw_xml -r users/user:$OPTARG/email
+			if cvw_xml -c users/user:$OPTARG/email ; then
+				cvw_xml -r users/user:$OPTARG/email
+			else
+				_fqdn=$(cvw_xml -r host/fqdn)
+				echo -n "$OPTARG@${_fqdn#*.}"
+			fi
+			exit
+		;;
+
+		g)
+			cvw_xml -r users/user:$OPTARG/info
 			exit
 		;;
 
