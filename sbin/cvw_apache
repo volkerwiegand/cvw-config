@@ -259,7 +259,7 @@ function apache_finish
 	local _ssl_port=$(cvw_xml -r software/$_slug/ssl_port)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _root=$(cat /tmp/cvw/apache.doc.root)
-	local _file _uri _vhost _name _redir
+	local _file _uri _vhost _vname _temp _redir
 
 	echo "</VirtualHost>" >>$_CONF_FILE.tmp_VW
 
@@ -274,26 +274,26 @@ function apache_finish
 		_redir=":$_ssl_port"
 	fi
 
-	for _vhost in $(cvw_xml -l software/$_slug/vhost | sort) ; do
-		_file="/tmp/cvw/apache.vhost"
-		echo "   ServerName  $_vhost" >$_file
+	for _vhost in $(cvw_xml -l software/$_slug/redirect | sort) ; do
+		_temp="/tmp/cvw/apache.vhost"
+		echo "   ServerName  $_vhost" >$_temp
 		if [[ $_vhost =~ ^www\. ]] ; then
-			echo "   ServerAlias ${_vhost#www.}" >>$_file
+			echo "   ServerAlias ${_vhost#www.}" >>$_temp
 		fi
-		_name=$(echo $_vhost | tr ' .-' '___')
-		_file="$_CONF_DIR/$_name.conf"
+		_vname=$(echo $_vhost | tr ' .-' '___')
+		_file="$_CONF_DIR/$_vname.conf"
 		cat >$_file.tmp_VW <<-EOF
 			<VirtualHost *:$_port>
-			$(cat /tmp/cvw/apache.vhost)
+			$(cat $_temp)
 			   Redirect    / https://$_fqdn
-			   TransferLog logs/${_name}_log
+			   TransferLog logs/${_vname}_log
 			   LogLevel    info
 			</VirtualHost>
 
 			<VirtualHost *:$_ssl_port>
-			$(cat /tmp/cvw/apache.vhost)
+			$(cat $_temp)
 			   Redirect    / https://$_fqdn
-			   TransferLog logs/${_name}_log
+			   TransferLog logs/${_vname}_log
 			   LogLevel    info
 			</VirtualHost>
 		EOF
