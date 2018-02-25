@@ -57,6 +57,7 @@ function usage
 		    or: $_prog -q app            Display URL for <app> update check
 		    or: $_prog -r [svc]          Restart all or single service(s)
 		    or: $_prog -t                Compile and test config.xml
+		    or: $_prog -u [app]          Update (sync) remote app tree (e.g. CMS)
 		    or: $_prog -x flag cmd       Run cvw_xml -flag cmd (verbose)
 		    or: $_prog -X flag cmd       Run cvw_xml -flag cmd (only output)
 		    or: $_prog -y                Archive and fetch /etc/opendkim
@@ -241,7 +242,7 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tuUx:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tux:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -347,6 +348,10 @@ while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tuUx:X:yYz" opt ; do
 		t)
 			setup_config
 			exit
+		;;
+
+		u)
+			_remote_update=1
 		;;
 
 		x)
@@ -527,6 +532,22 @@ if [[ $_user_login ]] ; then
 	else
 		ssh -t $_user_login@$_fqdn
 	fi
+	exit
+fi
+
+
+if [[ $_remote_update ]] ; then
+	setup_config
+	if [[ $# -ge 1 ]] ; then
+		_apps="$*"
+	else
+		_apps="hugo picocms"
+	fi
+	for _app in $_apps ; do
+		[[ -d $_app ]] || continue
+		cvw_say -a "rsync $_fqdn:/var/local/$_app/app"
+		rsync -avz --no-group --no-owner $_app/ root@$_fqdn:/var/local/$_app/app 2>>/tmp/cvw/error
+	done
 	exit
 fi
 

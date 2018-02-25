@@ -52,7 +52,7 @@ function picocms_install
 	local _title=$(cvw_xml -r software/$_slug/title)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _app=$_root/app
-	local _theme _tname _file
+	local _theme _tname _logo _file
 
 	if cvw_xml -c software/$_slug/theme ; then
 		_theme=$(cvw_xml -r software/$_slug/theme)
@@ -63,12 +63,19 @@ function picocms_install
 		_theme="default"
 	fi
 
+	if cvw_xml -c software/$_slug/logo ; then
+		_logo=$(cvw_xml -r software/$_slug/logo)
+	else
+		_logo=""
+	fi
+
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
 			      Site Title ..............: $_title
 			      Theme ...................: $_tname
 			      Timezone ................: $_zone
+			      Site Logo ...............: $_logo
 		EOF
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
@@ -82,6 +89,9 @@ function picocms_install
 		\$config['theme']      = '$_tname';
 		\$config['timezone']   = '$_zone';
 	EOF
+	if [[ -n $_logo ]] ; then
+		echo "\$config['site_logo']  = '$_logo';" >>$_file.tmp_VW
+	fi
 	cvw_file -v $_file $(cvw_php -s)
 
 	_file="/etc/profile.d/alias_$_slug.sh"
@@ -91,9 +101,12 @@ function picocms_install
 		#
 		alias pi-a='cd $_app'
 		alias pi-c='cd $_app/content'
+		alias pi-l='cd $_app/lib'
 		alias pi-o='cd $_app/config'
 		alias pi-p='cd $_app/plugins'
 		alias pi-t='cd $_app/themes'
+		alias pi-v='cd $_app/vendor'
+		alias pi-='cat $_file'
 	EOF
 	cvw_file -v $_file
 
