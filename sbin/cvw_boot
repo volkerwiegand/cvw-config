@@ -103,6 +103,7 @@ cvw_cmsimple       -i ; error_check
 cvw_picocms        -i ; error_check
 cvw_redaxo         -i ; error_check
 cvw_joomla         -i ; error_check
+cvw_hugo           -i ; error_check
 cvw_openletters    -i ; error_check
 cvw_phplist        -i ; error_check
 cvw_dadamail       -i ; error_check
