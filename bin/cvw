@@ -546,6 +546,7 @@ if [[ $_remote_update ]] ; then
 	for _app in $_apps ; do
 		[[ -d $_app ]] || continue
 		cvw_say -a "rsync $_fqdn:/var/local/$_app/app"
+		ssh  -t root@$_fqdn mkdir -p /var/local/$_app/app
 		rsync -avz --no-group --no-owner $_app/ root@$_fqdn:/var/local/$_app/app 2>>/tmp/cvw/error
 	done
 	exit
