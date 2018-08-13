@@ -97,6 +97,7 @@ function certbot_install
 		_args="--standalone --agree-tos --email '$_admin'"
 		_args="$_args --keep --text --non-interactive"
 		cvw_say -a "certbot certonly $_args $_list"
+		cvw_firewall -t 80
 		cvw_firewall -t 443
 		certbot certonly $_args $_list
 	fi
