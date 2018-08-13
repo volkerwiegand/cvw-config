@@ -1,0 +1,191 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_agendav - Install or remove AgenDAV
+######               http://agendav.org/
+######               http://docs.agendav.org/en/2.2.0/admin/installation/
+######
+###### (c) 2018 Volker Wiegand <volker.wiegand@cvw.de>
+######          This file is part of "CVW Config"
+######          See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="AgenDAV"
+_slug="agendav"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function agendav_generate
+{
+	cat <<-EOF
+	    <agendav active="true">
+	      <uri>/agendav</uri>
+	      <password>$(cvw -p 20)</password>
+	    </agendav>
+
+	EOF
+	exit 0
+}
+
+
+function agendav_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
+	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _app=$_root/app
+	local _file
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      DB Name / User ..........: $_slug
+			      DB Pass .................: $_pass
+			      Base URL ................: https://$_fqdn$_uri
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
+
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+
+	cvw_unpack -i $_slug $_app agendavcli
+	chown -R apache:apache $_app
+
+	_file=$_app/web/config/settings.php
+	cat >$_file.tmp_VW <<-EOF
+		<?php
+		/**
+		 * Site configuration
+		 */
+
+		// Site title
+		\$app['site.title'] = '$(cvw_xml -r software/$_slug/title)';
+
+		// Database settings
+		\$app['db.options'] = [
+		  'dbname' => '$_slug',
+		  'user' => '$_slug',
+		  'password' => '$_pass',
+		  'host' => 'localhost',
+		  'driver' => 'pdo_mysql'
+		];
+
+		// CSRF secret
+		\$app['csrf.secret'] = '$(cvw_xml -r software/$_slug/secret)';
+
+		// Base URL
+		\$app['caldav.baseurl'] = '$(cvw_xml -r software/$_slug/server)';
+
+		// Authentication method required by CalDAV server (basic or digest)
+		\$app['caldav.authmethod'] = 'basic';
+
+		// Calendar sharing
+		\$app['calendar.sharing'] = true;
+
+		// Default timezone
+		\$app['defaults.timezone'] = '$(cvw_xml -r system/timezone)';
+
+		// Default languajge
+		\$app['defaults.language'] = '$(cvw_xml -r system/language)';
+
+		// Logging level
+		\$app['log.level'] = '$(cvw_xml -R software/$_slug/loglevel INFO)';
+
+		// Default date format
+		\$app['defaults.date_format'] = 'dmy';
+
+		// Default first day of week. Options: 0 (Sunday), 1 (Monday)
+		\$app['defaults.weekstart'] = 1;
+
+		// Default view (month, week, day or list)
+		\$app['defaults.default_view'] = '$(cvw_xml -R software/$_slug/view day)';
+	EOF
+	[[ -s /tmp/cvw/error ]] && exit 1
+	cvw_file -v $_file -u root $(cvw_php -s)
+
+	cvw_say -s "running database migrations"
+	(cd $_app && php agendavcli migrations:migrate --quiet --no-interaction)
+
+	if cvw_xml -a software/nginx ; then
+		cvw_nginx -p $_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		_file=/tmp/cvw/apache.block
+		cat >$_file <<-EOF
+
+			   Alias $_uri $_root/app/web/public
+			   <Location $_uri>
+			      Require all granted
+			      RewriteEngine On
+			      RewriteCond %{REQUEST_FILENAME} !-f
+			      RewriteRule ^ index.php [QSA,L]
+			   </Location>
+		EOF
+		cvw_apache -p $_slug
+	fi
+
+	cvw_url -a "$_name" "$_uri/index.php"
+
+	cvw_say -o "$_slug"
+}
+
+
+while getopts ":ig" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				agendav_install
+			else
+				cvw_php -z $_slug
+			fi
+			exit 0
+		;;
+
+		g)
+			agendav_generate
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

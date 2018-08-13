@@ -83,7 +83,7 @@ function radicale_install
 	local _pass=$(cvw_user -p $_slug)
 	local _conf=/etc/$_slug
 	local _cert=/etc/letsencrypt/live/$_fqdn
-	local _file
+	local _file _user
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
@@ -105,6 +105,19 @@ function radicale_install
 	install -o $_slug -g $_slug -d $_home/collections
 
 	htpasswd -B -c -b $_conf/password $_slug $_pass
+
+	for _user in $(cvw_xml -i software/$_slug/user | sort) ; do
+		local _base="software/$_slug/user:$_user"
+		local _pswd=$(cvw_xml -r $_base/password)
+		htpasswd -B -b $_conf/password $_user $_pswd
+		if [[ -s /tmp/cvw/info ]] ; then
+			cat >>/tmp/cvw/info <<-EOF
+				          User ................: $_user
+				          Pswd ................: $_pswd
+			EOF
+			[[ -s /tmp/cvw/error ]] && exit 1
+		fi
+	done
 
 	if [[ -d /var/local/backup/$_slug/last/dirs && \
 	      -x /usr/local/bin/bkup.$_slug         && \
@@ -128,6 +141,9 @@ function radicale_install
 
 		[storage]
 		filesystem_folder = $_home/collections
+
+		[rights]
+		type = authenticated
 	EOF
 	cvw_file -v $_file $_slug
 
