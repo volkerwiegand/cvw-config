@@ -37,7 +37,8 @@ function failure
 
 function init_init
 {
-	local _fqdn _addr _lang _curr _want _file _host _cert _src_dst _swap
+	local _fqdn _addr _lang _curr _want _file _name
+	local _id _static _host _cert _src _dst _swap
 
 	rm -rf /tmp/cvw
 	test -e /tmp/cvw && failure "pre-existing /tmp/cvw"
@@ -95,7 +96,7 @@ function init_init
 	cvw_say -h "Configuring / verifying basics"
 	_fqdn=$(cvw_xml -r host/fqdn)
 	_addr=$(cvw_xml -r host/addr)
-	_addr6=$(cvw_xml -r host/addr6)
+	# _addr6=$(cvw_xml -r host/addr6)
 	_lang=$(cvw_xml -r system/language)
 	_zone=$(cvw_xml -r system/timezone)
 	_root=$(cvw_xml -r system/app_root)
@@ -106,14 +107,50 @@ function init_init
 		cat >/tmp/cvw/info <<-EOF
 			==> Info summary
 			    ====== Init ======
-			      FQDN ....................: $_fqdn
-			      IPv4 Addr ...............: $_addr
-			      IPv6 Addr ...............: $_addr6
 			      Language ................: $_lang
 			      Time Zone ...............: $_zone
 			      App root ................: $_root
+			      FQDN ....................: $_fqdn
+			      IPv4 Addr ...............: $_addr
+			      # IPv6 Addr ...............: $_addr6
 		EOF
 	fi
+
+	cvw_xml -u host/static | sort | while read _id ; do
+		_src=$(cvw_xml -r host/static:$_id/device)
+		_dst=$(cvw_xml -r host/static:$_id/index)
+		[[ -s /tmp/cvw/error ]] && exit 1
+		_name="$_src:$_dst"
+		_file="/etc/sysconfig/network-scripts/ifcfg-$_name"
+		if [[ -s $_file ]] ; then
+			cvw_say -s "deleting static IP $_name"
+			ifdown $_name
+			rm -f $_file
+		fi
+	done
+	cvw_xml -i host/static | sort | while read _id ; do
+		_src=$(cvw_xml -r host/static:$_id/device)
+		_dst=$(cvw_xml -r host/static:$_id/index)
+		_static=$(cvw_xml -r host/static:$_id/addr)
+		[[ -s /tmp/cvw/error ]] && exit 1
+		_name="$_src:$_dst"
+		cvw_say -s "IP ($_name) $_static"
+		_file="/etc/sysconfig/network-scripts/ifcfg-$_name"
+		cat >$_file.tmp_VW <<-EOF
+			BOOTPROTO=static
+			DEVICE=$_name
+			IPADDR=$_static
+			PREFIX=32
+			TYPE=Ethernet
+			USERCTL=no
+			ONBOOT=yes
+		EOF
+		ifup $_name
+		cvw_file -v $_file network
+		if [[ $_info ]] ; then
+			echo "      IPv4 static Addr ........: $_static ($_name)" >>/tmp/cvw/info
+		fi
+	done
 
 	_src="/var/local/cfg/files/keys"
 	_dst="/etc/pki/tls/dhparam.pem"
@@ -184,8 +221,6 @@ function init_init
 
 	if cvw_xml -a system/backup ; then
 		cvw_rpm -i cifs-utils
-		mkdir -p /mnt/backup
-		chmod 0700 /mnt/backup
 		_file=/root/.cred_backup
 		cat >$_file.tmp_VW <<-EOF
 			username=$(cvw_xml -r system/backup/username)
@@ -194,15 +229,32 @@ function init_init
 		_addr=$(cvw_xml -r system/backup/remote)
 		[[ -s /tmp/cvw/error ]] && exit 1
 		cvw_file -m 0600 -v /root/.cred_backup
-		if ! grep -q mnt.backup /etc/fstab ; then
-			cat >/etc/fstab.tmp_VW <<-EOF
-				$(grep -v mnt.backup /etc/fstab)
-				$_addr /mnt/backup cifs rw,credentials=$_file,uid=0,gid=0,iocharset=utf8 0 0
-			EOF
-			cvw_file -v /etc/fstab
-		fi
-		mount -a
-		cvw_say -s "backup to $_addr"
+
+		cat >/etc/fstab.tmp_VW <<-EOF
+			$(grep -v mnt.backup /etc/fstab)
+			$_addr /mnt/backup cifs noauto,rw,credentials=$_file,uid=0,gid=0,iocharset=utf8 0 0
+		EOF
+		cvw_file -v /etc/fstab
+		cvw_say -s "background backup to $_addr"
+
+		_file="/etc/profile.d/alias_backup.sh"
+		cat >$_file.tmp_VW <<-EOF
+			#
+			# shell aliases for backup
+			#
+			alias mnt_bkup='mkdir -p /mnt/backup && mount /mnt/backup && cd /mnt/backup'
+			alias bkup_umt='cd ; umount /mnt/backup ; rmdir /mnt/backup'
+		EOF
+		cvw_file -v $_file
+	else
+		cvw_file -r /root/.cred_backup
+		cvw_file -r /etc/profile.d/alias_backup.sh
+
+		cat >/etc/fstab.tmp_VW <<-EOF
+			$(grep -v mnt.backup /etc/fstab)
+		EOF
+		cvw_file -v /etc/fstab
+		cvw_say -s "no background backup"
 	fi
 
 	cvw_say -s "language is $_lang"
