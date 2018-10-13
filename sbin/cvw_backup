@@ -162,11 +162,32 @@ for _entry in $* ; do
 done
 
 cat >>$_file.tmp_VW <<-EOF
-	if [[ -d /mnt/backup ]] ; then
-	    tar -c -z -C $_bkup -f /mnt/backup/${_fqdn}_${_app}_\$_day.tgz \$_day
+	if grep -q mnt.backup /etc/fstab ; then
+	    sync
+	    [[ \$_verbose ]] && echo "Updating background backup storage"
+	    mkdir -p /mnt/backup
+	    umount /mnt/backup 2>/dev/null
+	    mount /mnt/backup
+	    _result=\$?
+	    if [[ \$_result -ne 0 ]] ; then
+	        /usr/bin/logger -t $_app "ALERT mount exited with \$_result"
+	        exit 1
+	    fi
+	    mkdir -p /mnt/backup/$_fqdn/\$_day
+	    tar -c -z -C $_bkup -f /mnt/backup/$_fqdn/\$_day/$_app.tgz \$_day
+	    sync
+	    umount /mnt/backup
+	    rmdir /mnt/backup
 	fi
 
-	cd $_bkup && ln -nfs \$_day last
+	cd $_bkup || exit 1
+	ln -nfs \$_day last
+	for _dir in \$(ls) ; do
+	    [[ \$_dir == "last" ]] && continue
+	    [[ \$_dir == \$_day ]] && continue
+	    [[ \$_verbose ]] && echo "Found redundant directory \$_dir"
+	    rm -rf \$_dir
+	done
 	exit 0
 EOF
 cvw_file -m 0775 -v $_file
