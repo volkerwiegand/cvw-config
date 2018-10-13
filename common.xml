@@ -1,4 +1,8 @@
   <common>
+    <download id="agendav">
+      <link>http://agendav.org/</link>
+      <url>https://github.com/agendav/agendav/releases/download/2.2.0/agendav-2.2.0.tar.gz</url>
+    </download>
     <download id="automx">
       <link>https://github.com/sys4/automx/releases</link>
       <url>https://github.com/sys4/automx/archive/v0.10.2.tar.gz</url>
@@ -89,6 +93,14 @@
       <link>http://dadamailproject.com/support/documentation-10_7_1/install_dada_mail.pod.html</link>
       <url>https://sourceforge.net/projects/dadamail/files/dada-10_7_1.tar.gz</url>
     </download>
+    <download id="davical">
+      <link>https://www.davical.org/downloads/</link>
+      <url>https://www.davical.org/downloads/davical_1.1.7.orig.tar.xz</url>
+    </download>
+    <download id="davical_awl">
+      <link>https://www.davical.org/downloads/</link>
+      <url>https://www.davical.org/downloads/awl_0.59.orig.tar.xz</url>
+    </download>
     <download id="docker_compose">
       <link>https://github.com/docker/compose/releases/</link>
       <url>https://github.com/docker/compose/releases/download/1.13.0/docker-compose-Linux-x86_64</url>
@@ -156,9 +168,9 @@
     </download>
     <download id="nextcloud">
       <link>https://download.nextcloud.com/server/releases/</link>
-      <url>https://download.nextcloud.com/server/releases/nextcloud-12.0.3.tar.bz2</url>
-      <md5>2b8b816a64dfdc4a6c3dbddcbf836b98</md5>
-      <sha256>88bcaccba886d0e5a145b15fe216d652ab68a0a4c089a102f1fa1e78e6ddfb71</sha256>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-14.0.3.tar.bz2</url>
+      <md5>c3a00426df680894a309e23d5a7ef67f</md5>
+      <sha256>d7d0271238396ef53ed3806b8f5a3746170d4ebcaa030ad39735e886e7aed3ef</sha256>
     </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
