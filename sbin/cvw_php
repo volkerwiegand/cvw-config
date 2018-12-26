@@ -170,6 +170,7 @@ function php_zap_app
 
 		cvw_backup -z $_app
 		cvw_mysql -z $_app $_app
+		# TODO cvw_postgresql -z $_app $_app
 		rm -f /etc/profile.d/alias_$_app.sh
 
 		if [[ -d $_root ]] ; then

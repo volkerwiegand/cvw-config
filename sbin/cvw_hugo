@@ -48,7 +48,6 @@ function hugo_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _conf _file _subdir
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug

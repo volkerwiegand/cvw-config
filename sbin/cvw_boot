@@ -79,6 +79,7 @@ cvw_apache         -i ; error_check
 cvw_php            -i ; error_check
 cvw_mysql          -i ; error_check
 cvw_sqlbuddy       -i ; error_check
+cvw_virtualbox     -i ; error_check
 cvw_nodejs         -i ; error_check
 cvw_postgresql     -i ; error_check
 cvw_postfix        -i ; error_check

@@ -129,6 +129,18 @@ function combine_ssh_configs
 		cat $_file >>$_conf.tmp_VW
 	done
 
+	cat >>$_conf.tmp_VW <<-EOF
+		# General settings
+		Host *
+		  Port 22
+		  AddressFamily inet
+		  ServerAliveInterval 10
+		  HashKnownHosts no
+		  ForwardAgent yes
+		  ForwardX11 yes
+
+	EOF
+
 	if [[ -s $_conf.tmp_VW ]] ; then
 		if cmp -s $_conf $_conf.tmp_VW ; then
 			rm -f $_conf.tmp_VW
@@ -185,60 +197,60 @@ function setup_config
 function copy_compose
 {
 	[[ -s docker-compose.yaml ]] || failure "missing docker-compose.yaml"
-	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _addr=$(cvw_xml -r host/addr)
 
-	cvw_say -a "rsync $_fqdn:/var/local/cvw"
+	cvw_say -a "rsync $_addr:/var/local/cvw"
 	sudo rsync -a --delete --no-owner --no-group cvw/ /var/local/cvw 2>>/tmp/cvw/error
-	rsync $RSYNC_FLAGS cvw/ root@$_fqdn:/var/local/cvw 2>>/tmp/cvw/error
+	rsync $RSYNC_FLAGS cvw/ root@$_addr:/var/local/cvw 2>>/tmp/cvw/error
 	cvw_say -a "copy docker-compose.yaml"
-	scp docker-compose.yaml root@$_fqdn:/root/docker-compose.yaml 2>>/tmp/cvw/error
+	scp docker-compose.yaml root@$_addr:/root/docker-compose.yaml 2>>/tmp/cvw/error
 }
 
 
 function wipe_compose
 {
-	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _addr=$(cvw_xml -r host/addr)
 
 	cvw_say -a "remove remote docker-compose.yaml"
-	ssh -t root@$_fqdn "rm -f /root/docker-compose.yaml"
+	ssh -t root@$_addr "rm -f /root/docker-compose.yaml"
 }
 
 
 function copy_local_cvw
 {
 	[[ -d cvw ]] || failure "missing cvw subdir"
-	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _addr=$(cvw_xml -r host/addr)
 
-	cvw_say -a "rsync $_fqdn:/var/local/cvw"
+	cvw_say -a "rsync $_addr:/var/local/cvw"
 	sudo rsync -a --delete --no-owner --no-group cvw/ /var/local/cvw 2>>/tmp/cvw/error
-	rsync $RSYNC_FLAGS cvw/ root@$_fqdn:/var/local/cvw 2>>/tmp/cvw/error
+	rsync $RSYNC_FLAGS cvw/ root@$_addr:/var/local/cvw 2>>/tmp/cvw/error
 }
 
 
 function copy_config
 {
-	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _addr=$(cvw_xml -r host/addr)
 
-	cvw_say -a "rsync $_fqdn:/usr/local/sbin"
-	rsync -az /usr/local/sbin/cvw_* root@$_fqdn:/usr/local/sbin
+	cvw_say -a "rsync $_addr:/usr/local/sbin"
+	rsync -az /usr/local/sbin/cvw_* root@$_addr:/usr/local/sbin
 
-	cvw_say -a "rsync $_fqdn:/var/local/cfg"
+	cvw_say -a "rsync $_addr:/var/local/cfg"
 	chmod -R go-rwx cfg
-	rsync $RSYNC_FLAGS --copy-links cfg/ root@$_fqdn:/var/local/cfg
+	rsync $RSYNC_FLAGS --copy-links cfg/ root@$_addr:/var/local/cfg
 
 	if [[ -d ./cvw ]] ; then
-		cvw_say -a "rsync $_fqdn:/var/local/cvw"
-		rsync $RSYNC_FLAGS cvw/ root@$_fqdn:/var/local/cvw
+		cvw_say -a "rsync $_addr:/var/local/cvw"
+		rsync $RSYNC_FLAGS cvw/ root@$_addr:/var/local/cvw
 	fi
 }
 
 
 function wipe_config
 {
-	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _addr=$(cvw_xml -r host/addr)
 
 	cvw_say -a "remove remote CVW files"
-	ssh -t root@$_fqdn "rm -rf /var/local/cfg /tmp/cvw /tmp/letsencrypt.tar.gz /tmp/opendkim.tar.gz"
+	ssh -t root@$_addr "rm -rf /var/local/cfg /tmp/cvw /tmp/letsencrypt.tar.gz /tmp/opendkim.tar.gz"
 }
 
 
@@ -374,7 +386,7 @@ while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tux:X:yYz" opt ; do
 			setup_config
 			cvw_say -a "Remove /usr/local/sbin/cvw_... commands"
 			sudo rm -rf /usr/local/sbin/cvw_*
-			ssh -t root@$_fqdn "rm -rf /usr/local/sbin/cvw_*"
+			ssh -t root@$_addr "rm -rf /usr/local/sbin/cvw_*"
 			exit
 		;;
 
@@ -389,12 +401,13 @@ shift $(($OPTIND-1))
 
 if [[ $_backup ]] ; then
 	_fqdn=$(cvw_xml -r host/fqdn)
+	_addr=$(cvw_xml -r host/addr)
 	mkdir -p /backup/$_fqdn
 	sudo chown -R $LOGNAME:$LOGNAME /backup
 	setup_config
 	cvw_say
 	cvw_say -a "Fetch backups from host"
-	rsync -v $RSYNC_FLAGS root@$_fqdn:/var/local/backup/ /backup/$_fqdn/data
+	rsync -v $RSYNC_FLAGS root@$_addr:/var/local/backup/ /backup/$_fqdn/data
 	cvw_say -a "Backup configuration"
 	mkdir -p /backup/$_fqdn/config
 	tar cvzf /backup/$_fqdn/config/$(date +%F-%H-%M).tgz config.in.xml cfg
@@ -403,22 +416,21 @@ fi
 
 
 if [[ $_restore ]] ; then
-	_fqdn=$(cvw_xml -r host/fqdn)
 	setup_config
 	cvw_say
 	_cmd=""
 	if [[ -n $2 ]] ; then
 		[[ -d /backup/$_fqdn/data/$1/$2 ]] || failure "no remote backups $_fqdn $1 $2"
 		cvw_say -a "Restore backup for $1 from $2 to $_fqdn"
-		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/$1/$2/ root@$_fqdn:/var/local/backup/$1/$2"
+		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/$1/$2/ root@$_addr:/var/local/backup/$1/$2"
 	elif [[ -n $1 ]] ; then
 		[[ -d /backup/$_fqdn/data/$1 ]] || failure "no remote backups $_fqdn $1"
 		cvw_say -a "Restore backups for $1 to $_fqdn"
-		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/$1/ root@$_fqdn:/var/local/backup/$1"
+		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/$1/ root@$_addr:/var/local/backup/$1"
 	else
 		[[ -d /backup/$_fqdn/data ]] || failure "no remote backups $_fqdn"
 		cvw_say -a "Restore all backups to $_fqdn"
-		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/ root@$_fqdn:/var/local/backup"
+		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/ root@$_addr:/var/local/backup"
 	fi
 	sleep 5
 	$_cmd
@@ -462,13 +474,13 @@ fi
 
 
 if [[ $_compose ]] ; then
-	_fqdn=$(cvw_xml -r host/fqdn)
+	_addr=$(cvw_xml -r host/addr)
 	_cmd="$@"
 	[[ -z $_cmd ]] && _cmd="up -d"
 	copy_compose
 	cvw_say -a "docker-compose $_cmd"
 	cvw_say
-	ssh -tq root@$_fqdn /usr/local/bin/docker-compose "$_cmd"
+	ssh -tq root@$_addr /usr/local/bin/docker-compose "$_cmd"
 	cvw_say
 	wipe_compose
 	exit
@@ -476,12 +488,12 @@ fi
 
 
 if [[ $_docker ]] ; then
-	_fqdn=$(cvw_xml -r host/fqdn)
+	_addr=$(cvw_xml -r host/addr)
 	_cmd="$@"
 	[[ -z $_cmd ]] && _cmd="ps -a"
 	cvw_say -a "docker $_cmd"
 	cvw_say
-	ssh -tq root@$_fqdn docker "$_cmd"
+	ssh -tq root@$_addr docker "$_cmd"
 	cvw_say
 	exit
 fi
@@ -492,7 +504,7 @@ if [[ $_update ]] ; then
 	setup_config
 	copy_config
 	cvw_say -a "updating $_fqdn $_debug $_info"
-	time ssh -t root@$_fqdn "cvw_boot $_debug $_info"
+	time ssh -t root@$_addr "cvw_boot $_debug $_info"
 	exit
 fi
 
@@ -502,7 +514,7 @@ if [[ $_upgrade ]] ; then
 	setup_config
 	copy_config
 	cvw_say -a "upgrading $_fqdn $_debug $_info"
-	time ssh -t root@$_fqdn "cvw_boot -u $_debug $_info"
+	time ssh -t root@$_addr "cvw_boot -u $_debug $_info"
 	exit
 fi
 
@@ -512,11 +524,11 @@ if [[ $_root_login ]] ; then
 	if [[ $# -ge 1 ]] ; then
 		cvw_say -a "root@$_fqdn: '$@'"
 		cvw_say
-		ssh -t root@$_fqdn "$@"
+		ssh -t -X root@$_addr "$@"
 	else
 		copy_config
 		cvw_say
-		ssh -t root@$_fqdn
+		ssh -t -X root@$_addr
 		wipe_config
 	fi
 	exit
@@ -528,9 +540,9 @@ if [[ $_user_login ]] ; then
 	cvw_say
 	if [[ $# -ge 1 ]] ; then
 		cvw_say -a "$_user_login@$_fqdn: '$@'"
-		ssh -t $_user_login@$_fqdn "$@"
+		ssh -t -X $_user_login@$_addr "$@"
 	else
-		ssh -t $_user_login@$_fqdn
+		ssh -t -X $_user_login@$_addr
 	fi
 	exit
 fi
@@ -541,17 +553,13 @@ if [[ $_remote_update ]] ; then
 	if [[ $# -ge 1 ]] ; then
 		_apps="$*"
 	else
-		_apps="hugo picocms yellow"
+		_apps="grav hugo picocms yellow"
 	fi
 	for _app in $_apps ; do
 		[[ -d $_app ]] || continue
 		cvw_say -a "rsync $_fqdn:/var/local/$_app/app"
-		ssh  -t root@$_fqdn mkdir -p /var/local/$_app/app
-		if [[ $_app == "hugo" ]] ; then
-			rsync -avz --no-group --no-owner --delete $_app/*/public/ root@$_fqdn:/var/local/$_app/app 2>>/tmp/cvw/error
-		else
-			rsync -avz --no-group --no-owner $_app/ root@$_fqdn:/var/local/$_app/app 2>>/tmp/cvw/error
-		fi
+		ssh  -t root@$_addr mkdir -p /var/local/$_app/app
+		rsync -avz --no-group --no-owner $_app/ root@$_addr:/var/local/$_app/app 2>>/tmp/cvw/error
 	done
 	finish
 fi
@@ -559,42 +567,42 @@ fi
 
 if [[ $_restart ]] ; then
 	setup_config
-	ssh -t root@$_fqdn "systemctl -t service stop $_restart"
+	ssh -t root@$_addr "systemctl -t service stop $_restart"
 	sleep 5
-	ssh -t root@$_fqdn "systemctl -t service start $_restart"
+	ssh -t root@$_addr "systemctl -t service start $_restart"
 	exit
 fi
 
 
 if [[ $_prepare ]] ; then
 	setup_config
-	cvw_say -a "setup current SSH keys for $_fqdn"
+	cvw_say -a "setup current SSH keys for $_fqdn ($_addr)"
 
 	if [[ -s $HOME/.ssh/known_hosts ]] ; then
 		mv -f $HOME/.ssh/known_hosts $HOME/.ssh/known_hosts.tmp
 	fi
 	if [[ -n "$_copy_key" ]] ; then
-		scp $HOME/.ssh/id_rsa.pub root@$_fqdn:/root/.ssh/authorized_keys
+		scp $HOME/.ssh/id_rsa.pub root@$_addr:/root/.ssh/authorized_keys
 	fi
 	cvw_say -a "check if my ssh key has been installed"
-	ssh -t root@$_fqdn "cat /root/.ssh/authorized_keys"
+	ssh -t root@$_addr "cat /root/.ssh/authorized_keys"
 	cvw_say
 	mv -f $HOME/.ssh/known_hosts $HOME/.ssh/host_$_fqdn
 	combine_known_hosts
 
 	cvw_say -a "disable password login"
-	ssh -t root@$_fqdn "sed -i -e '/^PasswordAuthentication/s/yes/no/' /etc/ssh/sshd_config"
+	ssh -t root@$_addr "sed -i -e '/^PasswordAuthentication/s/yes/no/' /etc/ssh/sshd_config"
 
 	cvw_say -a "make sure scp is available"
-	ssh -t root@$_fqdn "test -x /usr/bin/scp || yum install -q -y openssh-clients"
+	ssh -t root@$_addr "test -x /usr/bin/scp || yum install -q -y openssh-clients"
 	cvw_say -a "make sure rsync is available"
-	ssh -t root@$_fqdn "test -x /usr/bin/rsync || yum install -q -y rsync"
+	ssh -t root@$_addr "test -x /usr/bin/rsync || yum install -q -y rsync"
 	cvw_say -a "make sure deltarpm is available"
-	ssh -t root@$_fqdn "test -x /usr/bin/applydeltarpm || yum install -q -y deltarpm"
+	ssh -t root@$_addr "test -x /usr/bin/applydeltarpm || yum install -q -y deltarpm"
 	cvw_say -a "make sure xmlstarlet is available"
-	ssh -t root@$_fqdn "test -s /etc/yum.repos.d/epel.repo || yum install -q -y epel-release"
-	ssh -t root@$_fqdn "rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7"
-	ssh -t root@$_fqdn "test -x /usr/bin/xmlstarlet || yum install -q -y xmlstarlet"
+	ssh -t root@$_addr "test -s /etc/yum.repos.d/epel.repo || yum install -q -y epel-release"
+	ssh -t root@$_addr "rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7"
+	ssh -t root@$_addr "test -x /usr/bin/xmlstarlet || yum install -q -y xmlstarlet"
 
 	cvw_say -a "ready for install"
 	exit 0
@@ -611,18 +619,18 @@ if [[ $_fetch ]] ; then
 	else
 		usage
 	fi
-	scp root@$_fqdn:$_fetch $_local
+	scp root@$_addr:$_fetch $_local
 	exit
 fi
 
 
 if [[ $_gen_ssh ]] ; then
 	setup_config
-	cvw_say -a "generate keys on $_fqdn"
-	ssh -t root@$_fqdn "ssh-keygen"
-	cvw_say -a "Fetch id_rsa{.pub} from $_fqdn"
-	scp root@$_fqdn:/root/.ssh/id_rsa cfg/files/keys/id_rsa
-	scp root@$_fqdn:/root/.ssh/id_rsa.pub cfg/files/keys/id_rsa.pub
+	cvw_say -a "generate keys on $_addr"
+	ssh -t root@$_addr "ssh-keygen"
+	cvw_say -a "Fetch id_rsa{.pub} from $_addr"
+	scp root@$_addr:/root/.ssh/id_rsa cfg/files/keys/id_rsa
+	scp root@$_addr:/root/.ssh/id_rsa.pub cfg/files/keys/id_rsa.pub
 	exit
 fi
 
@@ -638,11 +646,10 @@ if [[ $_add_ssh_port ]] ; then
 		[[ -s /tmp/cvw/error ]] && finish
 	fi
 	cat >$HOME/.ssh/config_$_fqdn <<-EOF
-		Host $_fqdn
+		# $_fqdn
+		Host $_addr
 		  Port $_ssh_port
-		  AddressFamily inet
 		  IdentityFile $_ssh_id_file
-		  ServerAliveInterval 10
 
 	EOF
 	combine_ssh_configs
@@ -680,10 +687,10 @@ if [[ $_opendkim ]] ; then
 	setup_config
 	copy_config
 	cvw_say -a "securing OpenDKIM files"
-	ssh -t root@$_fqdn "tar -c -v -z -f /tmp/opendkim.tar.gz -C /etc opendkim"
-	scp root@$_fqdn:/tmp/opendkim.tar.gz cfg/files/misc/opendkim.tar.gz
+	ssh -t root@$_addr "tar -c -v -z -f /tmp/opendkim.tar.gz -C /etc opendkim"
+	scp root@$_addr:/tmp/opendkim.tar.gz cfg/files/misc/opendkim.tar.gz
 	wipe_config
-	ssh -t root@$_fqdn "cat /etc/opendkim/keys/default.txt"
+	ssh -t root@$_addr "cat /etc/opendkim/keys/default.txt"
 	exit
 fi
 
@@ -692,8 +699,8 @@ if [[ $_lets_encrypt ]] ; then
 	setup_config
 	copy_config
 	cvw_say -a "securing letsencrypt files"
-	ssh -t root@$_fqdn "tar -c -v -z -f /tmp/letsencrypt.tar.gz -C /etc letsencrypt"
-	scp root@$_fqdn:/tmp/letsencrypt.tar.gz cfg/files/misc/letsencrypt.tar.gz
+	ssh -t root@$_addr "tar -c -v -z -f /tmp/letsencrypt.tar.gz -C /etc letsencrypt"
+	scp root@$_addr:/tmp/letsencrypt.tar.gz cfg/files/misc/letsencrypt.tar.gz
 	wipe_config
 	exit
 fi

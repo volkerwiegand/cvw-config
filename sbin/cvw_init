@@ -200,6 +200,9 @@ function init_init
 	else
 		cvw_firewall -s ssh
 	fi
+	cvw_rpm -i xorg-x11-xauth
+	cvw_file -e /etc/ssh/sshd_config "s/^[# ]*X11DisplayOffset.*/X11DisplayOffset 10/" sshd
+	cvw_file -e /etc/ssh/sshd_config "s/^[# ]*X11UseLocalhost.*/X11UseLocalhost no/" sshd
 
 	if cvw_xml -c system/swap ; then
 		_swap=$(cvw_xml -r system/swap)

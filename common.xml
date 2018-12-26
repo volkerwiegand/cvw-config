@@ -168,9 +168,12 @@
     </download>
     <download id="nextcloud">
       <link>https://download.nextcloud.com/server/releases/</link>
-      <url>https://download.nextcloud.com/server/releases/nextcloud-14.0.3.tar.bz2</url>
-      <md5>c3a00426df680894a309e23d5a7ef67f</md5>
-      <sha256>d7d0271238396ef53ed3806b8f5a3746170d4ebcaa030ad39735e886e7aed3ef</sha256>
+      <!-- url>https://download.nextcloud.com/server/releases/nextcloud-14.0.3.tar.bz2</url -->
+      <!-- md5>c3a00426df680894a309e23d5a7ef67f</md5 -->
+      <!-- sha256>d7d0271238396ef53ed3806b8f5a3746170d4ebcaa030ad39735e886e7aed3ef</sha256 -->
+      <url>https://download.nextcloud.com/server/releases/nextcloud-12.0.3.tar.bz2</url>
+      <md5>2b8b816a64dfdc4a6c3dbddcbf836b98</md5>
+      <sha256>88bcaccba886d0e5a145b15fe216d652ab68a0a4c089a102f1fa1e78e6ddfb71</sha256>
     </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
@@ -290,6 +293,14 @@
       <md5>ae9e2bc7f4fa58162b6152fcb0cbb3a5</md5>
       <sha1>c8c3ffba141d067acaeb14dbd22a8d6bedb39267</sha1>
     </download>
+    <download id="virtualbox_extpack">
+      <link>https://www.virtualbox.org/wiki/Linux_Downloads</link>
+      <url>https://download.virtualbox.org/virtualbox/6.0.0/Oracle_VM_VirtualBox_Extension_Pack-6.0.0.vbox-extpack</url>
+    </download>
+    <download id="virtualbox_repo">
+      <link>https://www.virtualbox.org/wiki/Linux_Downloads</link>
+      <url>https://download.virtualbox.org/virtualbox/rpm/el/virtualbox.repo</url>
+    </download>
     <download id="vqmod">
       <link>https://github.com/vqmod/vqmod/releases</link>
       <url>https://github.com/vqmod/vqmod/releases/download/v2.6.1-opencart/vqmod-2.6.1-opencart.zip</url>
@@ -400,10 +411,17 @@
     <repo id="rspamd">
       <link>https://rspamd.com/downloads.html</link>
       <file>rspamd</file>
-      <prio>43</prio>
+      <prio>45</prio>
       <load>rspamd_repo</load>
       <key>http://rspamd.com/rpm-stable/gpg.key</key>
       <includepkgs>rspamd*</includepkgs>
+    </repo>
+    <repo id="virtualbox">
+      <link>https://www.virtualbox.org/wiki/Linux_Downloads</link>
+      <file>virtualbox</file>
+      <prio>47</prio>
+      <load>virtualbox_repo</load>
+      <key>https://www.virtualbox.org/download/oracle_vbox.asc</key>
     </repo>
 
     <rpm_list id="general">

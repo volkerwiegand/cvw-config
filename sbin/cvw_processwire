@@ -122,7 +122,6 @@ function processwire_install
 		#
 		# shell aliases for $_name
 		#
-
 		alias pw-a='cd /var/local/$_slug/app'
 		alias pw-s='cd /var/local/$_slug/app/site'
 		alias pw-m='cd /var/local/$_slug/app/site/modules'
