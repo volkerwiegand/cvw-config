@@ -56,7 +56,8 @@ function virtualbox_generate
 function virtualbox_install
 {
 	cvw_say -h "Installing $_name"
-	local _rpm
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _rpm _file
 
 	for _rpm in binutils \
 			qt \
@@ -75,9 +76,19 @@ function virtualbox_install
 	cvw_yum -a virtualbox
 	cvw_rpm -i VirtualBox-6.0
 
-	/usr/lib/virtualbox/vboxdrv.sh setup
+	cvw_download -i virtualbox_extpack $_root
+
+	#_file=$_root/setup.done
+	#if [[ ! -s $_file ]] ; then
+	#	/usr/lib/virtualbox/vboxdrv.sh setup
+	#	date >$_file
+	#fi
+
+	VBoxManage list extpacks
 
 	# usermod -a -G vboxusers user_name
+
+	cvw_firewall -t 3389
 
 	cvw_say -o "$_slug"
 }
