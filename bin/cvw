@@ -48,6 +48,7 @@ function usage
 		    or: $_prog -g app            Generate sceleton config for <app>
 		    or: $_prog -h bits           Generate Diffie-Hellman group
 		    or: $_prog -H                Generate RSA keys on server and fetch them
+		    or: $_prog -j                Ping the remote machine
 		    or: $_prog -k [port]         Set remote SSH port in ~/.ssh/config
 		    or: $_prog -K                Delete remote SSH port
 		    or: $_prog -l [cmd]          Remote login as root
@@ -254,7 +255,7 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tux:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:g:h:HijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -321,6 +322,11 @@ while getopts ":abBcCdDeEf:g:h:HikKlL:p:Pq:r:tux:X:yYz" opt ; do
 
 		i)
 			_info="-i"
+		;;
+
+		j)
+			_ping=1
+			_finito=1
 		;;
 
 		k)
@@ -531,6 +537,13 @@ if [[ $_root_login ]] ; then
 		ssh -t -X root@$_addr
 		wipe_config
 	fi
+	exit
+fi
+
+
+if [[ $_ping ]] ; then
+	setup_config quiet
+	ping $_fqdn
 	exit
 fi
 

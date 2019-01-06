@@ -57,7 +57,8 @@ function virtualbox_install
 {
 	cvw_say -h "Installing $_name"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _rpm _file
+	local _serv="vboxautostart-service"
+	local _rpm _pack _done _file _id
 
 	for _rpm in binutils \
 			qt \
@@ -75,20 +76,142 @@ function virtualbox_install
 
 	cvw_yum -a virtualbox
 	cvw_rpm -i VirtualBox-6.0
+	cvw_service -s $_serv
 
-	cvw_download -i virtualbox_extpack $_root
+	_done="$_root/setup.done"
+	if [[ ! -s $_done ]] ; then
+		/usr/lib/virtualbox/vboxdrv.sh setup
+		date >$_done
+	fi
 
-	#_file=$_root/setup.done
-	#if [[ ! -s $_file ]] ; then
-	#	/usr/lib/virtualbox/vboxdrv.sh setup
-	#	date >$_file
-	#fi
+	cvw_download -i virtualbox_extpack $_root/Download
+	_pack="Oracle VM VirtualBox Extension Pack"
+	if ! VBoxManage list extpacks | grep -q "$_pack" ; then
+		_file="$_root/Download/$(cvw_download -f virtualbox_extpack)"
+		echo "y" | VBoxManage extpack install --replace $_file
+	fi
 
-	VBoxManage list extpacks
+	mkdir -p /etc/vbox -m 1775
+	VBoxManage setproperty autostartdbpath /etc/vbox
 
-	# usermod -a -G vboxusers user_name
+	_file="/etc/vbox/autostart.cfg"
+	cat >$_file.tmp_VW <<-EOF
+		default_policy = deny
+		root = {
+		   allow = true
+		}
+	EOF
+	cvw_file -v $_file $_serv
 
-	cvw_firewall -t 3389
+	_file="/etc/default/virtualbox"
+	cat >$_file.tmp_VW <<-EOF
+		VBOXAUTOSTART_DB=/etc/vbox
+		VBOXAUTOSTART_CONFIG=/etc/vbox/autostart.cfg
+	EOF
+	cvw_file -v $_file $_serv
+
+	chgrp -R vboxusers /etc/vbox
+
+	cvw_xml -u software/$_slug/guest | sort -u | while read _id ; do
+		if VBoxManage list vms | grep -q "$_id" ; then
+			cvw_say -s "Deleting VM $_id"
+			VBoxManage unregistervm "$_id" --delete
+		fi
+	done
+
+	cvw_xml -i software/$_slug/guest | sort -u | while read _id ; do
+		cvw_say -s "Guest VM: $_id"
+		local _base="software/$_slug/guest:$_id"
+		local _vmdir="$_root/VMs/$_id"
+		local _ostype="$(cvw_xml -r $_base/ostype)"
+		local _cpus="$(cvw_xml -r $_base/cpus)"
+		local _memory="$(cvw_xml -r $_base/memory)"
+		local _hdd="$_vmdir/$_id.vdi"
+		local _disk="$(cvw_xml -r $_base/disk)"
+		local _port="$(cvw_xml -r $_base/port)"
+		local _image _medium
+
+		if ! VBoxManage list hdds | grep -qi "$_hdd" ; then
+			cvw_say -s "Creating HDD $_hdd"
+			VBoxManage createhd --filename "$_hdd" \
+				--format VDI \
+				--size $_disk
+		fi
+
+		if ! VBoxManage list vms | grep -qi "$_id" ; then
+			cvw_say -s "Creating VM $_id"
+			VBoxManage createvm --name "$_id" \
+				--ostype "$_ostype" \
+				--register \
+				--basefolder "$_root/VMs"
+		fi
+
+		if ! VBoxManage showvminfo "$_id" | grep -qi "Memory size.*$_memory" ; then
+			cvw_say -s "... setting memory to $_memory"
+			VBoxManage modifyvm "$_id" --memory $_memory --vram 256
+		fi
+
+		if ! VBoxManage showvminfo "$_id" | grep -qi "Number of CPUs.*$_cpus" ; then
+			cvw_say -s "... setting CPUs to $_cpus"
+			VBoxManage modifyvm "$_id" --cpus $_cpus
+		fi
+
+		if ! VBoxManage showvminfo "$_id" | grep -qi "Storage Controller.*SATA Controller" ; then
+			cvw_say -s "... adding SATA Controller (IntelAHCI)"
+			VBoxManage storagectl "$_id" \
+				--name "SATA Controller" \
+				--add sata \
+				--controller IntelAHCI
+		fi
+
+		if ! VBoxManage showvminfo "$_id" | grep -qi "^SATA Controller.*$_hdd" ; then
+			cvw_say -s "... attaching $_hdd to SATA 0:0"
+			VBoxManage storageattach "$_id" \
+				--storagectl "SATA Controller" \
+				--port 0 \
+				--device 0 \
+				--type hdd \
+				--medium "$_hdd"
+		fi
+
+		if ! VBoxManage showvminfo "$_id" | grep -qi "Storage Controller.*IDE Controller" ; then
+			cvw_say -s "... adding IDE Controller (PIIX4)"
+			VBoxManage storagectl "$_id" \
+				--name "IDE Controller" \
+				--add ide \
+				--controller PIIX4
+		fi
+
+		if cvw_xml -a $_base/image ; then
+			_medium="$_root/Download/$(cvw_xml -r $_base/image)"
+			if ! VBoxManage showvminfo "$_id" | grep -qi "IDE Controller.*$_medium" ; then
+				cvw_say -s "... attaching $_medium to IDE 0:0"
+				VBoxManage storageattach "$_id" \
+					--storagectl "IDE Controller" \
+					--port 0 \
+					--device 0 \
+					--type dvddrive \
+					--medium "$_medium"
+			fi
+		else
+			if VBoxManage showvminfo "$_id" | grep -qi "^IDE Controller" ; then
+				cvw_say -s "... detaching from IDE 0:0"
+				VBoxManage storageattach "$_id" \
+					--storagectl "IDE Controller" \
+					--port 0 \
+					--device 0 \
+					--medium none
+			fi
+		fi
+
+		VBoxManage modifyvm "$_id" --boot1 dvd --boot2 disk --boot3 none --boot4 none
+		VBoxManage modifyvm "$_id" --vrde on
+		VBoxManage modifyvm "$_id" --vrdemulticon on --vrdeport $_port
+		VBoxManage modifyvm "$_id" --ioapic on
+		VBoxManage modifyvm "$_id" --autostart-enabled on
+
+		cvw_firewall -t $_port
+	done
 
 	cvw_say -o "$_slug"
 }
