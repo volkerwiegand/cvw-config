@@ -297,6 +297,10 @@
       <link>https://www.virtualbox.org/wiki/Linux_Downloads</link>
       <url>https://download.virtualbox.org/virtualbox/6.0.0/Oracle_VM_VirtualBox_Extension_Pack-6.0.0.vbox-extpack</url>
     </download>
+    <download id="virtualbox_rdpwrap">
+      <link>https://github.com/stascorp/rdpwrap/releases</link>
+      <url>https://github.com/stascorp/rdpwrap/releases/download/v1.6.2/RDPWInst-v1.6.2.msi</url>
+    </download>
     <download id="virtualbox_repo">
       <link>https://www.virtualbox.org/wiki/Linux_Downloads</link>
       <url>https://download.virtualbox.org/virtualbox/rpm/el/virtualbox.repo</url>

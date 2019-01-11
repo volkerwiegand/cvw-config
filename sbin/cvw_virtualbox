@@ -20,6 +20,7 @@ _prog=${0##*/}
 _args="$*"
 _name="Oracle VirtualBox"
 _slug="virtualbox"
+_service="vboxautostart-service"
 
 
 function usage
@@ -53,11 +54,33 @@ function virtualbox_generate
 }
 
 
+function virtualbox_poweroff
+{
+	local _id="$1"
+
+	if VBoxManage showvminfo "$_id" | grep -qi "State.*running" ; then
+		cvw_say -s "stopping VM $_id"
+		VBoxManage controlvm "$_id" poweroff
+		cvw_service -r $_service
+	fi
+}
+
+
+function virtualbox_poweron
+{
+	local _id="$1"
+
+	if ! VBoxManage showvminfo "$_id" | grep -qi "State.*running" ; then
+		cvw_say -s "starting VM $_id"
+		cvw_service -r $_service
+	fi
+}
+
+
 function virtualbox_install
 {
 	cvw_say -h "Installing $_name"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _serv="vboxautostart-service"
 	local _rpm _pack _done _file _id
 
 	for _rpm in binutils \
@@ -76,13 +99,16 @@ function virtualbox_install
 
 	cvw_yum -a virtualbox
 	cvw_rpm -i VirtualBox-6.0
-	cvw_service -s $_serv
+	cvw_service -s $_service
+	mkdir -p /etc/vbox
 
 	_done="$_root/setup.done"
 	if [[ ! -s $_done ]] ; then
 		/usr/lib/virtualbox/vboxdrv.sh setup
 		date >$_done
 	fi
+
+	cvw_download -i virtualbox_rdpwrap $_root/Download
 
 	cvw_download -i virtualbox_extpack $_root/Download
 	_pack="Oracle VM VirtualBox Extension Pack"
@@ -91,9 +117,6 @@ function virtualbox_install
 		echo "y" | VBoxManage extpack install --replace $_file
 	fi
 
-	mkdir -p /etc/vbox -m 1775
-	VBoxManage setproperty autostartdbpath /etc/vbox
-
 	_file="/etc/vbox/autostart.cfg"
 	cat >$_file.tmp_VW <<-EOF
 		default_policy = deny
@@ -101,16 +124,33 @@ function virtualbox_install
 		   allow = true
 		}
 	EOF
-	cvw_file -v $_file $_serv
+	cvw_file -v $_file $_service
 
 	_file="/etc/default/virtualbox"
 	cat >$_file.tmp_VW <<-EOF
 		VBOXAUTOSTART_DB=/etc/vbox
 		VBOXAUTOSTART_CONFIG=/etc/vbox/autostart.cfg
 	EOF
-	cvw_file -v $_file $_serv
+	cvw_file -v $_file $_service
 
+	chmod 1775 /etc/vbox
 	chgrp -R vboxusers /etc/vbox
+	VBoxManage setproperty autostartdbpath /etc/vbox
+
+	_file="/etc/profile.d/alias_$_slug.sh"
+	cat >$_file.tmp_VW <<-EOF
+		#
+		# shell aliases for $_name
+		#
+		alias vb-start='systemctl start vboxautostart-service'
+		alias vb-stop='systemctl stop vboxautostart-service'
+		alias vb-status='systemctl status vboxautostart-service'
+		alias vb-restart='systemctl restart vboxautostart-service'
+		alias vb-list='VBoxManage list vms'
+		alias vb-run='VBoxManage list runningvms'
+		alias vb-info='VBoxManage showvminfo'
+	EOF
+	cvw_file -v $_file
 
 	cvw_xml -u software/$_slug/guest | sort -u | while read _id ; do
 		if VBoxManage list vms | grep -q "$_id" ; then
@@ -123,6 +163,7 @@ function virtualbox_install
 		cvw_say -s "Guest VM: $_id"
 		local _base="software/$_slug/guest:$_id"
 		local _vmdir="$_root/VMs/$_id"
+		local _prefix="$(cvw_xml -r $_base/prefix)"
 		local _ostype="$(cvw_xml -r $_base/ostype)"
 		local _cpus="$(cvw_xml -r $_base/cpus)"
 		local _memory="$(cvw_xml -r $_base/memory)"
@@ -131,6 +172,20 @@ function virtualbox_install
 		local _port="$(cvw_xml -r $_base/port)"
 		local _image _medium
 
+		_file="/etc/profile.d/alias_$_slug.sh"
+		cp $_file $_file.tmp_VW
+		cat >>$_file.tmp_VW <<-EOF
+
+			#
+			# shell aliases for $_name VM $_id
+			#
+			alias $_prefix-info='VBoxManage showvminfo "$_id"'
+			alias $_prefix-start='VBoxManage startvm "$_id" --type headless &'
+			alias $_prefix-stop='VBoxManage controlvm "$_id" acpipowerbutton'
+			alias $_prefix-kill='VBoxManage controlvm "$_id" poweroff'
+			alias $_prefix-status='VBoxManage showvminfo "$_id" | grep -i ^State'
+		EOF
+		cvw_file -v $_file
 		if ! VBoxManage list hdds | grep -qi "$_hdd" ; then
 			cvw_say -s "Creating HDD $_hdd"
 			VBoxManage createhd --filename "$_hdd" \
@@ -148,16 +203,19 @@ function virtualbox_install
 
 		if ! VBoxManage showvminfo "$_id" | grep -qi "Memory size.*$_memory" ; then
 			cvw_say -s "... setting memory to $_memory"
+			virtualbox_poweroff "$_id"
 			VBoxManage modifyvm "$_id" --memory $_memory --vram 256
 		fi
 
 		if ! VBoxManage showvminfo "$_id" | grep -qi "Number of CPUs.*$_cpus" ; then
 			cvw_say -s "... setting CPUs to $_cpus"
+			virtualbox_poweroff "$_id"
 			VBoxManage modifyvm "$_id" --cpus $_cpus
 		fi
 
 		if ! VBoxManage showvminfo "$_id" | grep -qi "Storage Controller.*SATA Controller" ; then
 			cvw_say -s "... adding SATA Controller (IntelAHCI)"
+			virtualbox_poweroff "$_id"
 			VBoxManage storagectl "$_id" \
 				--name "SATA Controller" \
 				--add sata \
@@ -166,6 +224,7 @@ function virtualbox_install
 
 		if ! VBoxManage showvminfo "$_id" | grep -qi "^SATA Controller.*$_hdd" ; then
 			cvw_say -s "... attaching $_hdd to SATA 0:0"
+			virtualbox_poweroff "$_id"
 			VBoxManage storageattach "$_id" \
 				--storagectl "SATA Controller" \
 				--port 0 \
@@ -176,6 +235,7 @@ function virtualbox_install
 
 		if ! VBoxManage showvminfo "$_id" | grep -qi "Storage Controller.*IDE Controller" ; then
 			cvw_say -s "... adding IDE Controller (PIIX4)"
+			virtualbox_poweroff "$_id"
 			VBoxManage storagectl "$_id" \
 				--name "IDE Controller" \
 				--add ide \
@@ -185,6 +245,7 @@ function virtualbox_install
 		if cvw_xml -a $_base/image ; then
 			_medium="$_root/Download/$(cvw_xml -r $_base/image)"
 			if ! VBoxManage showvminfo "$_id" | grep -qi "IDE Controller.*$_medium" ; then
+				virtualbox_poweroff "$_id"
 				cvw_say -s "... attaching $_medium to IDE 0:0"
 				VBoxManage storageattach "$_id" \
 					--storagectl "IDE Controller" \
@@ -196,6 +257,7 @@ function virtualbox_install
 		else
 			if VBoxManage showvminfo "$_id" | grep -qi "^IDE Controller" ; then
 				cvw_say -s "... detaching from IDE 0:0"
+				virtualbox_poweroff "$_id"
 				VBoxManage storageattach "$_id" \
 					--storagectl "IDE Controller" \
 					--port 0 \
@@ -204,13 +266,38 @@ function virtualbox_install
 			fi
 		fi
 
-		VBoxManage modifyvm "$_id" --boot1 dvd --boot2 disk --boot3 none --boot4 none
-		VBoxManage modifyvm "$_id" --vrde on
-		VBoxManage modifyvm "$_id" --vrdemulticon on --vrdeport $_port
-		VBoxManage modifyvm "$_id" --ioapic on
-		VBoxManage modifyvm "$_id" --autostart-enabled on
+		if ! VBoxManage showvminfo "$_id" | grep -qi "Host path.*$_root/Download" ; then
+			cvw_say -s "... sharing $_root/Download"
+			virtualbox_poweroff "$_id"
+			VBoxManage sharedfolder add "$_id" \
+				--name "Download" \
+				--hostpath "$_root/Download"
+		fi
+
+		if ! VBoxManage showvminfo "$_id" | grep -qi "Boot Device 1.*DVD" ; then
+			cvw_say -s "... setting boot devices"
+			virtualbox_poweroff "$_id"
+			VBoxManage modifyvm "$_id" \
+				--boot1 dvd \
+				--boot2 disk \
+				--boot3 none \
+				--boot4 none
+		fi
+
+		if ! VBoxManage showvminfo "$_id" | grep -qi "VRDE.*enabled.*Address" ; then
+			cvw_say -s "... enabling VRDE"
+			virtualbox_poweroff "$_id"
+			VBoxManage modifyvm "$_id" --vrde on
+			VBoxManage modifyvm "$_id" --vrdemulticon on --vrdeport $_port
+			VBoxManage modifyvm "$_id" --ioapic on
+			VBoxManage modifyvm "$_id" --autostart-enabled on
+		fi
+
+		# FIXME add security settings (TLS)
 
 		cvw_firewall -t $_port
+
+		virtualbox_poweron "$_id"
 	done
 
 	cvw_say -o "$_slug"
