@@ -168,12 +168,9 @@
     </download>
     <download id="nextcloud">
       <link>https://download.nextcloud.com/server/releases/</link>
-      <!-- url>https://download.nextcloud.com/server/releases/nextcloud-14.0.3.tar.bz2</url -->
-      <!-- md5>c3a00426df680894a309e23d5a7ef67f</md5 -->
-      <!-- sha256>d7d0271238396ef53ed3806b8f5a3746170d4ebcaa030ad39735e886e7aed3ef</sha256 -->
-      <url>https://download.nextcloud.com/server/releases/nextcloud-12.0.3.tar.bz2</url>
-      <md5>2b8b816a64dfdc4a6c3dbddcbf836b98</md5>
-      <sha256>88bcaccba886d0e5a145b15fe216d652ab68a0a4c089a102f1fa1e78e6ddfb71</sha256>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-15.0.4.tar.bz2</url>
+      <md5>07848588f216970b6067844aac760ce4</md5>
+      <sha256>f87db047c174f563e391a22c959d9ace767ca14ef0f97fc394f3061fc63d8f77</sha256>
     </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
@@ -249,8 +246,8 @@
     </download>
     <download id="roundcube">
       <link>https://roundcube.net/download/</link>
-      <url>https://github.com/roundcube/roundcubemail/releases/download/1.3.3/roundcubemail-1.3.3-complete.tar.gz</url>
-      <sha256>05d9856c966c0d93accabf724e7ff2fd493bba1a57c44247ed0a2aacd617c879</sha256>
+      <url>https://github.com/roundcube/roundcubemail/releases/download/1.3.8/roundcubemail-1.3.8-complete.tar.gz</url>
+      <sha256>c49e33f9643f98311b700138a1e1a0358c37b1205250e1124bd43d7f9a920d05</sha256>
     </download>
     <download id="rspamd_repo">
       <link>https://rspamd.com/downloads.html</link>
@@ -443,6 +440,7 @@
       <rpm>tree</rpm>
       <rpm>patch</rpm>
       <rpm>ImageMagick</rpm>
+      <rpm>ImageMagick-devel</rpm>
     </rpm_list>
     <rpm_list id="devel">
       <rpm>autoconf</rpm>
@@ -556,25 +554,6 @@
       <rpm>perl-XML-Writer</rpm>
       <rpm>perl-YAML</rpm>
     </rpm_list>
-    <rpm_list id="php">
-      <rpm>php</rpm>
-      <rpm>php-bcmath</rpm>
-      <rpm>php-cli</rpm>
-      <rpm>php-common</rpm>
-      <rpm>php-devel</rpm>
-      <rpm>php-gd</rpm>
-      <rpm>php-imap</rpm>
-      <rpm>php-intl</rpm>
-      <rpm>php-mbstring</rpm>
-      <rpm>php-mcrypt</rpm>
-      <rpm>php-opcache</rpm>
-      <rpm>php-pdo</rpm>
-      <rpm>php-pecl-apcu</rpm>
-      <rpm>php-pecl-redis</rpm>
-      <rpm>php-pecl-memcache</rpm>
-      <rpm>php-soap</rpm>
-      <rpm>php-xml</rpm>
-    </rpm_list>
     <rpm_list id="php56u">
       <rpm>php56u</rpm>
       <rpm>php56u-bcmath</rpm>
@@ -585,7 +564,6 @@
       <rpm>php56u-imap</rpm>
       <rpm>php56u-intl</rpm>
       <rpm>php56u-mbstring</rpm>
-      <rpm>php56u-mcrypt</rpm>
       <rpm>php56u-opcache</rpm>
       <rpm>php56u-pdo</rpm>
       <rpm>php56u-pecl-apcu</rpm>
@@ -593,6 +571,26 @@
       <rpm>php56u-pecl-memcache</rpm>
       <rpm>php56u-soap</rpm>
       <rpm>php56u-xml</rpm>
+    </rpm_list>
+    <rpm_list id="php72u">
+      <rpm>mod_php72u</rpm>
+      <rpm>php72u-bcmath</rpm>
+      <rpm>php72u-cli</rpm>
+      <rpm>php72u-common</rpm>
+      <rpm>php72u-devel</rpm>
+      <rpm>php72u-gd</rpm>
+      <rpm>php72u-imap</rpm>
+      <rpm>php72u-intl</rpm>
+      <rpm>php72u-mbstring</rpm>
+      <rpm>php72u-opcache</rpm>
+      <rpm>php72u-pdo</rpm>
+      <rpm>php72u-pecl-apcu</rpm>
+      <rpm>php72u-pecl-imagick</rpm>
+      <rpm>php72u-pecl-memcached</rpm>
+      <rpm>php72u-pecl-redis</rpm>
+      <rpm>php72u-process</rpm>
+      <rpm>php72u-soap</rpm>
+      <rpm>php72u-xml</rpm>
     </rpm_list>
     <rpm_list id="automx">
       <rpm>mod_wsgi</rpm>

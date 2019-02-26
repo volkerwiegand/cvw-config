@@ -51,20 +51,20 @@ function php_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _timezone=$(cvw_xml -r system/timezone)
 	local _filesize=$(cvw_xml -R software/$_slug/filesize "2000M")
-	local _memory=$(cvw_xml -R software/$_slug/memory "256M")
+	local _memory=$(cvw_xml -R software/$_slug/memory "512M")
 	local _opcache=$(cvw_xml -R software/$_slug/opcache "4000")
 	local _info=$(cvw_xml -R software/$_slug/info "")
 	local _geoip=$(cvw_xml -r system/app_root)/GeoIP
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _php _file _var
 
-	if cvw_xml -t software/$_slug/ius ; then
-		cvw_say -s "using PHP 5.6 from IUS"
-		cvw_yum -a ius
-		_php="php56u"
+	cvw_yum -a ius
+	if cvw_xml -t software/$_slug/php7 ; then
+		cvw_say -s "using PHP 7.2 from IUS"
+		_php="php72u"
 	else
-		cvw_say -s "using PHP 5.4 from CentOS"
-		_php="php"
+		cvw_say -s "using PHP 5.6 from IUS"
+		_php="php56u"
 	fi
 	cvw_rpm -l $_php
 	cvw_xml -a software/nginx      && cvw_rpm -i ${_php}-fpm

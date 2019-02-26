@@ -75,7 +75,6 @@ function postfix_install_standalone
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
 			      DNS record ..............: @ IN TXT "v=spf1 +a +mx ~all"
-
 		EOF
 	fi
 
@@ -264,6 +263,7 @@ function postfix_install_standalone
 	cvw_yum -a ius
 	cvw_rpm -i dovecot22u
 	cvw_rpm -i dovecot22u-mysql
+	cvw_rpm -i dovecot22u-pigeonhole
 	cvw_service -s dovecot
 
 	_file=/etc/dovecot/dovecot-sql.conf.ext
@@ -468,7 +468,7 @@ function postfix_finish_standalone
 		postconf -e "non_smtpd_milters=\$smtpd_milters"
 		postconf -e "milter_default_action=accept"
 		postconf -e "milter_protocol=6"
-		postconf -e "milter_mail_macros=i {mail_addr} {client_addr} {client_name} {auth_authen} {auth_authen} {auth_type} v _"
+		postconf -e "milter_mail_macros=i {mail_addr} {client_addr} {client_name} {auth_authen} {auth_type} v _"
 		postconf -e "milter_rcpt_macros=i {rcpt_addr}"
 	fi
 
@@ -494,6 +494,7 @@ function postfix_remove
 		cvw_rpm -e unbound
 
 		cvw_service -d dovecot
+		cvw_rpm -e dovecot22u-pigeonhole
 		cvw_rpm -e dovecot22u-mysql
 		cvw_rpm -e dovecot22u
 		rm -rf /etc/dovecot

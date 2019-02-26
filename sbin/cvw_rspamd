@@ -42,6 +42,45 @@ function usage
 }
 
 
+function rspamd_webui
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _hash=$(rspamadm pw --encrypt -p $_pass)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file _conf
+
+	_file=/etc/rspamd/local.d/worker-controller.inc
+	cat >$_file.tmp_VW <<-EOF
+		password = "$_hash";
+	EOF
+	cvw_file -v $_file rspamd
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      URL .....................: https://$_fqdn$_uri/
+			      Password ................: $_pass
+		EOF
+	fi
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	if cvw_xml -a software/apache ; then
+		_conf=$(cvw_apache -c)
+		cat >>$_conf.tmp_VW <<-EOF
+
+			   ProxyPass $_uri/        http://127.0.0.1:11334/
+			   ProxyPassReverse $_uri/ http://127.0.0.1:11334/
+		EOF
+	fi
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_firewall -t 11334
+}
+
+
 function rspamd_install
 {
 	cvw_say -h "Installing $_name"
@@ -62,8 +101,18 @@ function rspamd_install
 		  default = yes;
 		  self_scan = true;
 		}
+		count = 4;
+		max_retries = 5;
+		discard_on_reject = false;
+		quarantine_on_reject = false;
+		spam_header = "X-Spam";
+		reject_message = "Spam message rejected";
 	EOF
 	cvw_file -v $_file rspamd
+
+	if cvw_xml -c software/$_slug/password ; then
+		rspamd_webui
+	fi
 
 	_file=/etc/rspamd/local.d/milter_headers.conf
 	cat >$_file.tmp_VW <<-EOF
