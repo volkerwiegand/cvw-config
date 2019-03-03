@@ -69,7 +69,7 @@ function postfix_install_standalone
 	local _vdomains=/etc/postfix/sql-vdomains.cf
 	local _vmailbox=/etc/postfix/sql-vmailbox.cf
 	local _valias=/etc/postfix/sql-valias.cf
-	local _file _master _milter _hash _addr _prod
+	local _file _master _milter _hash _addr _prod _sieve
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
@@ -88,6 +88,16 @@ function postfix_install_standalone
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
 	fi
+
+
+	##########################################################
+	#
+	# Postfix-Go is a Web GUI for managing domains and users
+	# See: https://github.com/volkerwiegand/postfix-go
+	#
+	# N.B.: '$_root' is set to postfix-go
+	#       nothing else is under /var/local
+	##########################################################
 
 	# TODO find a better way to update to the latest version
 	rm -rf $_root/app
@@ -170,6 +180,12 @@ function postfix_install_standalone
 		cvw_url -a "$_name" $_uri
 	fi
 
+
+	##########################################################
+	#
+	# Here comes postfix
+	#
+	##########################################################
 
 	cvw_rpm -i postfix
 	cvw_rpm -i mailx
@@ -392,6 +408,52 @@ function postfix_install_standalone
 		lda_mailbox_autocreate = yes
 		lda_mailbox_autosubscribe = yes
 		protocol lda {
+		}
+	EOF
+	cvw_file -v $_file dovecot
+
+
+	##########################################################
+	#
+	# Add sieve a.k.a. pigeonhole
+	#
+	##########################################################
+
+	_sieve=/var/lib/dovecot/sieve
+	mkdir -p $_sieve
+	_file=$_sieve/default.sieve
+	cat >$_file.tmp_VW <<-EOF
+		require "fileinto";
+		if header :contains "X-Spam" "YES" {
+		  fileinto "Junk";
+		}
+	EOF
+	cvw_file -v $_file dovecot
+
+	_file=/etc/dovecot/conf.d/20-lmtp.conf
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		##
+		## LMTP specific settings
+		##
+
+		protocol lmtp {
+		  postmaster_address = postmaster@$_domain
+		  mail_plugins = \$mail_plugins sieve
+		}
+	EOF
+	cvw_file -v $_file dovecot
+
+	_file=/etc/dovecot/conf.d/90-sieve.conf
+	cvw_file -b $_file
+	cat >$_file.tmp_VW <<-EOF
+		##
+		## Settings for the Sieve interpreter
+		##
+
+		plugin {
+		  sieve = file:~/sieve;active=~/.dovecot.sieve
+		  sieve_default = $_sieve/default.sieve
 		}
 	EOF
 	cvw_file -v $_file dovecot
