@@ -110,6 +110,31 @@ function rspamd_install
 	EOF
 	cvw_file -v $_file rspamd
 
+	_file=/etc/rspamd/local.d/dmarc.conf
+	cat >$_file.tmp_VW <<-EOF
+		dmarc {
+		  reporting = true;
+		  actions = {
+		    quarantine = "add_header";
+		    reject = "reject";
+		  }
+		}
+	EOF
+	cvw_file -v $_file rspamd
+
+	_file=/etc/rspamd/local.d/actions.conf
+	if cvw_xml -t software/$_slug/rewrite ; then
+		cat >$_file.tmp_VW <<-EOF
+			actions {
+			    rewrite_subject = 8;
+			    subject = "***SPAM*** %s"
+			}
+		EOF
+		cvw_file -v $_file rspamd
+	else
+		cvw_file -r $_file rspamd
+	fi
+
 	if cvw_xml -c software/$_slug/password ; then
 		rspamd_webui
 	fi

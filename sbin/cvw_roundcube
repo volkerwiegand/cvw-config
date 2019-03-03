@@ -76,6 +76,7 @@ function roundcube_install
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
+			      URL .....................: https://$_fqdn$_uri/
 			      Admin Email .............: $_admin@${_fqdn#*.}
 			      Admin Password ..........: $(cvw_user -p $_admin)
 		EOF

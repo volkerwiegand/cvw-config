@@ -76,7 +76,7 @@ function opendmarc_install
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
-			      DNS TXT .................: _dmarc IN TXT "v=DMARC1; p=none; rua=mailto:admin@$_domain; ruf=mailto:admin@$_domain; sp=none; ri=86400"
+			      DNS TXT .................: _dmarc IN TXT "v=DMARC1; p=quarantine; rua=mailto:admin@$_domain; ruf=mailto:admin@$_domain; sp=none; ri=86400"
 		EOF
 	fi
 
