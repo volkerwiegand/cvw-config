@@ -157,8 +157,8 @@
     </download>
     <download id="mantis">
       <link>http://mantisbt.org/download.php</link>
-      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.9.0/mantisbt-2.9.0.tar.gz</url>
-      <md5>b12aac6f8361480cdc959118cb51cc70</md5>
+      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.19.0/mantisbt-2.19.0.tar.gz</url>
+      <md5>2e9ccefa8be801db09ddd2461b4521c4</md5>
     </download>
     <download id="modified">
       <link>http://www.modified-shop.org/download</link>
@@ -179,8 +179,8 @@
     </download>
     <download id="open3a">
       <link>https://www.open3a.de/page-Download</link>
-      <url>https://www.open3a.de/multiCMSDownload.php?filedl=98</url>
-      <name>open3A_2.6.zip</name>
+      <url>https://www.open3a.de/multiCMSDownload.php?filedl=103</url>
+      <name>open3A_2.9.zip</name>
     </download>
     <download id="opencart">
       <link>https://www.opencart.com/index.php?route=cms/download/history</link>
@@ -321,8 +321,8 @@
     </download>
     <download id="wordpress">
       <link>https://de.wordpress.org/releases/</link>
-      <url>https://de.wordpress.org/wordpress-4.9.4-de_DE.tar.gz</url>
-      <md5>e8e41d41fcdbda559e7a4c097e9bddea</md5>
+      <url>https://de.wordpress.org/wordpress-5.1-de_DE.tar.gz</url>
+      <md5>fecda46a183cc071e60e603dd798c78d</md5>
     </download>
     <download id="yellow">
       <link>https://github.com/datenstrom/yellow/releases</link>

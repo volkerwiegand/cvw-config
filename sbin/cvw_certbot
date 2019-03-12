@@ -61,11 +61,16 @@ function certbot_generate
 function certbot_install
 {
 	cvw_say -h "Installing $_name"
-	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _admin=$(cvw_xml -r host/admin)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _live="/etc/letsencrypt/live/$_fqdn"
-	local _file _list _san _args
+	local _fqdn _live _file _list _san _args
+
+	if cvw_xml -c software/$_slug/fqdn ; then
+		_fqdn=$(cvw_xml -r software/$_slug/fqdn)
+	else
+		_fqdn=$(cvw_xml -r host/fqdn)
+	fi
+	_live="/etc/letsencrypt/live/$_fqdn"
 
 	cvw_rpm -i certbot
 

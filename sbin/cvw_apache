@@ -101,9 +101,15 @@ function apache_initial
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _domain=${_fqdn#*.}
 	local _hstnam=${_fqdn%%.*}
-	local _cert="/etc/letsencrypt/live/$_fqdn"
+	local _cert _file _alias _redir _container _base _uri _cport
+
+	if cvw_xml -c software/certbot/fqdn ; then
+		_alias=$(cvw_xml -r software/certbot/fqdn)
+		_cert="/etc/letsencrypt/live/$_alias"
+	else
+		_cert="/etc/letsencrypt/live/$_fqdn"
+	fi
 	[[ -s $_cert/cert.pem ]] || cvw_say -f "missing SSL cert"
-	local _file _alias _redir _container _base _uri _cport
 
 	cvw_rpm -i httpd
 	cvw_rpm -i httpd-devel
