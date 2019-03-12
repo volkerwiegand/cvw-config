@@ -53,6 +53,15 @@ function open3a_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file _subdir
 
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Database Name ...........: $_slug
+			      Database Password .......: $_pass
+			      Login URL ...............: $(cvw_url -r $_uri)
+		EOF
+	fi
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
 			$_root/app/specifics \
@@ -73,6 +82,11 @@ function open3a_install
 		cvw_say -s "updating / syncing backup"
 		/usr/local/bin/bkup.$_slug
 	fi
+
+	find /var/local/cfg/files/misc -name "open3a.*.sql.gz" | while read _file ; do
+		cvw_say -s "Backup $_file"
+		install -o apache -g apache $_file $_root/app/system/Backup
+	done
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
