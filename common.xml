@@ -339,6 +339,9 @@
     <git id="ruby_rbenv">
       <url>https://github.com/sstephenson/rbenv.git</url>
     </git>
+    <git id="sqlbuddy">
+      <url>https://github.com/Frecuencio/sqlbuddy-php7.git</url>
+    </git>
 
     <repo id="CentOS">
       <file>CentOS-Base</file>
