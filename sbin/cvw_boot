@@ -120,6 +120,7 @@ cvw_webdav         -i ; error_check
 cvw_radicale       -i ; error_check
 cvw_davical        -i ; error_check
 cvw_agendav        -i ; error_check
+cvw_prosody        -i ; error_check
 cvw_shariff        -i ; error_check
 cvw_roundcube      -i ; error_check
 cvw_squirrelmail   -i ; error_check
