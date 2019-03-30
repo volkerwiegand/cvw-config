@@ -1,0 +1,153 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_prosody - Install or remove Prosody XMPP Server
+######               https://prosody.im/
+######               https://prosody.im/doc/configure
+######
+###### (c) 2017-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Prosody XMPP Server"
+_slug="prosody"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function prosody_install
+{
+	cvw_say -h "Installing $_name"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _host=$(cvw_xml -r software/$_slug/host)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
+	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _conf=/etc/prosody/conf.d/$_host.cfg.lua
+	local _file
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      DB Name / User ..........: $_slug
+			      DB Pass .................: $_pass
+			      Admin Name ..............: $_adm_name
+			      Admin Password ..........: $_adm_pass
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
+
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
+	cvw_rpm -i $_slug
+	cvw_service -s $_slug
+
+	find /etc/prosody/conf.d -name "*.cfg.lua" | while read _file ; do
+		[[ $_file == $_conf ]] && continue
+		cvw_say -s "disable $_file"
+		mv $_file $_file.disabled
+		cvw_service -r $_slug
+	done
+
+	cat >$_conf.tmp_VW <<-EOF
+		-- Section for VirtualHost $_host
+
+		VirtualHost "$_host"
+		  enabled = true
+		  admins = { "admin@$_host" }
+		  sql = {
+		    driver = "MySQL";
+		    host = "localhost";
+		    database = "$_slug";
+		    username = "$_slug";
+		    password = "$_pass";
+		  }
+		  allow_registration = true
+		  min_seconds_between_registrations = 60
+	EOF
+	if cvw_xml -t software/$_slug/muc ; then
+		cat >>$_conf.tmp_VW <<-EOF
+
+			    ------ Components ------
+			    modules_enabled = { "muc_mam" }
+			    Component "conference.$_host" "muc"
+			      name = "$_host Chatrooms"
+			      restrict_room_creation = false
+			      max_history_messages = 100
+		EOF
+	fi
+	cvw_file -u $_slug -v $_conf $_slug
+
+	prosodyctl --root cert import /etc/letsencrypt/live
+
+	cvw_firewall -s xmpp-client
+	cvw_firewall -s xmpp-server
+
+	cvw_say -o "$_slug"
+}
+
+
+function prosody_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+		cvw_rpm -e $_slug
+		rm -rf $_root
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				prosody_install
+			else
+				prosody_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
