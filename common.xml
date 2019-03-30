@@ -280,10 +280,6 @@
       <link>http://simpleinvoices.org/start</link>
       <url>https://bitbucket.org/simpleinvoices/simpleinvoices/downloads/simpleinvoices.2011.1.zip</url>
     </download>
-    <download id="sqlbuddy">
-      <link>https://github.com/calvinlough/sqlbuddy</link>
-      <url>https://github.com/calvinlough/sqlbuddy/raw/gh-pages/sqlbuddy.zip</url>
-    </download>
     <download id="squirrelmail">
       <link>http://squirrelmail.org/download.php</link>
       <url>squirrelmail-webmail-1.4.22.tar.gz</url>
