@@ -5,11 +5,11 @@
 ######
 ###### cvw_open3a - Install or remove open3A Faktura
 ######              https://www.open3a.de/
-######              https://www.open3a.de/page-Installation/Webserver
+######              https://www.open3a.de/page-Installation/WebserverSetup
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2017-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
