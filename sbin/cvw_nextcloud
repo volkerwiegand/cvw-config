@@ -5,10 +5,10 @@
 ######
 ###### cvw_nextcloud - Install or remove Nextcloud
 ######                 https://nextcloud.com/
-######                 https://docs.nextcloud.com/server/12/admin_manual/installation/index.html
+######                 https://docs.nextcloud.com/server/16/admin_manual/installation/index.html
 ######                 https://doc.owncloud.org/server/9.0/admin_manual/configuration_server/occ_command.html
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -130,6 +130,12 @@ function nextcloud_install
 		nextcloud_occ config:system:set memcache.local --value=\\\\OC\\\\Memcache\\\\APCu
 	fi
 
+	if grep -q -s upgrade /tmp/cvw/updating ; then
+		nextcloud_occ config:system:set mysql.utf8mb4 --type boolean --value="true"
+		nextcloud_occ maintenance:repair
+		nextcloud_occ --no-interaction db:convert-filecache-bigint
+	fi
+
 	if [[ -d /var/local/backup/$_slug/last/mysql && \
 	      -d /var/local/backup/$_slug/last/dirs  && \
 	      -x /usr/local/bin/bkup.$_slug          && \
@@ -183,6 +189,14 @@ function nextcloud_install
 			      SetEnv HOME $_root/app
 			      SetEnv HTTP_HOME $_root/app
 			   </Directory>
+			   <IfModule mod_rewrite.c>
+			     RewriteEngine on
+			     RewriteRule ^/\\.well-known/host-meta $_uri/public.php?service=host-meta [QSA,L]
+			     RewriteRule ^/\\.well-known/host-meta\\.json $_uri/public.php?service=host-meta-json [QSA,L]
+			     RewriteRule ^/\\.well-known/webfinger $_uri/public.php?service=webfinger [QSA,L]
+			     RewriteRule ^/\\.well-known/carddav $_uri/remote.php/dav/ [R=301,L]
+			     RewriteRule ^/\\.well-known/caldav $_uri/remote.php/dav/ [R=301,L]
+			   </IfModule>
 		EOF
 		cvw_apache -p $_slug
 	fi
