@@ -102,6 +102,20 @@ function certbot_install
 	if [[ -d $_live ]] ; then
 		cvw_say -s "updating web certificate"
 		certbot renew --standalone
+		_file="/etc/cron.weekly/letsencrypt"
+		cat >$_file.tmp_VW <<-EOF
+			#!/bin/bash
+
+			/usr/bin/certbot -q renew
+			_result=\$?
+			if [[ \$_result -ne 0 ]] ; then
+			    /usr/bin/logger -p user.err -t letsencrypt "failure"
+			else
+			    /usr/bin/logger -p user.info -t letsencrypt "success"
+			fi
+			exit 0
+		EOF
+		cvw_file -m 0775 -v $_file
 	else
 		cvw_firewall -t 80
 		cvw_firewall -t 443
@@ -120,6 +134,7 @@ function certbot_remove
 {
 	if cvw_rpm -c certbot ; then
 		cvw_say -h "Removing $_name"
+		cvw_file -r /etc/cron.weekly/letsencrypt
 		cvw_rpm -e certbot
 		cvw_say -o "$_slug:remove"
 	fi
