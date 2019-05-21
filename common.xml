@@ -120,8 +120,8 @@
     </download>
     <download id="gogs">
       <link>https://dl.gogs.io/</link>
-      <url>https://dl.gogs.io/gogs_v0.9.141_linux_amd64.tar.gz</url>
-      <sha256>7caa455ef2ec8e60d12d26001f4ec319c2c24068315e5528d84fc7879f57f347</sha256>
+      <url>https://dl.gogs.io/0.11.86/gogs_0.11.86_linux_amd64.tar.gz</url>
+      <sha256>01432f903e7e91aa54f7b78faf1167462da0e7b26c7f1055247a76a814688bfc</sha256>
     </download>
     <download id="golang">
       <link>https://golang.org/dl/</link>
@@ -157,8 +157,7 @@
     </download>
     <download id="mantis">
       <link>http://mantisbt.org/download.php</link>
-      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.19.0/mantisbt-2.19.0.tar.gz</url>
-      <md5>2e9ccefa8be801db09ddd2461b4521c4</md5>
+      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.21.0/mantisbt-2.21.0.tar.gz</url>
     </download>
     <download id="modified">
       <link>http://www.modified-shop.org/download</link>
@@ -168,9 +167,9 @@
     </download>
     <download id="nextcloud">
       <link>https://download.nextcloud.com/server/releases/</link>
-      <url>https://download.nextcloud.com/server/releases/nextcloud-15.0.4.tar.bz2</url>
-      <md5>07848588f216970b6067844aac760ce4</md5>
-      <sha256>f87db047c174f563e391a22c959d9ace767ca14ef0f97fc394f3061fc63d8f77</sha256>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-16.0.0.tar.bz2</url>
+      <md5>70bec3fa700168df44ab73d54842cb48</md5>
+      <sha256>4532f7028b1d9bf060f75ac4fbbde52a59ecd9c9155f3178a038d3cf3609402e</sha256>
     </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
@@ -230,8 +229,8 @@
     <download id="processwire">
       <link>https://processwire.com/download/</link>
       <url>https://github.com/processwire/processwire/archive/master.zip</url>
-      <name>processwire-3.0.62.zip</name>
-      <version>3.0.62</version>
+      <name>processwire-3.0.123.zip</name>
+      <version>3.0.123</version>
     </download>
     <download id="puppet_master">
       <url>replace-this-text-with-the-download-link-you-received-from-puppet</url>
@@ -246,8 +245,8 @@
     </download>
     <download id="roundcube">
       <link>https://roundcube.net/download/</link>
-      <url>https://github.com/roundcube/roundcubemail/releases/download/1.3.8/roundcubemail-1.3.8-complete.tar.gz</url>
-      <sha256>c49e33f9643f98311b700138a1e1a0358c37b1205250e1124bd43d7f9a920d05</sha256>
+      <url>https://github.com/roundcube/roundcubemail/releases/download/1.3.9/roundcubemail-1.3.9-complete.tar.gz</url>
+      <sha256>726db4ffb33a7154dd432cbb99810ab9d02512c7f1987a6119e9ac7f595521ad</sha256>
     </download>
     <download id="rspamd_repo">
       <link>https://rspamd.com/downloads.html</link>
@@ -260,8 +259,8 @@
     </download>
     <download id="serendipity">
       <link>https://docs.s9y.org/downloads.html</link>
-      <url>https://github.com/s9y/Serendipity/releases/download/2.1.1/serendipity-2.1.1.zip</url>
-      <md5>a5c89080bdd2e6e359c5a0f60d92aea8</md5>
+      <url>https://github.com/s9y/Serendipity/releases/download/2.1.5/serendipity-2.1.5.zip</url>
+      <md5>67d55af6738137c0646268590f21397f</md5>
     </download>
     <download id="shariff">
       <link>https://github.com/heiseonline/shariff-backend-php/releases</link>

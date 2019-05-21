@@ -67,6 +67,7 @@ function clamav_install
 
 	cvw_rpm -i clamav-milter-systemd
 	cvw_service -s clamav-milter
+	mkdir -p /etc/mail
 	_file=/etc/mail/clamav-milter.conf
 	cvw_file -b
 	cat >$_file.tmp_VW <<-EOF

@@ -85,8 +85,8 @@ function postfix_install_standalone
 	      -d /var/local/backup/$_slug/last/dirs  && \
 	      -x /usr/local/bin/bkup.$_slug          && \
 	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
+		cvw_say -s "FIXME --- NOT updating / syncing backup"
+		# /usr/local/bin/bkup.$_slug
 	fi
 
 
