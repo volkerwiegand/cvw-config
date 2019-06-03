@@ -6,9 +6,9 @@
 ###### cvw_boot - System config master - running on remote
 ######            (internal service functions)
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -72,6 +72,7 @@ cvw_yum            -i ; error_check
 cvw_docker         -i ; error_check
 cvw_user           -i ; error_check
 cvw_certbot        -i ; error_check
+cvw_borgbackup     -i ; error_check
 cvw_bitnami        -i ; error_check
 cvw_haproxy        -i ; error_check
 cvw_nginx          -i ; error_check
