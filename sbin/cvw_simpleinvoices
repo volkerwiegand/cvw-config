@@ -210,7 +210,6 @@ function simpleinvoices_remove_native
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name (native)"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
@@ -227,10 +226,8 @@ function simpleinvoices_remove_bitnami
 
 	if [[ -x $_file ]] ; then
 		cvw_say -h "Removing $_name (Bitnami)"
-		
 		cvw_say -s "running $_file"
 		$_file --mode unattended
-
 		cvw_say -o "$_slug:remove"
 	fi
 
