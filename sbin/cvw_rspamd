@@ -7,9 +7,9 @@
 ######              https://rspamd.com/
 ######              https://rspamd.com/doc/integration.html
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -159,12 +159,9 @@ function rspamd_remove
 		_file=/etc/postfix/master.cf
 		cvw_file -e $_file "s/^\(smtp.*smtpd\).*/\1/" postfix
 		cvw_file -e $_file "/spam/d" postfix
-
 		cvw_say -h "Removing $_name"
-
 		cvw_rpm -e rspamd
 		rm -rf /etc/rspamd
-
 		cvw_say -o "$_slug:remove"
 	fi
 }

@@ -7,9 +7,9 @@
 ######                http://opendkim.org/
 ######                https://www.linuxtechi.com/configure-domainkeys-with-postfix-on-centos-7/
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -144,10 +144,8 @@ function opendkim_remove
 
 	if cvw_rpm -c opendkim ; then
 		cvw_say -h "Removing $_name"
-
 		cvw_rpm -e opendkim
 		rm -rf /etc/opendkim*
-
 		cvw_say -o "$_slug:remove"
 	fi
 }

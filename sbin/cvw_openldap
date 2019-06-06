@@ -6,11 +6,11 @@
 ###### cvw_openldap - Install or remove OpenLDAP
 ######                http://www.openldap.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
-######          TODO finish and verify OpenLDAP - work in progress
+######          TODO finish and verify - this is work in progress
 ######
 #################################################################################
 
@@ -121,16 +121,14 @@ function openldap_remove
 {
 	if cvw_rpm -c openldap-servers ; then
 		cvw_say -h "Removing $_name"
-
 		cvw_service -d slapd
 		cvw_rpm -e openldap-servers
 		cvw_rpm -e openldap-clients
-
 		rm -rf /var/lib/ldap /etc/openldap
-
-		rm -f /tmp/cvw/error
 		cvw_say -o "$_slug:remove"
 	fi
+
+	rm -f /tmp/cvw/error
 }
 
 

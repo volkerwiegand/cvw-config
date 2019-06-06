@@ -6,7 +6,7 @@
 ###### cvw_redis - Install or remove redis (key value store)
 ######             http://redis.io/
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -68,10 +68,8 @@ function redis_remove
 {
 	if cvw_rpm -c redis ; then
 		cvw_say -h "Removing $_name"
-
 		cvw_service -d redis
 		cvw_rpm -e redis
-
 		cvw_say -o "$_slug:remove"
 	fi
 

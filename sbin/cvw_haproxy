@@ -6,7 +6,7 @@
 ###### cvw_haproxy - Install or remove HAProxy
 ######               http://www.haproxy.org/
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -67,11 +67,8 @@ function haproxy_remove
 {
 	if cvw_rpm -c haproxy ; then
 		cvw_say -h "Removing $_name"
-
 		cvw_service -d haproxy
 		cvw_rpm -e haproxy
-
-		rm -f /tmp/cvw/error
 		cvw_say -o "$_slug:remove"
 	fi
 

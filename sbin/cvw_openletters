@@ -6,9 +6,9 @@
 ###### cvw_openletters - Install or remove Open Letters
 ######                   http://www.open-letters.de/
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -64,9 +64,6 @@ function openletters_install
 	local _conf _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/log \
-			$_root/app/uploaded
 
 	# cvw_unpack -i $_slug $_root/app index.php
 	if [[ ! -s $_root/app/index.php ]] ; then
@@ -91,14 +88,6 @@ function openletters_install
 	_file="$_root/app/admin/.htpasswd"
 	htpasswd -b -c $_file.tmp_VW $_admin_name $_admin_pass
 	cvw_file -v $_file $(cvw_php -s)
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
 
 	_file="$_root/app/config/newsletter.sql"
 	if [[ -s $_file ]] ; then
@@ -160,6 +149,10 @@ function openletters_install
 		cvw_apache -p $_slug
 	fi
 
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/app/log
+	cvw_borgclient -d $_root/app/uploaded
+
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
@@ -172,7 +165,6 @@ function openletters_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"

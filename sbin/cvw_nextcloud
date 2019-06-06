@@ -100,12 +100,6 @@ function nextcloud_install
 
 	cvw_mysql -c $_slug $_slug $_pass utf8mb4_general_ci
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/data
-
-	cvw_backup -z $_slug
-	# FIXME cvw_backup -m $_slug -u $_slug -p $_pass $_slug
-
 	cvw_unpack -u apache -i $_slug $_root/app index.php
 
 	_file="$_root/app/config/config.php"
@@ -152,14 +146,6 @@ function nextcloud_install
 		nextcloud_occ --no-interaction db:convert-filecache-bigint
 		nextcloud_occ --no-interaction db:add-missing-indices
 	fi
-
-	# FIXME if [[ -d /var/local/backup/$_slug/last/mysql && \
-	#      -d /var/local/backup/$_slug/last/dirs  && \
-	#      -x /usr/local/bin/bkup.$_slug          && \
-	#      -x /usr/local/bin/rstr.$_slug ]] ; then
-	#	cvw_say -s "updating / syncing backup"
-	#	/usr/local/bin/bkup.$_slug
-	#fi
 
 	if cvw_xml -a software/nginx ; then
 		_file="/tmp/cvw/nginx.options"
@@ -218,6 +204,9 @@ function nextcloud_install
 		cvw_apache -p $_slug
 	fi
 
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/data
+
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
@@ -230,7 +219,6 @@ function nextcloud_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"

@@ -7,7 +7,7 @@
 ######                 https://roundcube.net/
 ######                 https://github.com/roundcube/roundcubemail/wiki/Installation
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -29,6 +29,7 @@ function usage
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i   Install or remove $_name
 		    or: $_prog -g   Generate config template
+		    or: $_prog -x   Hide the installation task
 		Called with: '$_prog $_args'
 	EOF
 
@@ -84,9 +85,6 @@ function roundcube_install
 	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/logs \
-			$_root/app/temp
 
 	cvw_unpack -i $_slug $_root/app index.php
 	for _subdir in temp logs ; do
@@ -94,16 +92,12 @@ function roundcube_install
 		chown -R apache $_root/app/$_subdir
 	done
 
-	# TODO find better way to check if installer should run
-
-	if [[ -s /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating backup"
-		/usr/local/bin/bkup.$_slug
+	if [[ -s $_root/installed.date_VW ]] ; then
 		chmod 0700 $_root/app/installer
 		_installer="false"
+		cvw_borgclient -m $_slug
+		cvw_borgclient -d $_root/app/logs
+		cvw_borgclient -d $_root/app/temp
 	else
 		cvw_say -a "Installer URL ...........: $(cvw_url -r $_uri)installer/"
 		_installer="true"
@@ -167,25 +161,11 @@ function roundcube_install
 function roundcube_remove
 {
 	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _bkup=/var/local/backup/$_slug
 
-	if [[ -d $_root || -d $_bkup ]] ; then
+	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
-
-		if [[ -d $_root ]] ; then
-			rm -rf $_root
-		fi
-
-		if grep -q -s upgrade /tmp/cvw/updating ; then
-			if [[ -d $_bkup ]] ; then
-				cvw_say -s "deleting backup"
-				rm -rf $_bkup
-			fi
-		fi
-
+		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi
 
@@ -205,6 +185,12 @@ while getopts ":ig" opt ; do
 
 		g)
 			generate
+			exit 0
+		;;
+
+		x)
+			_root=$(cvw_xml -r system/app_root)/$_slug
+			date >$_root/installed.date_VW
 			exit 0
 		;;
 

@@ -7,9 +7,9 @@
 ######                http://owncloud.org/
 ######                https://doc.owncloud.org/server/9.1/admin_manual/installation/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 ######          TODO verify configuration in subdir
 ######
@@ -57,10 +57,6 @@ function owncloud_install_native
 	local _conf _file _subdir _patt
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/data \
-			$_root/app/config \
-			$_root/app/themes
 
 	cvw_unpack -i $_slug $_root/app index.php
 	for _subdir in apps assets config ; do
@@ -71,14 +67,6 @@ function owncloud_install_native
 		mkdir -p $_root/$_subdir
 		chown -R apache $_root/$_subdir
 	done
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
 
 	_file=$_root/app/config/config.php
 	_conf=/var/local/cfg/files/misc/owncloud.config.php
@@ -133,6 +121,11 @@ function owncloud_install_native
 		EOF
 	fi
 
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/data
+	cvw_borgclient -d $_root/app/config
+	cvw_borgclient -d $_root/app/themes
+
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
@@ -185,7 +178,6 @@ function owncloud_remove_native
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
@@ -202,10 +194,8 @@ function owncloud_remove_bitnami
 
 	if [[ -x $_file ]] ; then
 		cvw_say -h "Removing $_name (Bitnami)"
-		
 		cvw_say -s "running $_file"
 		$_file --mode unattended
-
 		cvw_say -o "$_slug:remove"
 	fi
 

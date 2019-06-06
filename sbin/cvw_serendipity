@@ -6,9 +6,9 @@
 ###### cvw_serendipity - Install or remove Serendipity
 ######                   http://www.s9y.org/
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -70,12 +70,6 @@ function serendipity_install
 	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_app/archives \
-			$_app/plugins \
-			$_app/templates_c \
-			$_app/uploads \
-			$_app/spamblock
 
 	cvw_unpack -i $_slug $_app index.php
 	chmod -R go-w $_app
@@ -83,20 +77,19 @@ function serendipity_install
 		mkdir -p $_app/$_subdir
 	done
 
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
-
 	_file="serendipity_config_local.inc.php"
 	if [[ -s $_app/.htaccess ]] ; then
-		chmod 0644   $_app/.htaccess $_app/$_file
-		chmod 0755   $_app
+		chmod 0644 $_app/.htaccess $_app/$_file
+		chmod 0755 $_app
 		cp $_app/.htaccess $_root/htaccess
 		cp $_app/$_file $_root/$_file
+		cvw_borgclient -m $_slug
+		cvw_borgclient -d $_app/archives
+		cvw_borgclient -d $_app/plugins
+		cvw_borgclient -d $_app/templates_c
+		cvw_borgclient -d $_app/uploads
+		cvw_borgclient -d $_app/spamblock
+
 	else
 		cvw_say -a "waiting for installation"
 	fi
@@ -122,7 +115,6 @@ function serendipity_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"

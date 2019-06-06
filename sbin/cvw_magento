@@ -6,9 +6,9 @@
 ###### cvw_magento - Install or remove Magento Shop
 ######               http://docs.magento.com/m2/ce/user_guide/getting-started.html
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -54,7 +54,6 @@ function magento_install_native
 	local _conf _file _check _subdir _dist
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	# cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
 	cvw_unpack -f /var/local/cvw/$_slug/Magento-CE-2.1.3.tar.bz2 $_root/app index.php
 
@@ -89,14 +88,6 @@ if false ; then
 		chown -R apache:apache $_root/app
 		cvw_say -a "please run https://$_fqdn$_uri/vqmod/install/"
 	fi
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
 fi
 
 	if cvw_xml -a software/nginx ; then
@@ -106,6 +97,9 @@ fi
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
 	fi
+
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/app
 
 	cvw_url -a "$_name" $_uri
 
@@ -160,7 +154,6 @@ function magento_remove_native
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name (native)"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
@@ -177,10 +170,8 @@ function magento_remove_bitnami
 
 	if [[ -x $_file ]] ; then
 		cvw_say -h "Removing $_name (Bitnami)"
-		
 		cvw_say -s "running $_file"
 		$_file --mode unattended
-
 		cvw_say -o "$_slug:remove"
 	fi
 

@@ -6,7 +6,7 @@
 ###### cvw_b2evolution - Install or remove b2evolution CMS
 ######                   http://b2evolution.net/
 ######
-###### (c) 2016-2018 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -68,10 +68,6 @@ function b2evolution_install
 	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_app/conf \
-			$_app/media \
-			$_app/plugins
 
 	cvw_unpack -i $_slug $_app index.php
 	for _subdir in _cache media ; do
@@ -86,14 +82,6 @@ function b2evolution_install
 			cvw_say -s "found skin ${_file##*/}"
 			unzip -q -u -o -d $_app/skins $_file
 		done
-	fi
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
 	fi
 
 	find $_app -name sample.htaccess -print | while read _file ; do
@@ -113,6 +101,10 @@ function b2evolution_install
 			rm -rf $_root/install # just in case
 			mv $_app/install $_root/install
 		fi
+		cvw_borgclient -m $_slug
+		cvw_borgclient -d $_app/conf
+		cvw_borgclient -d $_app/media
+		cvw_borgclient -d $_app/plugins
 	else
 		cvw_say -a "waiting for installation"
 		chown apache $_app/conf

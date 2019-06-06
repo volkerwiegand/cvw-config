@@ -6,9 +6,9 @@
 ###### cvw_shopware - Install or remove Shopware
 ######                http://en.community.shopware.com/Shopware-5-Installer_detail_1351_730.html
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -54,17 +54,8 @@ function shopware_install
 	local _conf _file _check _subdir _dist
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
 	cvw_unpack -m -s -u apache -i $_slug $_root/app shopware.php
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
@@ -73,6 +64,9 @@ function shopware_install
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
 	fi
+
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/app
 
 	cvw_url -a "$_name" $_uri
 
@@ -86,7 +80,6 @@ function shopware_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"

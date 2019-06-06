@@ -7,9 +7,9 @@
 ######               http://agendav.org/
 ######               http://docs.agendav.org/en/2.2.0/admin/installation/
 ######
-###### (c) 2018 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -157,6 +157,8 @@ function agendav_install
 		EOF
 		cvw_apache -p $_slug
 	fi
+
+	cvw_borgclient -m $_slug
 
 	cvw_url -a "$_name" "$_uri/index.php"
 

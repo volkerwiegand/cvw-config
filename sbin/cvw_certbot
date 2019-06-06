@@ -6,7 +6,7 @@
 ###### cvw_certbot - Install or remove Let's Encrypt certbot
 ######               http://certbot.eff.org/
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######

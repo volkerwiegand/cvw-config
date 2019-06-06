@@ -7,9 +7,9 @@
 ######                https://www.cubecart.com/
 ######                https://support.cubecart.com/Knowledgebase/Article/View/227/41/how-can-i-install-cubecart-v6
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -55,7 +55,6 @@ function cubecart_install
 	local _subdir _file
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
 	cvw_unpack -m -s -i $_slug $_root/app index.php
 	for _subdir in backup cache files images includes language modules/plugins ; do
@@ -132,16 +131,9 @@ function cubecart_install
 			rm -rf $_root/setup # just in case
 			mv $_root/app/setup $_root/setup
 		fi
+		cvw_borgclient -m $_slug
 	else
 		cvw_say -s "waiting for installation: https://$_fqdn$_uri/setup"
-	fi
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
 	fi
 
 	if cvw_xml -a software/nginx ; then
@@ -164,7 +156,6 @@ function cubecart_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"

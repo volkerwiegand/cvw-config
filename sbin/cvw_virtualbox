@@ -6,7 +6,7 @@
 ###### cvw_virtualbox - Install or remove Oracle VirtualBox
 ######                  https://www.virtualbox.org/
 ######
-###### (c) 2018-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -308,9 +308,7 @@ function virtualbox_remove
 {
 	if cvw_rpm -c VirtualBox-6.0 ; then
 		cvw_say -h "Removing $_name"
-
 		cvw_rpm -e VirtualBox-6.0
-
 		cvw_say -o "$_slug:remove"
 	fi
 }

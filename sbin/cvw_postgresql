@@ -6,7 +6,7 @@
 ###### cvw_postgresql - Install or remove PostgreSQL 9.6
 ######                  https://postgresql.org/
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -137,16 +137,15 @@ function postgresql_remove
 {
 	if cvw_service -c postgresql-9.6 ; then
 		cvw_say -h "Removing $_name"
-
 		cvw_rpm -e postgresql96-devel
 		cvw_rpm -e postgresql96-contrib
 		cvw_rpm -e postgresql96-server
 		cvw_rpm -e postgresql96
-
 		rm -rf /var/lib/pgsql
-
 		cvw_say -o "$_slug:remove"
 	fi
+
+	rm -f /tmp/cvw/error
 }
 
 

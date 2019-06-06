@@ -7,9 +7,9 @@
 ######                http://www.randshop.com/
 ######                http://www.wiki.randshop.com/Randshop-Installation
 ######
-###### (c) 2017 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -54,9 +54,6 @@ function randshop_install
 	local _file _subdir
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/data \
-			$_root/app/images/dbimages
 
 	cvw_unpack -m -s -i $_slug $_root/app index.php
 
@@ -73,19 +70,16 @@ function randshop_install
 	if grep -q "INSTALL.*true" $_file ; then
 		cvw_say -a "$_name waiting for install and admin protection"
 		chown apache:apache $_file
-	elif [[ -d $_root/app/install ]] ; then
-		cvw_say -s "hiding install directory"
-		rm -rf $_root/install # just in case
-		mv $_root/app/install $_root/install
-		chown -R root:root $_root/install
-	fi
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
+	else
+		if [[ -d $_root/app/install ]] ; then
+			cvw_say -s "hiding install directory"
+			rm -rf $_root/install # just in case
+			mv $_root/app/install $_root/install
+			chown -R root:root $_root/install
+		fi
+		cvw_borgclient -m $_slug
+		cvw_borgclient -d $_root/app/data
+		cvw_borgclient -d $_root/app/images/dbimages
 	fi
 
 	if cvw_xml -a software/nginx ; then
@@ -108,7 +102,6 @@ function randshop_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"

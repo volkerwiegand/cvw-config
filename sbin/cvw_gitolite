@@ -6,9 +6,9 @@
 ###### cvw_gitolite - Install or remove Gitolite
 ######                http://gitolite.com/gitolite/install.html
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -72,9 +72,7 @@ function gitolite_remove
 {
 	if id gitolite >/dev/null 2>&1 ; then
 		cvw_say -h "Removing $_name"
-
 		cvw_user -z gitolite
-
 		cvw_say -o "$_slug:remove"
 	fi
 }

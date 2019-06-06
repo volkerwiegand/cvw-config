@@ -92,15 +92,6 @@ function processwire_install
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_app/site/modules
-	cvw_borgclient -d $_app/site/templates
-
-	cvw_backup -z $_slug
-	# FIXME cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-	#		$_app/site/modules \
-	#		$_app/site/templates
-
 	cvw_unpack -u apache -i $_slug $_app index.php
 
 	_file=$_app/.htaccess
@@ -114,14 +105,6 @@ function processwire_install
 		cvw_file -e $_file "s|# \(RewriteBase /pw/\)|\1|" $(cvw_php -s)
 		cvw_file -e $_file "s|^\(  RewriteBase\).*|\1 $_uri/|" $(cvw_php -s)
 	fi
-
-	# FIXME if [[ -d /var/local/backup/$_slug/last/mysql && \
-	#      -d /var/local/backup/$_slug/last/dirs  && \
-	#      -x /usr/local/bin/bkup.$_slug          && \
-	#      -x /usr/local/bin/rstr.$_slug ]] ; then
-	#	cvw_say -s "updating / syncing backup"
-	#	/usr/local/bin/bkup.$_slug
-	#fi
 
 	_file="/etc/profile.d/alias_$_slug.sh"
 	cat >$_file.tmp_VW <<-EOF
@@ -152,6 +135,10 @@ function processwire_install
 		if grep -q -s $_pass $_file ; then
 			chmod 0400 $_file
 		fi
+
+		cvw_borgclient -m $_slug
+		cvw_borgclient -d $_app/site/modules
+		cvw_borgclient -d $_app/site/templates
 	else
 		for _site in $(cvw_xml -l software/$_slug/site | sort) ; do
 			cvw_say -s "adding site $_site"

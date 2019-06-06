@@ -8,9 +8,9 @@
 ######                  http://doc.prestashop.com/display/PS17/Getting+started
 ######                  http://doc.prestashop.com/display/PS17/Installing+PrestaShop+using+the+command-line+script
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -63,7 +63,6 @@ function prestashop_install_native
 	local _conf _file _check _subdir _dist
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
 	cvw_unpack -m -s -u apache -i $_slug $_root/app index.php
 
@@ -109,14 +108,8 @@ if false ; then
 		cvw_say -s "hiding install directory"
 		rm -rf $_root/install # just in case
 		mv $_root/app/install $_root/install
-	fi
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
+	else
+		cvw_borgclient -m $_slug
 	fi
 fi
 
@@ -180,7 +173,6 @@ function prestashop_remove_native
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name (native)"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
@@ -197,10 +189,8 @@ function prestashop_remove_bitnami
 
 	if [[ -x $_file ]] ; then
 		cvw_say -h "Removing $_name (Bitnami)"
-		
 		cvw_say -s "running $_file"
 		$_file --mode unattended
-
 		cvw_say -o "$_slug:remove"
 	fi
 

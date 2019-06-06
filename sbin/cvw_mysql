@@ -6,7 +6,7 @@
 ###### cvw_mysql - Install MySQL (actually MariaDB) server
 ######             https://mariadb.org/
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -143,9 +143,7 @@ function mysql_disable
 {
 	if cvw_service -c mariadb ; then
 		cvw_say -h "Disabling MySQL (MariaDB)"
-
 		cvw_service -d mariadb
-
 		cvw_say -o "mysql:disable"
 	fi
 }

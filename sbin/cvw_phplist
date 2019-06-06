@@ -7,7 +7,7 @@
 ######               https://www.phplist.org/
 ######               https://www.phplist.org/manual/ch028_installation.xhtml
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -91,7 +91,6 @@ function phplist_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app
 
 	cvw_unpack -i $_slug $_root/download VERSION
 	if [[ ! -d $_root/app ]] ; then
@@ -105,14 +104,6 @@ function phplist_install
 		mkdir -p $_root/app/$_dir
 	done
 	chown -R apache $_root/app
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
 
 	# TODO setup language according to config
 
@@ -146,6 +137,9 @@ function phplist_install
 		cvw_apache -p $_slug
 	fi
 
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/app
+
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
@@ -158,7 +152,6 @@ function phplist_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"

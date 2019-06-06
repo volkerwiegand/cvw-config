@@ -7,9 +7,9 @@
 ######              https://datenstrom.se/yellow/
 ######              https://developers.datenstrom.se/help/how-to-make-a-website
 ######
-###### (c) 2018 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -175,6 +175,8 @@ function yellow_install
 		cvw_apache -p $_slug
 	fi
 
+	cvw_borgclient -d $_app
+
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
@@ -195,7 +197,6 @@ function yellow_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

@@ -6,9 +6,9 @@
 ###### cvw_dokuwiki - Install or remove DokuWiki
 ######                https://www.dokuwiki.org/dokuwiki
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -50,20 +50,11 @@ function dokuwiki_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _subdir
 
-	cvw_backup $_slug $_root/app/conf $_root/app/data
-
 	cvw_unpack -i $_slug $_root/app index.php
 	for _subdir in conf data ; do
 		mkdir -p $_root/app/$_subdir
 		chown -R apache $_root/app/$_subdir
 	done
-
-	if [[ -d /var/local/backup/$_slug/last/dirs && \
-	      -x /usr/local/bin/bkup.$_slug         && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
 
 	_file="$_root/app/.htaccess"
 	cat >$_file.tmp_VW <<-EOF
@@ -112,9 +103,9 @@ function dokuwiki_install
 	_file="$_root/app/conf/local.php"
 	cat >$_file.tmp_VW <<-EOF
 		<?php
-		\$conf['title']       = 'Railduino Wiki';
+		\$conf['title']       = 'Example Wiki';
 		\$conf['lang']        = 'de';
-		\$conf['tagline']     = 'Preiswerte Modellbahnsteuerung mit Arduino und Browser';
+		\$conf['tagline']     = 'This is the tagline';
 		\$conf['useacl']      = 1;
 		\$conf['superuser']   = 'volker';
 	EOF
@@ -124,6 +115,8 @@ function dokuwiki_install
 			rm -rf $_root/install.php # just in case
 			mv $_root/app/install.php $_root/install.php
 		fi
+		cvw_borgclient -d $_root/app/conf
+		cvw_borgclient -d $_root/app/data
 	else
 		cvw_say -s "waiting for installation"
 	fi
@@ -196,7 +189,6 @@ function dokuwiki_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		cvw_backup -z $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

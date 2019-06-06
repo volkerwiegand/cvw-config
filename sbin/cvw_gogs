@@ -8,9 +8,9 @@
 ######            https://github.com/gogits/gogs/issues/1202
 ######            https://gogs.io/docs/intro/faqs
 ######
-###### (c) 2016 Volker Wiegand <volker.wiegand@cvw.de>
-######          This file is part of "CVW Config"
-######          See LICENSE for copyright information
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
 ######
 #################################################################################
 
@@ -57,20 +57,9 @@ function gogs_install
 	local _file
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_home/gogs-repositories \
-			$_home/app/log
 
 	cvw_unpack -i $_slug $_home/app gogs
 	mkdir -p $_home/app/custom/conf
-
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
 
 	_file="$_home/app/custom/conf/app.ini"
 	cat >$_file.tmp_VW <<-EOF
@@ -174,6 +163,10 @@ function gogs_install
 		EOF
 	fi
 
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_home/gogs-repositories
+	cvw_borgclient -d $_home/app/log
+
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
@@ -185,7 +178,6 @@ function gogs_remove
 	if id gogs >/dev/null 2>&1 ; then
 		cvw_say -h "Removing Gogs"
 		cvw_service -z $_slug
-		cvw_backup -z $_slug
 		cvw_mysql -z $_slug $_slug
 		userdel -fr gogs 2>/tmp/cvw/error
 		cvw_say -o "$_slug:remove"

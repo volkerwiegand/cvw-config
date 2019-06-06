@@ -83,8 +83,6 @@ function borgclient_initial
 	mkdir -p $_root
 	touch /tmp/cvw/$_slug.dirs /tmp/cvw/$_slug.mysql
 
-	rm -rf /var/local/borgbackup	# FIXME only temp
-
 	cvw_say -o "$_slug:initial"
 }
 
@@ -115,6 +113,7 @@ function borgclient_finish
 			cvw_say -s "adding MySQL database $_mysql"
 			cat >>$_file.tmp_VW <<-EOF
 
+				echo "MySQL database $_mysql"
 				_file="$_root/mysql_data/$_mysql.sql"
 				/usr/bin/mysqldump -uroot -p$_dbpw $_mysql >\$_file
 			EOF
@@ -185,7 +184,16 @@ function borgclient_finish
 	mkdir -p /usr/local/bin
 	ln -nfs $_file /usr/local/bin/borgclient.sh
 
-	# FIXME add cron.daily day=$(LANG=C /bin/date +%A)
+	_file="/etc/cron.daily/$_slug"
+	cat >$_file.tmp_VW <<-EOF
+		#!/bin/bash
+
+		_day=\$(LANG=C /bin/date +%A)
+		$_root/backup.sh >$_root/result.\$_day 2>&1
+
+		exit 0
+	EOF
+	cvw_file -m 0775 -v $_file
 
 	cvw_say -o "$_slug:finish"
 }
@@ -198,8 +206,8 @@ function borgclient_remove
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
 
-		rm -f /etc/cron.daily/$_slug
-		rm -f /usr/local/bin/borgclient.sh
+		cvw_file -r /etc/cron.daily/$_slug
+		cvw_file -r /usr/local/bin/borgclient.sh
 		rm -rf $_root
 
 		if ! cvw_xml -a software/borgserver ; then

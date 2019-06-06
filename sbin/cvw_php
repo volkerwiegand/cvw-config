@@ -6,7 +6,7 @@
 ###### cvw_php - Install or remove PHP
 ######           https://secure.php.net/
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -163,27 +163,15 @@ function php_zap_app
 {
 	local _app=$1
 	local _root=$(cvw_xml -r system/app_root)/$_app
-	local _bkup=/var/local/backup/$_app
 
-	if [[ -d $_root || -d $_bkup ]] ; then
+	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_app"
-
-		cvw_backup -z $_app
 		cvw_mysql -z $_app $_app
 		# TODO cvw_postgresql -z $_app $_app
 		rm -f /etc/profile.d/alias_$_app.sh
-
 		if [[ -d $_root ]] ; then
 			rm -rf $_root
 		fi
-
-		if grep -q -s upgrade /tmp/cvw/updating ; then
-			if [[ -d $_bkup ]] ; then
-				cvw_say -s "deleting backup"
-				rm -rf $_bkup
-			fi
-		fi
-
 		cvw_say -o "$_app:remove"
 	fi
 

@@ -10,7 +10,7 @@
 ######               https://docs.bitnami.com/installer/infrastructure/ruby/
 ######               https://bitnami.com/stack/ruby/modules
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -124,10 +124,8 @@ function bitnami_remove
 
 	if [[ -s $_root/app/.bitnamirc ]] ; then
 		cvw_say -h "Removing $_name"
-
 		rm -rf $_root
 		rm -f /usr/local/bin/ctlscript.sh
-
 		cvw_say -o "$_slug:remove"
 	fi
 }

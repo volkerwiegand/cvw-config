@@ -6,7 +6,7 @@
 ###### cvw_nginx - Install or remove Nginx
 ######             http://nginx.org/
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -250,13 +250,10 @@ function nginx_remove
 {
 	if cvw_service -c nginx ; then
 		cvw_say -h "Removing Nginx"
-
 		cvw_service -d nginx
 		cvw_rpm -e nginx
 		# rpm erase nginx-release-centos-7-0
-
 		rm -rf /etc/nginx /usr/share/nginx
-
 		cvw_say -o "$_slug:remove"
 	fi
 }
