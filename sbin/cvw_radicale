@@ -185,6 +185,8 @@ function radicale_install
 
 function radicale_remove
 {
+	cvw_backup -z $_slug
+
 	if cvw_service -c radicaled ; then
 		cvw_say -h "Removing $_name"
 

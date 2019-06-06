@@ -48,12 +48,6 @@
       <mail>security@example.com</mail>
     </tripwire>
 
-    <backup active="true">
-      <remote>//storage.example.com/subdir</remote>
-      <username>user</username>
-      <password>pass</password>
-    </backup>
-
     <ntp active="true">
       <server>server 0.centos.pool.ntp.org</server>
       <server>server 1.centos.pool.ntp.org</server>
@@ -63,7 +57,20 @@
   </system>
 
   <software development="false" go="true">
+    <borgclient active="true">
+      <host>bkup.example.com:22</host>
+      <passphrase>secret_for_client</passphrase>
+    </borgclient>
+
+    <borgserver active="true">
+      <client id="client" active="true">
+        <host>client.example.com</host>
+        <passphrase>secret_for_client</passphrase>
+      </client>
+    </borgserver>
+
     <certbot active="true">
+      <san>bkup.example.com</san>
       <san>ftp.example.com</san>
     </certbot>
 

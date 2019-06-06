@@ -67,12 +67,12 @@ shift $(($OPTIND-1))
 cvw_init $_debug $_info $_upgrade
 error_check
 
+cvw_borgclient     -i ; error_check
 cvw_ntp            -i ; error_check
 cvw_yum            -i ; error_check
 cvw_docker         -i ; error_check
 cvw_user           -i ; error_check
 cvw_certbot        -i ; error_check
-cvw_borgbackup     -i ; error_check
 cvw_bitnami        -i ; error_check
 cvw_haproxy        -i ; error_check
 cvw_nginx          -i ; error_check
@@ -142,6 +142,7 @@ cvw_abantecart     -i ; error_check
 cvw_piwigo         -i ; error_check
 cvw_vsftpd         -i ; error_check
 cvw_automx         -i ; error_check
+cvw_borgserver     -i ; error_check
 
 cvw_postfix        -x ; error_check
 cvw_mysql          -x ; error_check
@@ -149,6 +150,7 @@ cvw_apache         -x ; error_check
 cvw_nginx          -x ; error_check
 cvw_service        -x ; error_check
 cvw_firewall       -x ; error_check
+cvw_borgclient     -x ; error_check
 
 if [[ -s /etc/profile.d/cvw_aliases.sh.tmp_VW ]] ; then
 	cvw_file -v /etc/profile.d/cvw_aliases.sh

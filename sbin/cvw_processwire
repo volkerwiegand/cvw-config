@@ -7,7 +7,7 @@
 ######                   https://processwire.com/
 ######                   https://processwire.com/docs/install/new/
 ######
-###### (c) 2016-2017 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -91,9 +91,15 @@ function processwire_install
 	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_app/site/modules \
-			$_app/site/templates
+
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_app/site/modules
+	cvw_borgclient -d $_app/site/templates
+
+	cvw_backup -z $_slug
+	# FIXME cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+	#		$_app/site/modules \
+	#		$_app/site/templates
 
 	cvw_unpack -u apache -i $_slug $_app index.php
 
@@ -109,13 +115,13 @@ function processwire_install
 		cvw_file -e $_file "s|^\(  RewriteBase\).*|\1 $_uri/|" $(cvw_php -s)
 	fi
 
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
+	# FIXME if [[ -d /var/local/backup/$_slug/last/mysql && \
+	#      -d /var/local/backup/$_slug/last/dirs  && \
+	#      -x /usr/local/bin/bkup.$_slug          && \
+	#      -x /usr/local/bin/rstr.$_slug ]] ; then
+	#	cvw_say -s "updating / syncing backup"
+	#	/usr/local/bin/bkup.$_slug
+	#fi
 
 	_file="/etc/profile.d/alias_$_slug.sh"
 	cat >$_file.tmp_VW <<-EOF

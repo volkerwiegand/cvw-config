@@ -222,44 +222,6 @@ function init_init
 		swapon -a
 	fi
 
-	if cvw_xml -a system/backup ; then
-		cvw_rpm -i cifs-utils
-		_file=/root/.cred_backup
-		cat >$_file.tmp_VW <<-EOF
-			username=$(cvw_xml -r system/backup/username)
-			password=$(cvw_xml -r system/backup/password)
-		EOF
-		_addr=$(cvw_xml -r system/backup/remote)
-		[[ -s /tmp/cvw/error ]] && exit 1
-		cvw_file -m 0600 -v /root/.cred_backup
-
-		cat >/etc/fstab.tmp_VW <<-EOF
-			$(grep -v mnt.backup /etc/fstab)
-			$_addr /mnt/backup cifs noauto,rw,credentials=$_file,uid=0,gid=0,iocharset=utf8 0 0
-		EOF
-		cvw_file -v /etc/fstab
-		cvw_say -s "background backup to $_addr"
-
-		_file="/etc/profile.d/alias_backup.sh"
-		cat >$_file.tmp_VW <<-EOF
-			#
-			# shell aliases for backup
-			#
-			alias mnt_bkup='mkdir -p /mnt/backup && mount /mnt/backup && cd /mnt/backup'
-			alias bkup_umt='cd ; umount /mnt/backup ; rmdir /mnt/backup'
-		EOF
-		cvw_file -v $_file
-	else
-		cvw_file -r /root/.cred_backup
-		cvw_file -r /etc/profile.d/alias_backup.sh
-
-		cat >/etc/fstab.tmp_VW <<-EOF
-			$(grep -v mnt.backup /etc/fstab)
-		EOF
-		cvw_file -v /etc/fstab
-		cvw_say -s "no background backup"
-	fi
-
 	cvw_say -s "language is $_lang"
 	cvw_say -s "timezone is $_zone"
 

@@ -79,15 +79,20 @@ function postfix_install_standalone
 	fi
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_vmail_dir
 
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "FIXME --- NOT updating / syncing backup"
-		# /usr/local/bin/bkup.$_slug
-	fi
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_vmail_dir
+
+	cvw_backup -z $_slug
+	# FIXME cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_vmail_dir
+
+	# FIXME if [[ -d /var/local/backup/$_slug/last/mysql && \
+	#      -d /var/local/backup/$_slug/last/dirs  && \
+	#      -x /usr/local/bin/bkup.$_slug          && \
+	#      -x /usr/local/bin/rstr.$_slug ]] ; then
+	#	cvw_say -s "FIXME --- NOT updating / syncing backup"
+	#	# /usr/local/bin/bkup.$_slug
+	#fi
 
 
 	##########################################################

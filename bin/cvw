@@ -38,8 +38,8 @@ function usage
 {
 	cat >&2 <<-EOF
 		Syntax: $_prog -a                Assemble docker-compose.yaml from sources
-		    or: $_prog -b                Fetch backups from host (save to /backup/<fqdn>/)
-		    or: $_prog -B [app [day]]    Restore (selected) backups to host
+		    or: $_prog -b                Add BorgBackup client to server
+		    or: $_prog -B                Delete BorgBackup client from server
 		    or: $_prog -c [cmd [args]]   Run remote docker-compose command for app
 		    or: $_prog -d [cmd [args]]   Run remote docker command
 		    or: $_prog -e [-D] [i]       Execute config [debug] [info]
@@ -264,11 +264,11 @@ while getopts ":abBcCdDeEf:g:h:HijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 		;;
 
 		b)
-			_backup=1
+			_add_borgclient=1
 		;;
 
 		B)
-			_restore=1
+			_del_borgclient=1
 		;;
 
 		c)
@@ -405,41 +405,42 @@ done
 shift $(($OPTIND-1))
 
 
-if [[ $_backup ]] ; then
-	_fqdn=$(cvw_xml -r host/fqdn)
-	_addr=$(cvw_xml -r host/addr)
-	mkdir -p /backup/$_fqdn
-	sudo chown -R $LOGNAME:$LOGNAME /backup
-	setup_config
-	cvw_say
-	cvw_say -a "Fetch backups from host"
-	rsync -v $RSYNC_FLAGS root@$_addr:/var/local/backup/ /backup/$_fqdn/data
-	cvw_say -a "Backup configuration"
-	mkdir -p /backup/$_fqdn/config
-	tar cvzf /backup/$_fqdn/config/$(date +%F-%H-%M).tgz config.in.xml cfg
+if [[ $_add_borgclient ]] ; then
+	setup_config quiet
+	if ! cvw_xml -a software/borgclient ; then
+		failure "BorgBackup client not active"
+	fi
+	if [[ ! -s cfg/files/keys/id_rsa.pub ]] ; then
+		failure "id_rsa.pub not found - maybe run cvw -H"
+	fi
+	_host=$(cvw_xml -r software/borgclient/host | cut -d: -f1)
+	_root=$(find .. -type d -name "*$_host" -print)
+	if [[ -z $_root ]] ; then
+		failure "BorgBackup server '$_host' not found"
+	fi
+	if [[ ! -d $_root/cfg/files/borgserver ]] ; then
+		failure "BorgBackup server $_host has no borgserver dir"
+	fi
+	cp cfg/files/keys/id_rsa.pub $_root/cfg/files/borgserver/$_fqdn
+	echo "Current BorgBackup clients:"
+	ls -1 $_root/cfg/files/borgserver
 	exit
 fi
 
 
-if [[ $_restore ]] ; then
-	setup_config
-	cvw_say
-	_cmd=""
-	if [[ -n $2 ]] ; then
-		[[ -d /backup/$_fqdn/data/$1/$2 ]] || failure "no remote backups $_fqdn $1 $2"
-		cvw_say -a "Restore backup for $1 from $2 to $_fqdn"
-		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/$1/$2/ root@$_addr:/var/local/backup/$1/$2"
-	elif [[ -n $1 ]] ; then
-		[[ -d /backup/$_fqdn/data/$1 ]] || failure "no remote backups $_fqdn $1"
-		cvw_say -a "Restore backups for $1 to $_fqdn"
-		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/$1/ root@$_addr:/var/local/backup/$1"
-	else
-		[[ -d /backup/$_fqdn/data ]] || failure "no remote backups $_fqdn"
-		cvw_say -a "Restore all backups to $_fqdn"
-		_cmd="rsync -v $RSYNC_FLAGS /backup/$_fqdn/data/ root@$_addr:/var/local/backup"
+if [[ $_del_borgclient ]] ; then
+	setup_config quiet
+	if ! cvw_xml -a software/borgclient ; then
+		failure "BorgBackup client not active"
 	fi
-	sleep 5
-	$_cmd
+	_host=$(cvw_xml -r software/borgclient/host | cut -d: -f1)
+	_root=$(find .. -type d -name "*$_host" -print)
+	if [[ -z $_root ]] ; then
+		failure "BorgBackup server '$_host' not found"
+	fi
+	rm -f $_root/cfg/files/borgserver/$_fqdn
+	echo "Current BorgBackup clients:"
+	ls -1 $_root/cfg/files/borgserver
 	exit
 fi
 
@@ -638,7 +639,10 @@ fi
 
 
 if [[ $_gen_ssh ]] ; then
-	setup_config
+	setup_config quiet
+	if [[ -s cfg/files/keys/id_rsa ]] ; then
+		failure "cfg/files/keys/id_rsa exists"
+	fi
 	cvw_say -a "generate keys on $_addr"
 	ssh -t root@$_addr "ssh-keygen"
 	cvw_say -a "Fetch id_rsa{.pub} from $_addr"

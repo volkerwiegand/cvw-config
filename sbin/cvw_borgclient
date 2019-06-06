@@ -1,0 +1,255 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_borgclient - Install or remove BorgBackup (as client)
+######                  https://www.borgbackup.org/
+######                  https://borgbackup.readthedocs.io/en/stable/installation.html
+######                  https://thomas-leister.de/server-backups-mit-borg/
+######
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="BorgBackup Client"
+_slug="borgclient"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i       Install or remove $_name
+		    or: $_prog -d dir   Add directory to backup
+		    or: $_prog -m db    Add MySQL database to backup
+		    or: $_prog -g       Generate config template
+		    or: $_prog -x       Execute and cleanup
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function borgclient_generate
+{
+	cat <<-EOF
+	    <borgclient active="true">
+	      <host>server:port</host>
+	      <passphrase>secret_for_client</passphrase>
+	    </borgclient>
+
+	EOF
+	exit 0
+}
+
+
+function borgclient_initial
+{
+	cvw_say -h "Installing $_name"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _host=$(cvw_xml -r software/$_slug/host)
+	local _pass=$(cvw_xml -r software/$_slug/passphrase)
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      My own FQDN .............: $_fqdn
+			      Backup to host ..........: $_host
+			      Passphrase ..............: $_pass
+		EOF
+	fi
+
+	cvw_rpm -i borgbackup
+
+	mkdir -p $_root
+	touch /tmp/cvw/$_slug.dirs /tmp/cvw/$_slug.mysql
+
+	rm -rf /var/local/borgbackup	# FIXME only temp
+
+	cvw_say -o "$_slug:initial"
+}
+
+
+function borgclient_finish
+{
+	cvw_say -h "Finishing $_name"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _host=$(cvw_xml -r software/$_slug/host)
+	local _pass=$(cvw_xml -r software/$_slug/passphrase)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file _mysql _dir _dbpw
+
+	_file=$_root/backup.sh
+	cat >$_file.tmp_VW <<-EOF
+		#!/bin/bash
+
+		echo "############## Prepare databases ##############"
+
+		rm -rf $_root/mysql_data
+		mkdir -p $_root/mysql_data
+	EOF
+
+	if [[ -s /tmp/cvw/$_slug.mysql ]] ; then
+		_dbpw=$(cvw_xml -r software/mysql/password)
+		for _mysql in $(cat /tmp/cvw/$_slug.mysql) ; do
+			cvw_say -s "adding MySQL database $_mysql"
+			cat >>$_file.tmp_VW <<-EOF
+
+				_file="$_root/mysql_data/$_mysql.sql"
+				/usr/bin/mysqldump -uroot -p$_dbpw $_mysql >\$_file
+			EOF
+		done
+	fi
+
+	cat >>$_file.tmp_VW <<-EOF
+
+		echo "############## Start backup ##############"
+
+		export BORG_REPO="ssh://borg@$_host/~/repos/$_fqdn"
+		export BORG_PASSPHRASE='$_pass'
+
+		/usr/bin/borg create \\
+		    --verbose \\
+		    --filter AME \\
+		    --list \\
+		    --stats \\
+		    --show-rc \\
+		    --compression lz4 \\
+		    ::'{hostname}-{now}' \\
+		    /etc \\
+	EOF
+
+	for _dir in $(cat /tmp/cvw/$_slug.dirs) ; do
+		cvw_say -s "adding directory $_dir"
+		echo "    $_dir \\" >>$_file.tmp_VW
+	done
+
+	cat >>$_file.tmp_VW <<-EOF
+		    $_root/mysql_data 2>&1
+
+		_res=\$?
+		if [[ \$_res -ge 2 ]] ; then
+		    echo "Backup failed"
+		    exit \$_res
+		fi
+		if [[ \$_res -eq 1 ]] ; then
+		    echo "Backup has warnings"
+		fi
+
+		echo "############## Prune repo ##############"
+
+		/usr/bin/borg prune \\
+		    --list \\
+		    --prefix '{hostname}-' \\
+		    --show-rc \\
+		    --keep-daily 7 \\
+		    --keep-weekly 4 \\
+		    --keep-monthly 6 2>&1
+
+		_res=\$?
+		if [[ \$_res -ge 2 ]] ; then
+		    echo "Prune failed"
+		    exit \$_res
+		fi
+		if [[ \$_res -eq 1 ]] ; then
+		    echo "Prune has warnings"
+		fi
+
+		echo "BorgBackup finished successfully"
+		/usr/bin/logger -t $_slug "BorgBackup finished successfully"
+
+		exit 0
+	EOF
+	cvw_file -m 0755 -v $_file
+
+	mkdir -p /usr/local/bin
+	ln -nfs $_file /usr/local/bin/borgclient.sh
+
+	# FIXME add cron.daily day=$(LANG=C /bin/date +%A)
+
+	cvw_say -o "$_slug:finish"
+}
+
+
+function borgclient_remove
+{
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+
+	if [[ -d $_root ]] ; then
+		cvw_say -h "Removing $_name"
+
+		rm -f /etc/cron.daily/$_slug
+		rm -f /usr/local/bin/borgclient.sh
+		rm -rf $_root
+
+		if ! cvw_xml -a software/borgserver ; then
+			cvw_rpm -e borgbackup
+		fi
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":d:gim:x" opt ; do
+	case $opt in
+		d)
+			echo "$OPTARG" >>/tmp/cvw/$_slug.dirs
+			exit 0
+		;;
+
+		g)
+			borgclient_generate
+			exit 0
+		;;
+
+		i)
+			if cvw_xml -a software/$_slug ; then
+				borgclient_initial
+			else
+				borgclient_remove
+			fi
+			exit 0
+		;;
+
+		m)
+			echo "$OPTARG" >>/tmp/cvw/$_slug.mysql
+			exit 0
+		;;
+
+		x)
+			if cvw_xml -a software/$_slug ; then
+				borgclient_finish
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

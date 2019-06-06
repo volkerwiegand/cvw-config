@@ -272,7 +272,7 @@ while getopts ":d:e:g:h:ip:r:s:v:z:" opt ; do
 		z)
 			id $OPTARG >/dev/null 2>&1 || exit 0
 			cvw_say -s "deleting user '$OPTARG'"
-			userdel -fr $OPTARG 2>/tmp/cvw/error
+			userdel -f -r $OPTARG 2>/tmp/cvw/error
 			if id $OPTARG >/tmp/cvw/zap_user 2>&1 ; then
 				cvw_say -f "user $OPTARG still exists: $(cat /tmp/cvw/zap_user)"
 			fi

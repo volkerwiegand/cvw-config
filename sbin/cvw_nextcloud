@@ -99,7 +99,12 @@ function nextcloud_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 
 	cvw_mysql -c $_slug $_slug $_pass utf8mb4_general_ci
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/data
+
+	cvw_backup -z $_slug
+	# FIXME cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 
 	cvw_unpack -u apache -i $_slug $_root/app index.php
 
@@ -148,13 +153,13 @@ function nextcloud_install
 		nextcloud_occ --no-interaction db:add-missing-indices
 	fi
 
-	if [[ -d /var/local/backup/$_slug/last/mysql && \
-	      -d /var/local/backup/$_slug/last/dirs  && \
-	      -x /usr/local/bin/bkup.$_slug          && \
-	      -x /usr/local/bin/rstr.$_slug ]] ; then
-		cvw_say -s "updating / syncing backup"
-		/usr/local/bin/bkup.$_slug
-	fi
+	# FIXME if [[ -d /var/local/backup/$_slug/last/mysql && \
+	#      -d /var/local/backup/$_slug/last/dirs  && \
+	#      -x /usr/local/bin/bkup.$_slug          && \
+	#      -x /usr/local/bin/rstr.$_slug ]] ; then
+	#	cvw_say -s "updating / syncing backup"
+	#	/usr/local/bin/bkup.$_slug
+	#fi
 
 	if cvw_xml -a software/nginx ; then
 		_file="/tmp/cvw/nginx.options"
