@@ -132,6 +132,15 @@ function processwire_install
 			cp $_conf $_file.tmp_VW
 			cvw_file -u apache -v $_file $(cvw_php -s)
 		fi
+
+		if cvw_xml -t software/$_slug/debug ; then
+			cvw_say -s "debug is enabled"
+			cvw_file -u apache -e $_file "s|debug =.*;|debug = true;|"
+		else
+			cvw_say -s "debug is disabled"
+			cvw_file -u apache -e $_file "s|debug =.*;|debug = false;|"
+		fi
+
 		if grep -q -s $_pass $_file ; then
 			chmod 0400 $_file
 		fi
