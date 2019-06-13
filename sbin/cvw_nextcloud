@@ -82,6 +82,7 @@ function nextcloud_install
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _loglvl=$(cvw_xml -r software/$_slug/loglevel)
 	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
 	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
@@ -121,6 +122,14 @@ function nextcloud_install
 	fi
 	if ! grep -q "$_root/data" $_file ; then
 		nextcloud_occ config:system:set datadirectory --value=$_root/data
+	fi
+
+	if [[ ! -d $_root/log ]] ; then
+		install -o apache -g apache -d $_root/log
+	fi
+	if ! grep -q "logfile" $_file ; then
+		nextcloud_occ config:system:set logfile --value=$_root/log/nextcloud.log
+		nextcloud_occ config:system:set loglevel --value=$_loglvl
 	fi
 
 	if [[ ! -d $_root/skeleton ]] ; then
