@@ -37,7 +37,7 @@ function failure
 
 function init_init
 {
-	local _fqdn _addr _lang _curr _want _file _name
+	local _fqdn _addr _addr6 _lang _curr _want _file _name
 	local _id _static _host _cert _src _dst _swap
 
 	rm -rf /tmp/cvw
@@ -96,7 +96,7 @@ function init_init
 	cvw_say -h "Configuring / verifying basics"
 	_fqdn=$(cvw_xml -r host/fqdn)
 	_addr=$(cvw_xml -r host/addr)
-	# _addr6=$(cvw_xml -r host/addr6)
+	_addr6=$(cvw_xml -r host/addr6)
 	_lang=$(cvw_xml -r system/language)
 	_zone=$(cvw_xml -r system/timezone)
 	_root=$(cvw_xml -r system/app_root)
@@ -112,7 +112,7 @@ function init_init
 			      App root ................: $_root
 			      FQDN ....................: $_fqdn
 			      IPv4 Addr ...............: $_addr
-			      # IPv6 Addr ...............: $_addr6
+			      IPv6 Addr ...............: $_addr6
 		EOF
 	fi
 
