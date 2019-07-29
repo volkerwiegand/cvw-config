@@ -253,9 +253,8 @@
       <url>http://rspamd.com/rpm-stable/centos-7/rspamd.repo</url>
     </download>
     <download id="seafile">
-      <status>currently-unknown</status>
-      <link>https://bitbucket.org/haiwen/seafile/downloads</link>
-      <url>https://bitbucket.org/haiwen/seafile/downloads/seafile-server_4.2.1_x86-64.tar.gz</url>
+      <link>https://www.seafile.com/en/download/</link>
+      <url>https://download.seadrive.org/seafile-server_7.0.4_x86-64.tar.gz</url>
     </download>
     <download id="serendipity">
       <link>https://docs.s9y.org/downloads.html</link>

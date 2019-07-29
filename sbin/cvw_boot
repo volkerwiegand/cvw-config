@@ -67,11 +67,12 @@ shift $(($OPTIND-1))
 cvw_init $_debug $_info $_upgrade
 error_check
 
+cvw_user           -i ; error_check
+cvw_mount          -i ; error_check
 cvw_borgclient     -i ; error_check
 cvw_ntp            -i ; error_check
 cvw_yum            -i ; error_check
 cvw_docker         -i ; error_check
-cvw_user           -i ; error_check
 cvw_certbot        -i ; error_check
 cvw_bitnami        -i ; error_check
 cvw_haproxy        -i ; error_check
@@ -117,6 +118,7 @@ cvw_kivitendo      -i ; error_check
 cvw_piwik          -i ; error_check
 cvw_owncloud       -i ; error_check
 cvw_nextcloud      -i ; error_check
+cvw_seafile        -i ; error_check
 cvw_webdav         -i ; error_check
 cvw_radicale       -i ; error_check
 cvw_davical        -i ; error_check

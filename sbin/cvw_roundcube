@@ -72,7 +72,8 @@ function roundcube_install
 	local _key=$(cvw_xml -r software/$_slug/key)
 	local _admin=$(cvw_xml -R software/$_slug/admin admin)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _conf _file _installer _plugin _plugins
+	local _conf=$_root/app/config/config.inc.php
+	local _file _installer _plugin _plugins
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
@@ -92,7 +93,7 @@ function roundcube_install
 		chown -R apache $_root/app/$_subdir
 	done
 
-	if [[ -s $_root/installed.date_VW ]] ; then
+	if grep -q -s $_pass $_conf ; then
 		chmod 0700 $_root/app/installer
 		_installer="false"
 		cvw_borgclient -m $_slug
@@ -110,8 +111,7 @@ function roundcube_install
 		fi
 			_plugins="$_plugins'$_plugin'"
 	done
-	_file=$_root/app/config/config.inc.php
-	cat >$_file.tmp_VW <<-EOF
+	cat >$_conf.tmp_VW <<-EOF
 		<?php
 		\$config['db_dsnw']           = 'mysql://$_slug:$_pass@localhost/$_slug';
 		\$config['default_host']      = 'localhost';
@@ -123,7 +123,7 @@ function roundcube_install
 		\$config['spellcheck_engine'] = 'googie';
 		\$config['enable_installer']  = $_installer;
 	EOF
-	cvw_file -v $_file $(cvw_php -s)
+	cvw_file -v $_conf $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
@@ -185,12 +185,6 @@ while getopts ":ig" opt ; do
 
 		g)
 			generate
-			exit 0
-		;;
-
-		x)
-			_root=$(cvw_xml -r system/app_root)/$_slug
-			date >$_root/installed.date_VW
 			exit 0
 		;;
 

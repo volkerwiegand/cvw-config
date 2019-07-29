@@ -223,8 +223,8 @@ if [[ $_create ]] ; then
 	fi
 
 	cvw_say -s "database: '$_create' ($_charset / $_collate)"
-	cvw_mysql -e "CREATE DATABASE IF NOT EXISTS $_create CHARACTER SET $_charset COLLATE $_collate"
-	cvw_mysql -e "GRANT ALL PRIVILEGES ON $_create.* TO '$_dbuser'@'localhost' IDENTIFIED BY '$_dbpass'"
+	cvw_mysql -e "CREATE DATABASE IF NOT EXISTS \`$_create\` CHARACTER SET $_charset COLLATE $_collate"
+	cvw_mysql -e "GRANT ALL PRIVILEGES ON \`$_create\`.* TO '$_dbuser'@'localhost' IDENTIFIED BY '$_dbpass'"
 	cvw_mysql -e "FLUSH PRIVILEGES"
 	exit 0
 fi
@@ -240,7 +240,7 @@ fi
 
 if [[ $_delete ]] ; then
 	_dbuser=$1
-	cvw_mysql -e "DROP DATABASE IF EXISTS $_delete"
+	cvw_mysql -e "DROP DATABASE IF EXISTS \`$_delete\`"
 	if [[ $_dbuser ]] ; then
 		cvw_mysql -e "DELETE FROM mysql.user WHERE User='$_dbuser'"
 		cvw_mysql -e "FLUSH PRIVILEGES"
