@@ -190,6 +190,7 @@ if [[ $_file ]] ; then
 	if [[ $_mode ]] ; then
 		chmod $_mode $_file 2>>/tmp/cvw/error
 	fi
+	[[ -s /tmp/cvw/error ]] && exit 1
 fi
 
 if [[ $_action ]] ; then

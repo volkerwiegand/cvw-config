@@ -87,11 +87,16 @@ function rspamd_install
 	cvw_xml -a software/postfix || cvw_say -f "$_prog: requires postfix"
 	local _milter=$(cvw_xml -r software/$_slug/milter)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _file
+	local _multi=/etc/rspamd/local.d/multimap.conf
+	local _w_src=/var/local/cfg/files/misc/rspamd.white.domains
+	local _w_dst=/etc/rspamd/local.d/whitelist.sender.domain.map
+	local _file _reject
 
 	cvw_yum -a rspamd
 	cvw_rpm -i rspamd
 	cvw_service -s rspamd
+
+	echo "# Define maps for multiple purposes" >$_multi.tmp_VW
 
 	_file=/etc/rspamd/local.d/worker-proxy.inc
 	cat >$_file.tmp_VW <<-EOF
@@ -135,7 +140,46 @@ function rspamd_install
 		cvw_file -r $_file rspamd
 	fi
 
+	_file=/etc/rspamd/local.d/greylist.conf
+	if cvw_xml -t software/$_slug/greylist ; then
+		cvw_say -s "enable greylisting"
+
+		cp $_w_src $_w_dst.tmp_VW
+		cvw_file -v $_w_dst rspamd
+
+		cat >>$_multi.tmp_VW <<-EOF
+
+			WHITELIST_SENDER_DOMAIN {
+			  type = "from";
+			  filter = "email:domain";
+			  map = "$_w_dst";
+			  score = -6.0
+			}
+		EOF
+		# will be verified later
+
+		cat >$_file.tmp_VW <<-EOF
+			servers = "127.0.0.1:6379";
+		EOF
+		cvw_file -v $_file rspamd
+	else
+		cvw_say -s "disable greylisting"
+		cvw_file -r $_file rspamd
+	fi
+
+	_file=/etc/rspamd/override.d/actions.conf
+	if cvw_xml -c software/$_slug/reject ; then
+		_reject=$(cvw_xml -r software/$_slug/reject)
+		cvw_say -s "setting reject to $_reject"
+		echo "reject = $_reject;" >$_file.tmp_VW
+		cvw_file -v $_file rspamd
+	else
+		cvw_say -s "setting reject to default"
+		cvw_file -r $_file rspamd
+	fi
+
 	if cvw_xml -c software/$_slug/password ; then
+		cvw_say -s "enable Web-UI"
 		rspamd_webui
 	fi
 
@@ -144,6 +188,8 @@ function rspamd_install
 		extended_spam_headers = true;
 	EOF
 	cvw_file -v $_file rspamd
+
+	cvw_file -v $_multi rspamd
 
 	echo "20 $_milter" >>/tmp/cvw/postfix.milters
 
