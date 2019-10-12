@@ -160,6 +160,7 @@ if [[ -s /etc/profile.d/cvw_aliases.sh.tmp_VW ]] ; then
 fi
 
 cvw_tripwire       -i ; error_check
+cvw_backup         -s ; error_check
 cvw_url            -s ; error_check
 
 if [[ -s /tmp/cvw/info ]] ; then

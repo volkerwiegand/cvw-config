@@ -53,17 +53,20 @@ function volume_install
 	local _path=$(cvw_xml -r $_base/mountpoint)
 	local _opts=$(cvw_xml -r $_base/options)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _device
 
 	mkdir -p $_path
 
+	cvw_say -s "mounting volume $_path"
 	if ! grep -q $_path $_fstab ; then
-		cvw_say -s "mounting $_path"
-
 		rm -rf $_fstab.tmp_VW
 		grep -v "$_disk" $_fstab >$_fstab.tmp_VW
 		echo "$_disk $_path ext4 $_opts 0 0" >>$_fstab.tmp_VW
 		cvw_file -v $_fstab
 	fi
+
+	_device=$(df -P | awk '$6=="$_path" {print $1}')
+	resize2fs $_device 2>/dev/null
 
 	cvw_say -o "$_slug"
 }

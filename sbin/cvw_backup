@@ -98,10 +98,11 @@ shift
 [[ -n $_mynames && -z $_dbuser ]] && cvw_say -f "$_app bkup: missing database username"
 [[ -n $_mynames && -z $_dbpass ]] && cvw_say -f "$_app bkup: missing database password"
 
-_bkup="/var/local/backup/$_app"
-_file="/etc/cron.daily/bkup.$_app"
+_bdir="/var/local/backup/$_app"
+_bkup="/etc/cron.daily/bkup.$_app"
+_rstr="/usr/local/bin/rstr.$_app"
 
-cat >$_file.tmp_VW <<-EOF
+cat >$_bkup.tmp_VW <<-EOF
 	#!/bin/bash
 
 	if [[ \$1 == -v ]] ; then
@@ -110,7 +111,7 @@ cat >$_file.tmp_VW <<-EOF
 	fi
 
 	_day=\$(LANG=C /bin/date +%A)
-	/bin/mkdir -p $_bkup/\$_day/dirs
+	/bin/mkdir -p $_bdir/\$_day/dirs
 	_result=\$?
 	if [[ \$_result -ne 0 ]] ; then
 	    /usr/bin/logger -t $_app "ALERT mkdir exited with \$_result"
@@ -120,9 +121,9 @@ cat >$_file.tmp_VW <<-EOF
 EOF
 
 for _myname in $_mynames ; do
-	cat >>$_file.tmp_VW <<-EOF
-		/bin/mkdir -p $_bkup/\$_day/mysql
-		_file="$_bkup/\$_day/mysql/$_myname.sql.gz"
+	cat >>$_bkup.tmp_VW <<-EOF
+		/bin/mkdir -p $_bdir/\$_day/mysql
+		_file="$_bdir/\$_day/mysql/$_myname.sql.gz"
 		/usr/bin/mysqldump -u$_dbuser -p$_dbpass $_myname | /bin/gzip -9 >\$_file
 		_result=\$?
 		[[ \$_verbose ]] && echo "Finished database $_myname (\$_result)"
@@ -135,9 +136,9 @@ for _myname in $_mynames ; do
 done
 
 for _entry in $* ; do
-	cat >>$_file.tmp_VW <<-EOF
+	cat >>$_bkup.tmp_VW <<-EOF
 		if [[ -d $_entry ]] ; then
-		    /usr/bin/rsync -aqz --delete $_entry/ $_bkup/\$_day/dirs/${_entry##*/}
+		    /usr/bin/rsync -aqz --delete $_entry/ $_bdir/\$_day/dirs/${_entry##*/}
 		    _result=\$?
 		    [[ \$_verbose ]] && echo "Finished dir ${_entry##*/} (\$_result)"
 		    if [[ \$_result -ne 0 ]]; then
@@ -149,16 +150,16 @@ for _entry in $* ; do
 	EOF
 done
 
-cat >>$_file.tmp_VW <<-EOF
-	cd $_bkup && ln -nfs \$_day last
+cat >>$_bkup.tmp_VW <<-EOF
+	cd $_bdir && ln -nfs \$_day last
 	exit 0
 EOF
-cvw_file -m 0775 -v $_file
-ln -nfs $_file /usr/local/bin/bkup.$_app
+cvw_file -m 0775 -v $_bkup
+ln -nfs $_bkup /usr/local/bin/bkup.$_app
 
 
-_file="/usr/local/bin/rstr.$_app"
-cat >$_file.tmp_VW <<-EOF
+_rstr="/usr/local/bin/rstr.$_app"
+cat >$_rstr.tmp_VW <<-EOF
 	#!/bin/bash
 
 	_day=\${1:-last}
@@ -166,8 +167,8 @@ cat >$_file.tmp_VW <<-EOF
 EOF
 
 for _myname in $_mynames ; do
-	cat >>$_file.tmp_VW <<-EOF
-		_file="$_bkup/\$_day/mysql/$_myname.sql.gz"
+	cat >>$_rstr.tmp_VW <<-EOF
+		_file="$_bdir/\$_day/mysql/$_myname.sql.gz"
 		if [[ -s \$_file ]] ; then
 		    echo "Restoring \$_day $_myname database"
 		    cat \$_file | /usr/bin/gunzip | /usr/bin/mysql -u$_dbuser -p$_dbpass $_myname
@@ -180,10 +181,10 @@ for _myname in $_mynames ; do
 done
 
 for _entry in $* ; do
-	cat >>$_file.tmp_VW <<-EOF
-		if [[ -d $_bkup/\$_day/dirs/${_entry##*/} ]] ; then
+	cat >>$_rstr.tmp_VW <<-EOF
+		if [[ -d $_bdir/\$_day/dirs/${_entry##*/} ]] ; then
 		    echo "Restoring \$_day dir ${_entry##*/}"
-		    /usr/bin/rsync -aqz --delete $_bkup/\$_day/dirs/${_entry##*/}/ $_entry
+		    /usr/bin/rsync -aqz --delete $_bdir/\$_day/dirs/${_entry##*/}/ $_entry
 		    _result=\$?
 		    echo "Finished dir ${_entry##*/} (\$_result)"
 		    sleep 5
@@ -192,10 +193,10 @@ for _entry in $* ; do
 	EOF
 done
 
-cat >>$_file.tmp_VW <<-EOF
+cat >>$_rstr.tmp_VW <<-EOF
 	exit 0
 EOF
-cvw_file -m 0775 -v $_file
+cvw_file -m 0775 -v $_rstr
 
 exit 0
 
