@@ -10,3 +10,6 @@
 files/keys/
 files/misc/postgrey.common
 
+# Ignore my Attic
+#
+Attic/
