@@ -46,8 +46,9 @@ function usage
 		    or: $_prog -E [-D] [i]       Execute with upgrade [debug] [info]
 		    or: $_prog -f file [name]    Fetch <file> from server [local name]
 		    or: $_prog -g app            Generate sceleton config for <app>
-		    or: $_prog -h bits           Generate Diffie-Hellman group
-		    or: $_prog -H                Generate RSA keys on server and fetch them
+		    or: $_prog -G bits           Generate Diffie-Hellman group
+		    or: $_prog -h                Generate and fetch RSA host keys
+		    or: $_prog -H user           Generate and fetch RSA user keys
 		    or: $_prog -j                Ping the remote machine
 		    or: $_prog -k [port]         Set remote SSH port in ~/.ssh/config
 		    or: $_prog -K                Delete remote SSH port
@@ -255,7 +256,7 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:g:h:HijkKlL:p:Pq:r:tux:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:g:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -306,7 +307,7 @@ while getopts ":abBcCdDeEf:g:h:HijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 			_finito=1
 		;;
 
-		h)
+		G)
 			if [[ $OPTARG == 1024 || $OPTARG == 2048 || $OPTARG == 4096 ]] ; then
 				mkdir -p cfg/files/keys
 				openssl dhparam -out cfg/files/keys/dh${OPTARG}_param.pem $OPTARG
@@ -316,8 +317,13 @@ while getopts ":abBcCdDeEf:g:h:HijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 			exit
 		;;
 
+		h)
+			_gen_host_rsa=1
+		;;
+
 		H)
-			_gen_ssh=1
+			_gen_user_rsa=$OPTARG
+			_finito=1
 		;;
 
 		i)
@@ -638,16 +644,31 @@ if [[ $_fetch ]] ; then
 fi
 
 
-if [[ $_gen_ssh ]] ; then
+if [[ $_gen_host_rsa ]] ; then
 	setup_config quiet
 	if [[ -s cfg/files/keys/id_rsa ]] ; then
 		failure "cfg/files/keys/id_rsa exists"
 	fi
-	cvw_say -a "generate keys on $_addr"
+	cvw_say -a "generate RSA host keys on $_addr"
 	ssh -t root@$_addr "ssh-keygen"
 	cvw_say -a "Fetch id_rsa{.pub} from $_addr"
 	scp root@$_addr:/root/.ssh/id_rsa cfg/files/keys/id_rsa
 	scp root@$_addr:/root/.ssh/id_rsa.pub cfg/files/keys/id_rsa.pub
+	exit
+fi
+
+
+if [[ $_gen_user_rsa ]] ; then
+	setup_config quiet
+	if [[ -s cfg/files/keys/$_gen_user_rsa/id_rsa ]] ; then
+		failure "cfg/files/keys/$_gen_user_rsa/id_rsa exists"
+	fi
+	cvw_say -a "generate RSA keys for $_gen_user_rsa on $_addr"
+	ssh -t $_gen_user_rsa@$_addr "ssh-keygen"
+	cvw_say -a "Fetch id_rsa{.pub} for $_gen_user_rsa from $_addr"
+	mkdir -p cfg/files/keys/$_gen_user_rsa
+	scp $_gen_user_rsa@$_addr:.ssh/id_rsa cfg/files/keys/$_gen_user_rsa/id_rsa
+	scp $_gen_user_rsa@$_addr:.ssh/id_rsa.pub cfg/files/keys/$_gen_user_rsa/id_rsa.pub
 	exit
 fi
 
