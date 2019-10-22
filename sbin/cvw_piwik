@@ -75,6 +75,7 @@ function piwik_install
 		cvw_apache -p $_slug
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_root/app
 

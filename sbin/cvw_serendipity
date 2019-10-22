@@ -83,6 +83,13 @@ function serendipity_install
 		chmod 0755 $_app
 		cp $_app/.htaccess $_root/htaccess
 		cp $_app/$_file $_root/$_file
+
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_app/archives \
+			$_app/plugins \
+			$_app/templates_c \
+			$_app/uploads \
+			$_app/spamblock
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_app/archives
 		cvw_borgclient -d $_app/plugins

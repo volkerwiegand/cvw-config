@@ -115,11 +115,13 @@ function nextcloud_install
 			--admin-pass    "$_adm_pass"
 		[[ $? -eq 0 ]] || exit 1
 	fi
+
 	if [[ ! -d $_root/data ]] ; then
 		cvw_say -s "installing data dir outside docroot"
-		install -o apache -g apache -d $_root/data
-		install -o apache -g apache /dev/null $_root/data/.ocdata
+		install -d $_root/data
 	fi
+	touch $_root/data/.ocdata
+	chown -R apache:apache $_root/data
 	if ! grep -q "$_root/data" $_file ; then
 		nextcloud_occ config:system:set datadirectory --value=$_root/data
 	fi

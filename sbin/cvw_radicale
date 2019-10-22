@@ -170,6 +170,7 @@ function radicale_install
 	cvw_service -s $_slug
 	cvw_firewall -t $_port
 
+	cvw_backup $_slug $_home/collections
 	cvw_borgclient -d $_home/collections
 
 	cvw_say -o "$_slug"

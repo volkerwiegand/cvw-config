@@ -120,8 +120,8 @@
     </download>
     <download id="gogs">
       <link>https://dl.gogs.io/</link>
-      <url>https://dl.gogs.io/0.11.86/gogs_0.11.86_linux_amd64.tar.gz</url>
-      <sha256>01432f903e7e91aa54f7b78faf1167462da0e7b26c7f1055247a76a814688bfc</sha256>
+      <url>https://dl.gogs.io/0.11.91/gogs_0.11.91_linux_amd64.tar.gz</url>
+      <sha256>56e03b8c83387a2a3ae4e3b46e8846f3b1ba785a743b33e682024bac746bf4d8</sha256>
     </download>
     <download id="golang">
       <link>https://golang.org/dl/</link>
@@ -157,7 +157,8 @@
     </download>
     <download id="mantis">
       <link>http://mantisbt.org/download.php</link>
-      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.21.0/mantisbt-2.21.0.tar.gz</url>
+      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.22.1/mantisbt-2.22.1.tar.gz</url>
+      <md5>ced6493cb2c1ea6bbf8b95b5082e7d98</md5>
     </download>
     <download id="modified">
       <link>http://www.modified-shop.org/download</link>

@@ -152,6 +152,8 @@ function mantis_install
 			rm -rf $_root/admin # just in case
 			mv $_root/app/admin $_root/admin
 		fi
+
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app/plugins $_root/app/uploads
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_root/app/plugins
 		cvw_borgclient -d $_root/app/uploads

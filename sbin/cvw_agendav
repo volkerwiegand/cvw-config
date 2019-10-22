@@ -158,6 +158,7 @@ function agendav_install
 		cvw_apache -p $_slug
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 	cvw_borgclient -m $_slug
 
 	cvw_url -a "$_name" "$_uri/index.php"

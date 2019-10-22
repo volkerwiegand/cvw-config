@@ -77,10 +77,10 @@ while getopts ":m:p:su:z:" opt ; do
 		;;
 
 		z)
+			rm -f /etc/logrotate.d/$OPTARG
 			rm -f /usr/local/bin/bkup.$OPTARG
 			rm -f /etc/cron.daily/bkup.$OPTARG
 			rm -f /usr/local/bin/rstr.$OPTARG
-			rm -f /etc/logrotate.d/$OPTARG
 			exit 0
 		;;
 
@@ -106,52 +106,72 @@ cat >$_bkup.tmp_VW <<-EOF
 	#!/bin/bash
 
 	if [[ \$1 == -v ]] ; then
-	    _verbose=1
-	    shift
+	  _verbose=1
+	  shift
 	fi
 
-	_day=\$(LANG=C /bin/date +%A)
-	/bin/mkdir -p $_bdir/\$_day/dirs
+	_dest=$_bdir/backup
+	[[ \$_verbose ]] && echo "Backing up to \$_dest"
+
+	/bin/rm -rf \$_dest
+	/bin/mkdir -p \$_dest
 	_result=\$?
 	if [[ \$_result -ne 0 ]] ; then
-	    /usr/bin/logger -t $_app "ALERT mkdir exited with \$_result"
-	    exit 1
+	  /usr/bin/logger -t $_app "ALERT mkdir exited with \$_result"
+	  exit 1
 	fi
-
 EOF
 
 for _myname in $_mynames ; do
 	cat >>$_bkup.tmp_VW <<-EOF
-		/bin/mkdir -p $_bdir/\$_day/mysql
-		_file="$_bdir/\$_day/mysql/$_myname.sql.gz"
-		/usr/bin/mysqldump -u$_dbuser -p$_dbpass $_myname | /bin/gzip -9 >\$_file
+
+		_file="\$_dest/$_myname.sql"
+		/bin/rm -rf \$_file
+		/usr/bin/mysqldump -u$_dbuser -p$_dbpass $_myname >\$_file
 		_result=\$?
 		[[ \$_verbose ]] && echo "Finished database $_myname (\$_result)"
 		if [[ \$_result -ne 0 ]] ; then
-		    /usr/bin/logger -t $_app "ALERT mysqldump $_myname exited with \$_result"
-		    exit 1
+		  /usr/bin/logger -t $_app "ALERT mysqldump $_myname exited with \$_result"
+		  exit 1
 		fi
-
 	EOF
 done
 
 for _entry in $* ; do
 	cat >>$_bkup.tmp_VW <<-EOF
-		if [[ -d $_entry ]] ; then
-		    /usr/bin/rsync -aqz --delete $_entry/ $_bdir/\$_day/dirs/${_entry##*/}
-		    _result=\$?
-		    [[ \$_verbose ]] && echo "Finished dir ${_entry##*/} (\$_result)"
-		    if [[ \$_result -ne 0 ]]; then
-		        /usr/bin/logger -t $_app "ALERT rsync ${_entry##*/} exited with \$_result"
-		        exit 1
-		    fi
-		fi
 
+		if [[ -d $_entry ]] ; then
+		  /usr/bin/rsync -aqz --delete $_entry/ \$_dest/${_entry##*/}
+		  _result=\$?
+		  [[ \$_verbose ]] && echo "Finished dir $_entry (\$_result)"
+		  if [[ \$_result -ne 0 ]]; then
+		    /usr/bin/logger -t $_app "ALERT rsync $_entry exited with \$_result"
+		    exit 1
+		  fi
+		fi
 	EOF
 done
 
 cat >>$_bkup.tmp_VW <<-EOF
-	cd $_bdir && ln -nfs \$_day last
+
+	/bin/rm -rf \$_dest.7
+	[[ -d \$_dest.6 ]] && /bin/mv \$_dest.6 \$_dest.7
+	[[ -d \$_dest.5 ]] && /bin/mv \$_dest.5 \$_dest.6
+	[[ -d \$_dest.4 ]] && /bin/mv \$_dest.4 \$_dest.5
+	[[ -d \$_dest.3 ]] && /bin/mv \$_dest.3 \$_dest.4
+	[[ -d \$_dest.2 ]] && /bin/mv \$_dest.2 \$_dest.3
+	[[ -d \$_dest.1 ]] && /bin/mv \$_dest.1 \$_dest.2
+	[[ -d \$_dest.0 ]] && /bin/mv \$_dest.0 \$_dest.1
+
+	if [[ -d \$_dest.1 ]] ; then
+	  /usr/bin/rsync -aqz --delete --exclude=lost+found --link-dest=\$_dest.1 \$_dest/ \$_dest.0
+	else
+	  /usr/bin/rsync -aqz --delete --exclude=lost+found \$_dest/ \$_dest.0
+	fi
+
+	[[ \$_verbose ]] && /usr/bin/du -hs \$_dest.?
+	/bin/rm -rf \$_dest
+
 	exit 0
 EOF
 cvw_file -m 0775 -v $_bkup
@@ -162,38 +182,42 @@ _rstr="/usr/local/bin/rstr.$_app"
 cat >$_rstr.tmp_VW <<-EOF
 	#!/bin/bash
 
-	_day=\${1:-last}
-
+	_dest=$_bdir/backup.0
+	if [[ ! -d \$_dest ]] ; then
+	  echo "No backup for $_app -- abort" >&2
+	  exit 1
+	fi
 EOF
 
 for _myname in $_mynames ; do
 	cat >>$_rstr.tmp_VW <<-EOF
-		_file="$_bdir/\$_day/mysql/$_myname.sql.gz"
-		if [[ -s \$_file ]] ; then
-		    echo "Restoring \$_day $_myname database"
-		    cat \$_file | /usr/bin/gunzip | /usr/bin/mysql -u$_dbuser -p$_dbpass $_myname
-		    _result=\$?
-		    echo "Finished database $_myname (\$_result)"
-		    sleep 5
-		fi
 
+		_file="\$_dest/$_myname.sql"
+		if [[ -s \$_file ]] ; then
+		  echo "Restoring $_myname database"
+		  cat \$_file | /usr/bin/mysql -u$_dbuser -p$_dbpass $_myname
+		  _result=\$?
+		  echo "Finished database $_myname (\$_result)"
+		  sleep 5
+		fi
 	EOF
 done
 
 for _entry in $* ; do
 	cat >>$_rstr.tmp_VW <<-EOF
-		if [[ -d $_bdir/\$_day/dirs/${_entry##*/} ]] ; then
-		    echo "Restoring \$_day dir ${_entry##*/}"
-		    /usr/bin/rsync -aqz --delete $_bdir/\$_day/dirs/${_entry##*/}/ $_entry
-		    _result=\$?
-		    echo "Finished dir ${_entry##*/} (\$_result)"
-		    sleep 5
-		fi
 
+		if [[ -d \$_dest/${_entry##*/} ]] ; then
+		  echo "Restoring $_entry"
+		  /usr/bin/rsync -aqz --delete \$_dest/${_entry##*/}/ $_entry
+		  _result=\$?
+		  echo "Finished $_entry (\$_result)"
+		  sleep 5
+		fi
 	EOF
 done
 
 cat >>$_rstr.tmp_VW <<-EOF
+
 	exit 0
 EOF
 cvw_file -m 0775 -v $_rstr

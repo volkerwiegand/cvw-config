@@ -145,6 +145,7 @@ function processwire_install
 			chmod 0400 $_file
 		fi
 
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_app/site/modules $_app/site/templates
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_app/site/modules
 		cvw_borgclient -d $_app/site/templates
