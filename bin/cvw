@@ -664,7 +664,7 @@ if [[ $_gen_user_rsa ]] ; then
 		failure "cfg/files/keys/$_gen_user_rsa/id_rsa exists"
 	fi
 	cvw_say -a "generate RSA keys for $_gen_user_rsa on $_addr"
-	ssh -t $_gen_user_rsa@$_addr "ssh-keygen"
+	ssh -t $_gen_user_rsa@$_addr "ssh-keygen -C '$_gen_user_rsa@$_domain' -N ''"
 	cvw_say -a "Fetch id_rsa{.pub} for $_gen_user_rsa from $_addr"
 	mkdir -p cfg/files/keys/$_gen_user_rsa
 	scp $_gen_user_rsa@$_addr:.ssh/id_rsa cfg/files/keys/$_gen_user_rsa/id_rsa
