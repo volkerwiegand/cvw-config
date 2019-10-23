@@ -53,8 +53,8 @@ function user_setup
 	local _info=$(cvw_xml -r $_base/info)
 	local _home=$(cvw_xml -R $_base/home /home/$_id)
 	local _shell=$(cvw_xml -R $_base/shell /bin/bash)
-	local _file="/etc/aliases"
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _etc_aliases="/etc/aliases"
 	local _line _group _folder _subdir _path _rsakey _sshdir _auth _keys
 
 	if id $_id >/dev/null 2>&1 ; then
@@ -97,12 +97,14 @@ function user_setup
 
 	if cvw_xml -t $_base/imap ; then
 		cvw_xml -r $_base/password | passwd --stdin $_id >/dev/null
-		cvw_file -e $_file.tmp_VW "s/^$_id:/#$_id:/"
-		cvw_xml -l $_base/alias | sort | while read _alias ; do
-			cvw_file -e $_file.tmp_VW "s/^$_alias:/#$_alias:/"
-			echo "$_alias:	$_id" >>$_file.tmp_VW
-		done
-		[[ -s /tmp/cvw/error ]] && exit 1
+		if [[ -s $_etc_aliases.tmp_VW ]] ; then
+			cvw_file -e $_etc_aliases.tmp_VW "s/^$_id:/#$_id:/"
+			cvw_xml -l $_base/alias | sort | while read _alias ; do
+				cvw_file -e $_etc_aliases.tmp_VW "s/^$_alias:/#$_alias:/"
+				echo "$_alias:	$_id" >>$_etc_aliases.tmp_VW
+			done
+			[[ -s /tmp/cvw/error ]] && exit 1
+		fi
 	fi
 
 	if cvw_xml -t $_base/maildir ; then
@@ -145,12 +147,12 @@ function user_setup
 function init_users
 {
 	cvw_say -h "Installing users"
-	local _file="/etc/aliases"
-	local _id _alias _line _dir
+	local _etc_aliases="/etc/aliases"
+	local _file _id _alias _line _dir
 
-	if [[ ! -s $_file.bak_VW ]] ; then
-		cvw_file -e $_file "s/^root:/#root:/"
-		cvw_file -b $_file
+	if [[ ! -s $_etc_aliases.bak_VW ]] ; then
+		cvw_file -e $_etc_aliases "s/^root:/#root:/"
+		cvw_file -b $_etc_aliases
 	fi
 
 	echo "# Aliases for external users" >/tmp/cvw/redirect
@@ -169,8 +171,8 @@ function init_users
 	_id=$(cvw_xml -r users/rootmail)
 	[[ -s /tmp/cvw/error ]] && exit 1
 
-	cat >$_file.tmp_VW <<-EOF
-		$(cat $_file.bak_VW)
+	cat >$_etc_aliases.tmp_VW <<-EOF
+		$(cat $_etc_aliases.bak_VW)
 		root:		$_id
 
 		$(cat /tmp/cvw/redirect)
@@ -184,7 +186,7 @@ function init_users
 		true
 	done
 
-	cvw_file -v $_file
+	cvw_file -v $_etc_aliases
 	if [[ -s /tmp/cvw/changed ]] ; then
 		[[ -x /usr/bin/newaliases ]] && newaliases
 		cvw_say -s "############# aliases database #############"
