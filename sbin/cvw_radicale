@@ -55,7 +55,7 @@ function generate_template
 	    </user>
 
 	    <!-- software -->
-	    <$_slug active="true">
+	    <$_slug active="true" git="true">
 	      <port>5232</port>
 	    </$_slug>
 
@@ -71,6 +71,15 @@ function query_url
 }
 
 
+function radicale_exec
+{
+	local _home=$(cvw_user -h $_slug)
+	local _repo=$_home/collections
+
+	cvw_user -r $_slug -d $_repo "$*"
+}
+
+
 function radicale_install
 {
 	cvw_say -h "Installing $_name"
@@ -81,8 +90,12 @@ function radicale_install
 	cvw_user -s $_slug
 	local _home=$(cvw_user -h $_slug)
 	local _pass=$(cvw_user -p $_slug)
+	local _info=$(cvw_user -g $_slug)
+	local _addr=$(cvw_user -e $_slug)
+	local _repo=$_home/collections
 	local _conf=/etc/$_slug
 	local _cert=/etc/letsencrypt/live/$_fqdn
+	local _hook="# hook"
 	local _file _user
 
 	if [[ -s /tmp/cvw/info ]] ; then
@@ -90,17 +103,18 @@ function radicale_install
 			    ====== $_name ======
 			      WebGUI ..................: https://$_fqdn:$_port/
 			      Username ................: $_slug
+			      User Info ...............: $_info
+			      User E-Mail .............: $_addr
 			      Password ................: $_pass
 		EOF
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
-	cvw_yum -a ius
-	cvw_rpm -i python36u-pip
-	python3.6 -m pip install --upgrade "passlib[bcrypt]"
-	python3.6 -m pip install --upgrade $_slug
+	cvw_rpm -i python3-pip
+	python3 -m pip install --upgrade "passlib[bcrypt]"
+	python3 -m pip install --upgrade $_slug
 	mkdir -p $_conf
-	install -o $_slug -g $_slug -d $_home/collections
+	install -o $_slug -g $_slug -d $_repo
 
 	htpasswd -B -c -b $_conf/password $_slug $_pass
 
@@ -110,12 +124,40 @@ function radicale_install
 		htpasswd -B -b $_conf/password $_user $_pswd
 		if [[ -s /tmp/cvw/info ]] ; then
 			cat >>/tmp/cvw/info <<-EOF
-				          User ................: $_user
-				          Pswd ................: $_pswd
+				          User / Password .....: $_user / $_pswd
 			EOF
 			[[ -s /tmp/cvw/error ]] && exit 1
 		fi
 	done
+
+	if cvw_xml -t software/$_slug/git ; then
+		if [[ ! -d $_repo/.git ]] ; then
+			cvw_say -s "Adding Git versioning"
+			radicale_exec "git init"
+
+			radicale_exec "git config user.name '$_slug'"
+			radicale_exec "git config user.email '$_addr'"
+
+			_file=$_repo/README.md
+			cat >$_file.tmp_VW <<-EOF
+				Save changes using Git
+			EOF
+			cvw_file -u $_slug -v $_file
+
+			_file=$_repo/.gitignore
+			cat >$_file.tmp_VW <<-EOF
+				.Radicale.cache
+				.Radicale.lock
+				.Radicale.tmp-*
+			EOF
+			cvw_file -u $_slug -v $_file
+
+			radicale_exec "git add README.md .gitignore"
+			radicale_exec "git commit -m 'first commit'"
+		fi
+
+		_hook="hook"
+	fi
 
 	_file=$_conf/config
 	cat >$_file.tmp_VW <<-EOF
@@ -131,7 +173,8 @@ function radicale_install
 		htpasswd_encryption = bcrypt
 
 		[storage]
-		filesystem_folder = $_home/collections
+		filesystem_folder = $_repo
+		$_hook = git add -A && (git diff --cached --quiet || git commit -m "Changes by "%(user)s)
 
 		[rights]
 		type = authenticated
@@ -146,21 +189,13 @@ function radicale_install
 		Requires=network.target
 
 		[Service]
-		ExecStart=/usr/bin/env python3.6 -m $_slug
+		ExecStart=/usr/bin/env python3 -m $_slug
 		Restart=on-failure
 		User=$_slug
 		# Deny other users access to the calendar data
 		UMask=0027
 		# Optional security settings
-		PrivateTmp=true
-		ProtectSystem=strict
-		ProtectHome=true
-		PrivateDevices=true
-		ProtectKernelTunables=true
-		ProtectKernelModules=true
-		ProtectControlGroups=true
-		NoNewPrivileges=true
-		ReadWritePaths=$_home/collections
+		ReadWritePaths=$_repo
 
 		[Install]
 		WantedBy=multi-user.target
@@ -170,8 +205,8 @@ function radicale_install
 	cvw_service -s $_slug
 	cvw_firewall -t $_port
 
-	cvw_backup $_slug $_home/collections
-	cvw_borgclient -d $_home/collections
+	cvw_backup $_slug $_repo
+	cvw_borgclient -d $_repo
 
 	cvw_say -o "$_slug"
 }
@@ -179,11 +214,15 @@ function radicale_install
 
 function radicale_remove
 {
-	if cvw_service -c radicaled ; then
+	if cvw_service -c $_slug ; then
+		cvw_service -z $_slug
+	fi
+
+	if id $_slug >/dev/null 2>&1 ; then
 		cvw_say -h "Removing $_name"
-		cvw_service -d radicaled
-		cvw_rpm -e radicaled-devel
-		cvw_rpm -e radicaled
+		cvw_backup -z $_slug
+		cvw_user -z $_slug
+		rm -rf /etc/$_slug
 		cvw_say -o "$_slug:remove"
 	fi
 }
