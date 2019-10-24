@@ -115,6 +115,10 @@ function dokuwiki_install
 			rm -rf $_root/install.php # just in case
 			mv $_root/app/install.php $_root/install.php
 		fi
+
+		cvw_backup $_slug \
+			$_root/app/conf \
+			$_root/app/data
 		cvw_borgclient -d $_root/app/conf
 		cvw_borgclient -d $_root/app/data
 	else
@@ -189,6 +193,7 @@ function dokuwiki_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
+		cvw_backup -z $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

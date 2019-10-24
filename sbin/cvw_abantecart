@@ -67,6 +67,8 @@ function abantecart_install_native
 		cvw_say -s "hiding install directory"
 		rm -rf $_root/install # just in case
 		mv $_root/app/install $_root/install
+
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 		cvw_borgclient -m $_slug
 	fi
 
@@ -123,21 +125,6 @@ function abantecart_install_bitnami
 }
 
 
-function abantecart_remove_native
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name (native)"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 function abantecart_remove_bitnami
 {
 	local _root=$(cvw_xml -r system/app_root)/bitnami
@@ -167,7 +154,7 @@ while getopts ":i" opt ; do
 				if cvw_xml -t software/$_slug/bitnami ; then
 					abantecart_remove_bitnami
 				else
-					abantecart_remove_native
+					cvw_php -z $_slug
 				fi
 			fi
 			exit 0

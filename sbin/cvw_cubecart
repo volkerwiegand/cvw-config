@@ -131,6 +131,8 @@ function cubecart_install
 			rm -rf $_root/setup # just in case
 			mv $_root/app/setup $_root/setup
 		fi
+
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 		cvw_borgclient -m $_slug
 	else
 		cvw_say -s "waiting for installation: https://$_fqdn$_uri/setup"
@@ -150,28 +152,13 @@ function cubecart_install
 }
 
 
-function cubecart_remove
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 while getopts ":i" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
 				cubecart_install
 			else
-				cubecart_remove
+				cvw_php -z $_slug
 			fi
 			exit 0
 		;;

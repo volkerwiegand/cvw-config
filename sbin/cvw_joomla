@@ -65,6 +65,11 @@ function joomla_install_native
 	cvw_unpack -u apache -i $_slug $_root/app index.php
 	rm -f $_root/app/index.html
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/app
+
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi
@@ -72,9 +77,6 @@ function joomla_install_native
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
 	fi
-
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/app
 
 	cvw_url -a "$_name" $_uri
 
@@ -124,21 +126,6 @@ function joomla_install_bitnami
 }
 
 
-function joomla_remove_native
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 function joomla_remove_bitnami
 {
 	local _root=$(cvw_xml -r system/app_root)/bitnami
@@ -168,7 +155,7 @@ while getopts ":i" opt ; do
 				if cvw_xml -t software/$_slug/bitnami ; then
 					joomla_remove_bitnami
 				else
-					joomla_remove_native
+					cvw_php -z $_slug
 				fi
 			fi
 			exit 0

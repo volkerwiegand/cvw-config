@@ -45,6 +45,7 @@ function usage
 function prosody_install
 {
 	cvw_say -h "Installing $_name"
+	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _host=$(cvw_xml -r software/$_slug/host)
 	local _pass=$(cvw_xml -r software/$_slug/password)
@@ -108,10 +109,11 @@ function prosody_install
 
 	prosodyctl --root cert import /etc/letsencrypt/live
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+	cvw_borgclient -m $_slug
+
 	cvw_firewall -s xmpp-client
 	cvw_firewall -s xmpp-server
-
-	cvw_borgclient -m $_slug
 
 	cvw_say -o "$_slug"
 }
@@ -123,6 +125,9 @@ function prosody_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
+		cvw_backup -z $_slug
+		cvw_service -d $_slug
+		cvw_mysql -z $_slug
 		cvw_rpm -e $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"

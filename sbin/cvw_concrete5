@@ -71,6 +71,11 @@ function concrete5_install_native
 		cvw_apache -p $_slug
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+		$_root/app/application/files \
+		$_root/app/application/config \
+		$_root/app/packages \
+		$_root/app/updates
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_root/app/application/files
 	cvw_borgclient -d $_root/app/application/config
@@ -125,21 +130,6 @@ function concrete5_install_bitnami
 }
 
 
-function concrete5_remove_native
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 function concrete5_remove_bitnami
 {
 	local _root=$(cvw_xml -r system/app_root)/bitnami
@@ -169,7 +159,7 @@ while getopts ":i" opt ; do
 				if cvw_xml -t software/$_slug/bitnami ; then
 					concrete5_remove_bitnami
 				else
-					concrete5_remove_native
+					cvw_php -z $_slug
 				fi
 			fi
 			exit 0

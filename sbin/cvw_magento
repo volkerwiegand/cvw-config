@@ -83,6 +83,12 @@ if false ; then
 		chown -R root:root $_root/app
 		chown -R apache $_root/app/image
 		chown -R apache $_root/app/system/storage
+
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_root/app
+		cvw_borgclient -m $_slug
+		cvw_borgclient -d $_root/app
+
 		cvw_say -s "running in production"
 	else
 		chown -R apache:apache $_root/app
@@ -97,9 +103,6 @@ fi
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
 	fi
-
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/app
 
 	cvw_url -a "$_name" $_uri
 
@@ -148,21 +151,6 @@ function magento_install_bitnami
 }
 
 
-function magento_remove_native
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name (native)"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 function magento_remove_bitnami
 {
 	local _root=$(cvw_xml -r system/app_root)/bitnami
@@ -192,7 +180,7 @@ while getopts ":i" opt ; do
 				if cvw_xml -t software/$_slug/bitnami ; then
 					magento_remove_bitnami
 				else
-					magento_remove_native
+					cvw_php -z $_slug
 				fi
 			fi
 			exit 0

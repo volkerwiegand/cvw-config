@@ -453,6 +453,8 @@ function postfix_install_standalone
 	cvw_rpm -i unbound
 	cvw_service -s unbound
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_vmail_dir
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_vmail_dir
 
@@ -545,6 +547,8 @@ function postfix_remove
 
 	if cvw_service -c postfix ; then
 		cvw_say -h "Removing $_name"
+
+		cvw_backup -z $_slug
 
 		cvw_service -d unbound
 		cvw_rpm -e unbound

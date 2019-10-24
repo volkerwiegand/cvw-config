@@ -241,6 +241,7 @@ function kivitendo_install
 		cvw_apache -p $_slug
 	fi
 
+	# TODO backup postgresql
 	cvw_borgclient -d $_root/app
 
 	cvw_url -a "$_name" $_uri
@@ -256,7 +257,7 @@ function kivitendo_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
-		# cvw_postgresql -z $_slug
+		# TODO cvw_postgresql -z $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

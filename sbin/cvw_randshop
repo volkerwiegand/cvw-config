@@ -77,6 +77,10 @@ function randshop_install
 			mv $_root/app/install $_root/install
 			chown -R root:root $_root/install
 		fi
+
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_root/app/data \
+			$_root/app/images/dbimages
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_root/app/data
 		cvw_borgclient -d $_root/app/images/dbimages
@@ -96,28 +100,13 @@ function randshop_install
 }
 
 
-function randshop_remove
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 while getopts ":i" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
 				randshop_install
 			else
-				randshop_remove
+				cvw_php -z $_slug
 			fi
 			exit 0
 		;;

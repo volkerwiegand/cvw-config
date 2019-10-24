@@ -262,6 +262,11 @@ function rails_app_install
 		cvw_file -r $_file
 	fi
 
+	cvw_backup -m $_id -u $_id -p $_pass $_id \
+		$_dir/shared/public/uploads
+	cvw_borgclient -m $_id
+	cvw_borgclient -d $_dir/shared/public/uploads
+
 	if cvw_xml -a software/nginx ; then
 		# this is for static files (assets e.g.)
 		_root=$(cvw_xml -r system/app_root)/nginx
@@ -332,9 +337,6 @@ function rails_app_install
 	else
 		cvw_service -e $_id
 	fi
-
-	cvw_borgclient -m $_id
-	cvw_borgclient -d $_dir/shared/public/uploads
 }
 
 
@@ -346,6 +348,7 @@ function rails_app_delete
 
 	if id rails >/dev/null 2>&1 ; then
 		cvw_service -z $_id
+		cvw_backup -z $_id
 		cvw_mysql -z $_id $_id
 		_dir=$(cvw_user -h rails)/$_id
 		if [[ -d $_dir ]] ; then
@@ -468,6 +471,7 @@ function rails_remove
 
 	for _id in $(cvw_xml -x software/$_slug/app) ; do
 		cvw_service -z $_id
+		cvw_backup -z $_id
 		cvw_mysql -z $_id $_id
 	done
 

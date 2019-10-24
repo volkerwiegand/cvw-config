@@ -121,6 +121,10 @@ function owncloud_install_native
 		EOF
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/data \
+		$_root/app/config \
+		$_root/app/themes
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_root/data
 	cvw_borgclient -d $_root/app/config
@@ -171,22 +175,6 @@ function owncloud_install_bitnami
 }
 
 
-function owncloud_remove_native
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 function owncloud_remove_bitnami
 {
 	local _root=$(cvw_xml -r system/app_root)/bitnami
@@ -216,7 +204,7 @@ while getopts ":i" opt ; do
 				if cvw_xml -t software/$_slug/bitnami ; then
 					owncloud_remove_bitnami
 				else
-					owncloud_remove_native
+					cvw_php -z $_slug
 				fi
 			fi
 			exit 0

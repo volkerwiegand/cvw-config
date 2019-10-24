@@ -175,6 +175,7 @@ function yellow_install
 		cvw_apache -p $_slug
 	fi
 
+	cvw_backup $_slug $_app
 	cvw_borgclient -d $_app
 
 	cvw_url -a "$_name" $_uri
@@ -191,27 +192,13 @@ function yellow_update
 }
 
 
-function yellow_remove
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 while getopts ":iu" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
 				yellow_install
 			else
-				yellow_remove
+				cvw_php -z $_slug
 			fi
 			exit 0
 		;;

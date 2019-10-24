@@ -30,7 +30,8 @@ function usage
 {
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
-		Syntax: $_prog -i   Install or remove $_name
+		Syntax: $_prog -i       Install or remove $_name
+		    or: $_prog -z app   Delete (zap) $_name app FIXME
 		Called with: '$_prog $_args'
 	EOF
 

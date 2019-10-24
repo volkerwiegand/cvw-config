@@ -96,6 +96,13 @@ function webdav_install
 	EOF
 	cvw_file -v $_file $(cvw_php -s)
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app/data \
+		$_root/app/public
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/app/data
+	cvw_borgclient -d $_root/app/public
+
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi
@@ -126,28 +133,9 @@ function webdav_install
 		htpasswd -b -c /etc/httpd/webdav.users.pwd $_user $_pass 2>/dev/null
 	fi
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/app/data
-	cvw_borgclient -d $_root/app/public
-
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
-}
-
-
-function webdav_remove
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
 }
 
 
@@ -157,7 +145,7 @@ while getopts ":i" opt ; do
 			if cvw_xml -a software/$_slug ; then
 				webdav_install
 			else
-				webdav_remove
+				cvw_php -z $_slug
 			fi
 			exit 0
 			;;

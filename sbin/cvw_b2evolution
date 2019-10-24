@@ -101,6 +101,11 @@ function b2evolution_install
 			rm -rf $_root/install # just in case
 			mv $_app/install $_root/install
 		fi
+
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_app/conf \
+			$_app/media \
+			$_app/plugins
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_app/conf
 		cvw_borgclient -d $_app/media

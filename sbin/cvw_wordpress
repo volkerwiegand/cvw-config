@@ -234,6 +234,10 @@ function wordpress_install
 		cvw_apache -p $_slug
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_app/wp-content/plugins \
+		$_app/wp-content/themes \
+		$_app/wp-content/uploads
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_app/wp-content/plugins
 	cvw_borgclient -d $_app/wp-content/themes

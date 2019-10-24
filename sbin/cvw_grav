@@ -90,6 +90,9 @@ function grav_install
 	EOF
 	cvw_file -v $_file
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+	cvw_borgclient -d $_app
+
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi
@@ -97,8 +100,6 @@ function grav_install
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
 	fi
-
-	cvw_borgclient -d $_app
 
 	cvw_url -a "$_name" $_uri
 
@@ -112,6 +113,7 @@ function grav_remove
 
 	if [[ -d $_root ]] ; then
 		cvw_say -h "Removing $_name"
+		cvw_backup -z $_slug
 		rm -rf $_root
 		cvw_say -o "$_slug:remove"
 	fi

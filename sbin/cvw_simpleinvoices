@@ -149,6 +149,11 @@ if false ; then
 	cvw_file -v $_file $(cvw_php -s)
 fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/app
+
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi
@@ -156,9 +161,6 @@ fi
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
 	fi
-
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/app
 
 	cvw_url -a "$_name" $_uri
 
@@ -204,21 +206,6 @@ function simpleinvoices_install_bitnami
 }
 
 
-function simpleinvoices_remove_native
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name (native)"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
-}
-
-
 function simpleinvoices_remove_bitnami
 {
 	local _root=$(cvw_xml -r system/app_root)/bitnami
@@ -248,7 +235,7 @@ while getopts ":i" opt ; do
 				if cvw_xml -t software/$_slug/bitnami ; then
 					simpleinvoices_remove_bitnami
 				else
-					simpleinvoices_remove_native
+					cvw_php -z $_slug
 				fi
 			fi
 			exit 0

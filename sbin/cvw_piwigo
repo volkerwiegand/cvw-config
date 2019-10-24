@@ -60,6 +60,15 @@ function piwigo_install
 			$_root/app/local \
 			$_root/app/upload
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app/_data \
+		$_root/app/local \
+		$_root/app/upload
+	cvw_borgclient -m $_slug
+	cvw_borgclient -d $_root/app/_data
+	cvw_borgclient -d $_root/app/local
+	cvw_borgclient -d $_root/app/upload
+
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi
@@ -68,29 +77,9 @@ function piwigo_install
 		cvw_apache -p $_slug
 	fi
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/app/_data
-	cvw_borgclient -d $_root/app/local
-	cvw_borgclient -d $_root/app/upload
-
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"
-}
-
-
-function piwigo_remove
-{
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-
-	if [[ -d $_root ]] ; then
-		cvw_say -h "Removing $_name"
-		cvw_mysql -z $_slug $_slug
-		rm -rf $_root
-		cvw_say -o "$_slug:remove"
-	fi
-
-	rm -f /tmp/cvw/error
 }
 
 
@@ -100,7 +89,7 @@ while getopts ":i" opt ; do
 			if cvw_xml -a software/$_slug ; then
 				piwigo_install
 			else
-				piwigo_remove
+				cvw_php -z $_slug
 			fi
 			exit 0
 		;;
