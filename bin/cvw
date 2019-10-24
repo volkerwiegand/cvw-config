@@ -5,7 +5,7 @@
 ######
 ###### cvw - CVW config system master command
 ######
-###### (c) 2016-2018 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -45,6 +45,7 @@ function usage
 		    or: $_prog -e [-D] [i]       Execute config [debug] [info]
 		    or: $_prog -E [-D] [i]       Execute with upgrade [debug] [info]
 		    or: $_prog -f file [name]    Fetch <file> from server [local name]
+		    or: $_prog -F app            Fetch most recent backup for <app>
 		    or: $_prog -g app            Generate sceleton config for <app>
 		    or: $_prog -G bits           Generate Diffie-Hellman group
 		    or: $_prog -h                Generate and fetch RSA host keys
@@ -256,7 +257,7 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:g:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:F:g:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -299,7 +300,11 @@ while getopts ":abBcCdDeEf:g:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 		;;
 
 		f)
-			_fetch=$OPTARG
+			_fetch_file=$OPTARG
+		;;
+
+		F)
+			_fetch_backup=$OPTARG
 		;;
 
 		g)
@@ -629,17 +634,31 @@ if [[ $_prepare ]] ; then
 fi
 
 
-if [[ $_fetch ]] ; then
+if [[ $_fetch_file ]] ; then
 	setup_config
-	cvw_say -a "Fetch $_fetch from $_fqdn"
+	cvw_say -a "Fetch $_fetch_file from $_fqdn"
 	if [[ $# -eq 0 ]] ; then
-		_local="${_fetch##*/}"
+		_local="${_fetch_file##*/}"
 	elif [[ $# -eq 1 ]] ; then
 		_local="$1"
 	else
 		usage
 	fi
-	scp root@$_addr:$_fetch $_local
+	scp root@$_addr:$_fetch_file $_local
+	exit
+fi
+
+
+if [[ $_fetch_backup ]] ; then
+	setup_config
+	copy_config
+	mkdir -p backup
+	cvw_say -a "Fetch last backup for $_fetch_backup from $_fqdn"
+	ssh -t root@$_addr "rm -rf /tmp/backup.$_fetch_backup.tar.gz"
+	ssh -t root@$_addr "tar -c -v -z -f /tmp/backup.$_fetch_backup.tar.gz -C /var/local/backup/$_fetch_backup backup.0"
+	scp root@$_addr:/tmp/backup.$_fetch_backup.tar.gz backup/$_fetch_backup.tar.gz
+	ssh -t root@$_addr "rm -f /tmp/backup.$_fetch_backup.tar.gz"
+	wipe_config
 	exit
 fi
 

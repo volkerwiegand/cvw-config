@@ -228,10 +228,11 @@
       <url>https://download.prestashop.com/download/releases/prestashop_1.7.1.2.zip</url>
     </download>
     <download id="processwire">
-      <link>https://processwire.com/download/</link>
-      <url>https://github.com/processwire/processwire/archive/master.zip</url>
-      <name>processwire-3.0.123.zip</name>
-      <version>3.0.123</version>
+      <link>https://github.com/processwire/processwire/releases</link>
+      <url>https://github.com/processwire/processwire/archive/3.0.62.zip</url>
+      <name>processwire-3.0.62.zip</name>
+      <version>3.0.62</version>
+      <sha256>6adeff321b60e32a3a4c076270b08c9efb736a796a5b4208be2999b85ce5a118</sha256>
     </download>
     <download id="puppet_master">
       <url>replace-this-text-with-the-download-link-you-received-from-puppet</url>

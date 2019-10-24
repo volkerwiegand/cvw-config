@@ -146,11 +146,9 @@ function processwire_install
 		fi
 
 		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_app/site/modules \
-			$_app/site/templates
+			$_app/site
 		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_app/site/modules
-		cvw_borgclient -d $_app/site/templates
+		cvw_borgclient -d $_app/site
 	else
 		for _site in $(cvw_xml -l software/$_slug/site | sort) ; do
 			cvw_say -s "adding site $_site"
