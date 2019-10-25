@@ -232,7 +232,7 @@
       <url>https://github.com/processwire/processwire/archive/3.0.62.zip</url>
       <name>processwire-3.0.62.zip</name>
       <version>3.0.62</version>
-      <sha256>6adeff321b60e32a3a4c076270b08c9efb736a796a5b4208be2999b85ce5a118</sha256>
+      <sha256>17c373017a07739fca465c8a6caebe1fef99c7985eaf5a7d986aa9c8b5548785</sha256>
     </download>
     <download id="puppet_master">
       <url>replace-this-text-with-the-download-link-you-received-from-puppet</url>
