@@ -66,6 +66,8 @@ function prosody_install
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_rpm -i $_slug
@@ -109,7 +111,6 @@ function prosody_install
 
 	prosodyctl --root cert import /etc/letsencrypt/live
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 	cvw_borgclient -m $_slug
 
 	cvw_firewall -s xmpp-client

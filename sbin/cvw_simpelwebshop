@@ -88,6 +88,12 @@ function simpelwebshop_install
 		EOF
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app/include \
+		$_root/app/artikel \
+		$_root/app/bilder \
+		$_root/app/backup
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -m -s -i $_slug $_root/download update.pdf
@@ -107,11 +113,7 @@ function simpelwebshop_install
 			rm -rf $_root/install.php # just in case
 			mv $_root/app/include/install.php $_root/install.php
 		fi
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/include \
-			$_root/app/artikel \
-			$_root/app/bilder \
-			$_root/app/backup
+
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_root/app/include
 		cvw_borgclient -d $_root/app/artikel

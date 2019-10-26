@@ -81,6 +81,9 @@ function rails_app_install
 	local _systemd="/usr/lib/systemd/system/$_id.service"
 	local _port _file _host _conf _restart _root
 
+	cvw_backup -m $_id -u $_id -p $_pass $_id \
+		$_dir/shared/public/uploads
+
 	if [[ $_server == "thin" || $_server == "puma" ]] ; then
 		_port=$(cvw_xml -r $_base/port)
 		cvw_say -s "app: $_id -> $_uri ($_server / $_port)"
@@ -262,8 +265,6 @@ function rails_app_install
 		cvw_file -r $_file
 	fi
 
-	cvw_backup -m $_id -u $_id -p $_pass $_id \
-		$_dir/shared/public/uploads
 	cvw_borgclient -m $_id
 	cvw_borgclient -d $_dir/shared/public/uploads
 

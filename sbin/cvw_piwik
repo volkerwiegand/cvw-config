@@ -52,6 +52,9 @@ function piwik_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _subdir _dest
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -i $_slug $_root/app index.php
@@ -75,8 +78,6 @@ function piwik_install
 		cvw_apache -p $_slug
 	fi
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-		$_root/app
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_root/app
 

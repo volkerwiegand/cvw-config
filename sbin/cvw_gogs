@@ -56,6 +56,10 @@ function gogs_install
 	local _home=$(cvw_user -h gogs)
 	local _file
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_home/gogs-repositories \
+		$_home/app/log
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -i $_slug $_home/app gogs
@@ -163,9 +167,6 @@ function gogs_install
 		EOF
 	fi
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-		$_home/gogs-repositories \
-		$_home/app/log
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_home/gogs-repositories
 	cvw_borgclient -d $_home/app/log

@@ -87,6 +87,9 @@ function dadamail_install
 	fi
 	[[ -s /tmp/cvw/error ]] && exit 1
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -i $_slug $_root/app mail.cgi
@@ -135,8 +138,6 @@ function dadamail_install
 		rm -rf $_root/install
 		mv $_root/app/install $_root/install
 	else
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_root/app
 	fi

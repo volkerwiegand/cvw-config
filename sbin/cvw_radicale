@@ -110,6 +110,8 @@ function radicale_install
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
+	cvw_backup $_slug $_repo
+
 	cvw_rpm -i python3-pip
 	python3 -m pip install --upgrade "passlib[bcrypt]"
 	python3 -m pip install --upgrade $_slug
@@ -205,8 +207,9 @@ function radicale_install
 	cvw_service -s $_slug
 	cvw_firewall -t $_port
 
-	cvw_backup $_slug $_repo
 	cvw_borgclient -d $_repo
+
+	cvw_url -a "$_name" ":$_port/"
 
 	cvw_say -o "$_slug"
 }

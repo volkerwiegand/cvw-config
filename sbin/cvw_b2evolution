@@ -67,6 +67,11 @@ function b2evolution_install
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_app/conf \
+		$_app/media \
+		$_app/plugins
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -i $_slug $_app index.php
@@ -102,10 +107,6 @@ function b2evolution_install
 			mv $_app/install $_root/install
 		fi
 
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_app/conf \
-			$_app/media \
-			$_app/plugins
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_app/conf
 		cvw_borgclient -d $_app/media

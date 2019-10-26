@@ -53,12 +53,13 @@ function shopware_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _check _subdir _dist
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -m -s -u apache -i $_slug $_root/app shopware.php
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-		$_root/app
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_root/app
 

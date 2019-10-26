@@ -62,6 +62,8 @@ function prestashop_install_native
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _check _subdir _dist
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -m -s -u apache -i $_slug $_root/app index.php
@@ -109,7 +111,6 @@ if false ; then
 		rm -rf $_root/install # just in case
 		mv $_root/app/install $_root/install
 	else
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 		cvw_borgclient -m $_slug
 	fi
 fi

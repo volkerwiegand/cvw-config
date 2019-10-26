@@ -52,6 +52,11 @@ function piwigo_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app/_data \
+		$_root/app/local \
+		$_root/app/upload
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -i $_slug $_root/app index.php
@@ -60,10 +65,6 @@ function piwigo_install
 			$_root/app/local \
 			$_root/app/upload
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-		$_root/app/_data \
-		$_root/app/local \
-		$_root/app/upload
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_root/app/_data
 	cvw_borgclient -d $_root/app/local

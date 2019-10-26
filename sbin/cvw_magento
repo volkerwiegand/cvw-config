@@ -53,6 +53,9 @@ function magento_install_native
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _check _subdir _dist
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -f /var/local/cvw/$_slug/Magento-CE-2.1.3.tar.bz2 $_root/app index.php
@@ -84,8 +87,6 @@ if false ; then
 		chown -R apache $_root/app/image
 		chown -R apache $_root/app/system/storage
 
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_root/app
 

@@ -54,6 +54,9 @@ function modified_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	_file=$(cvw_download -f $_slug)
@@ -77,8 +80,6 @@ function modified_install
 			cvw_file -e $_file "s|^RewriteBase.*|RewriteBase ${_uri%/}/|"
 		fi
 
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_root/app
 	else

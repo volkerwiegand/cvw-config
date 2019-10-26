@@ -56,6 +56,11 @@ function owncloud_install_native
 	local _data=$_root/data
 	local _conf _file _subdir _patt
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/data \
+		$_root/app/config \
+		$_root/app/themes
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -i $_slug $_root/app index.php
@@ -121,10 +126,6 @@ function owncloud_install_native
 		EOF
 	fi
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-		$_root/data \
-		$_root/app/config \
-		$_root/app/themes
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_root/data
 	cvw_borgclient -d $_root/app/config

@@ -81,6 +81,10 @@ function mantis_install
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app/plugins \
+		$_root/app/uploads
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -i $_slug $_root/app index.php
@@ -153,9 +157,6 @@ function mantis_install
 			mv $_root/app/admin $_root/admin
 		fi
 
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/plugins \
-			$_root/app/uploads
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_root/app/plugins
 		cvw_borgclient -d $_root/app/uploads

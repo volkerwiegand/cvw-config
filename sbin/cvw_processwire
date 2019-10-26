@@ -90,6 +90,9 @@ function processwire_install
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_app/site
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -u apache -i $_slug $_app index.php
@@ -145,8 +148,6 @@ function processwire_install
 			chmod 0400 $_file
 		fi
 
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_app/site
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_app/site
 	else

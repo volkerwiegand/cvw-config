@@ -54,6 +54,9 @@ function oscommerce_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf _file _check _subdir _dist
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/root
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	_file="/var/local/cvw/files/oscommerce-2.3.4.zip"
@@ -72,8 +75,6 @@ function oscommerce_install
 		rm -rf $_root/install # just in case
 		mv $_root/app/install $_root/install
 
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/root
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_root
 	fi

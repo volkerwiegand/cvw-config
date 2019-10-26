@@ -85,6 +85,10 @@ function roundcube_install
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app/logs \
+		$_root/app/temp
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -i $_slug $_root/app index.php
@@ -97,9 +101,6 @@ function roundcube_install
 		chmod 0700 $_root/app/installer
 		_installer="false"
 
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-			$_root/app/logs \
-			$_root/app/temp
 		cvw_borgclient -m $_slug
 		cvw_borgclient -d $_root/app/logs
 		cvw_borgclient -d $_root/app/temp

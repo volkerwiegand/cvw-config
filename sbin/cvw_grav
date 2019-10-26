@@ -67,6 +67,8 @@ function grav_install
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
 	cvw_unpack -u apache -i $_slug $_app index.php
 
 	_file=$_app/.htaccess
@@ -90,7 +92,6 @@ function grav_install
 	EOF
 	cvw_file -v $_file
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 	cvw_borgclient -d $_app
 
 	if cvw_xml -a software/nginx ; then

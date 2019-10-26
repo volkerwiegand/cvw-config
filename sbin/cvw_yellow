@@ -83,6 +83,8 @@ function yellow_install
 	local _source=/var/local/cvw/yellow
 	local _file _id _mail _info _pass _base
 
+	cvw_backup $_slug $_app
+
 	cvw_unpack -i $_slug $_app yellow.php
 
 	cvw_file -e $_conf "/^Sitename:/s#:.*#: $_sitename#" $_restart
@@ -175,7 +177,6 @@ function yellow_install
 		cvw_apache -p $_slug
 	fi
 
-	cvw_backup $_slug $_app
 	cvw_borgclient -d $_app
 
 	cvw_url -a "$_name" $_uri

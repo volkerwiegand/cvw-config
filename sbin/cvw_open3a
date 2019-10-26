@@ -62,6 +62,11 @@ function open3a_install
 		EOF
 	fi
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+		$_root/app/specifics \
+		$_root/app/system/Backup \
+		$_root/app/system/DBData
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -m -s -i $_slug $_root/app index.php
@@ -84,10 +89,6 @@ function open3a_install
 		cvw_apache -p $_slug
 	fi
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-		$_root/app/specifics \
-		$_root/app/system/Backup \
-		$_root/app/system/DBData
 	cvw_borgclient -m $_slug
 	cvw_borgclient -d $_root/app/specifics
 	cvw_borgclient -d $_root/app/system/Backup

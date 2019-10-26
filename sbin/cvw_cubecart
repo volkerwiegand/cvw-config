@@ -54,6 +54,8 @@ function cubecart_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _subdir _file
 
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -m -s -i $_slug $_root/app index.php
@@ -132,7 +134,6 @@ function cubecart_install
 			mv $_root/app/setup $_root/setup
 		fi
 
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug
 		cvw_borgclient -m $_slug
 	else
 		cvw_say -s "waiting for installation: https://$_fqdn$_uri/setup"
