@@ -44,9 +44,8 @@ function usage
 }
 
 
-function volume_install
+function volume_mount
 {
-	cvw_say -h "Installing $_name"
 	local _id="$1"
 	local _base="system/$_slug:$_id"
 	local _disk=$(cvw_xml -r $_base/disk_id)
@@ -64,9 +63,26 @@ function volume_install
 		echo "$_disk $_path ext4 $_opts 0 0" >>$_fstab.tmp_VW
 		cvw_file -v $_fstab
 	fi
+	mount -a
 
-	_device=$(df -P | awk '$6=="$_path" {print $1}')
-	resize2fs $_device 2>/dev/null
+	_device=$(df -P | awk '$6=="'$_path'" {print $1}')
+	cvw_say -s "resizing device $_device"
+	resize2fs $_device 2>/tmp/cvw/resize
+	if [[ $? -ne 0 ]] ; then
+			cat /tmp/cvw/resize >>/tmp/cvw/error
+			exit 1
+	fi
+	rm -f /tmp/cvw/resize
+}
+
+
+function volume_install
+{
+	cvw_say -h "Installing $_name"
+
+	cvw_xml -i system/$_slug | sort | while read _id ; do
+		volume_mount $_id
+	done
 
 	cvw_say -o "$_slug"
 }
@@ -75,9 +91,9 @@ function volume_install
 while getopts ":i" opt ; do
 	case $opt in
 		i)
-			cvw_xml -i system/$_slug | sort | while read _id ; do
-				volume_install $_id
-			done
+			if cvw_xml -c system/$_slug ; then
+				volume_install
+			fi
 			exit 0
 		;;
 
@@ -87,8 +103,6 @@ while getopts ":i" opt ; do
 	esac
 done
 shift $(($OPTIND-1))
-
-mount -a
 
 usage
 
