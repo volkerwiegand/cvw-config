@@ -401,7 +401,7 @@
       <file>ius</file>
       <prio>41</prio>
       <rpm>https://centos7.iuscommunity.org/ius-release.rpm</rpm>
-      <key>/etc/pki/rpm-gpg/IUS-COMMUNITY-GPG-KEY</key>
+      <key>/etc/pki/rpm-gpg/RPM-GPG-KEY-IUS-7</key>
     </repo>
     <repo id="passenger">
       <link>https://www.phusionpassenger.com/library/install/apache/install/oss/el7/</link>
