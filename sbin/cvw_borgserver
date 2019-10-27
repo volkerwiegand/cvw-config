@@ -114,14 +114,15 @@ function borgserver_install
 
 function borgserver_remove
 {
-	id borg >/dev/null 2>&1 || exit 0
-
-	cvw_say -h "Removing $_name"
-	cvw_user -z borg
-	if ! cvw_xml -a software/borgclient ; then
-		cvw_rpm -e borgbackup
+	id borg >/dev/null 2>&1
+	if [[ $? -eq 0 ]] ; then
+		cvw_say -h "Removing $_name"
+		cvw_user -z borg
+		if ! cvw_xml -a software/borgclient ; then
+			cvw_rpm -e borgbackup
+		fi
+		cvw_say -o "$_slug:remove"
 	fi
-	cvw_say -o "$_slug:remove"
 }
 
 
