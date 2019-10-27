@@ -45,7 +45,7 @@ function usage
 		    or: $_prog -e [-D] [i]       Execute config [debug] [info]
 		    or: $_prog -E [-D] [i]       Execute with upgrade [debug] [info]
 		    or: $_prog -f file [name]    Fetch <file> from server [local name]
-		    or: $_prog -F app            Fetch most recent backup for <app>
+		    or: $_prog -F [app]          Fetch most recent backup [for <app>]
 		    or: $_prog -g app            Generate sceleton config for <app>
 		    or: $_prog -G bits           Generate Diffie-Hellman group
 		    or: $_prog -h                Generate and fetch RSA host keys
@@ -73,6 +73,7 @@ function usage
 
 
 RSYNC_FLAGS="-az --delete --no-group --no-owner"
+SSH_T_FLAGS="-o LogLevel=QUIET -t"
 
 
 function failure
@@ -215,7 +216,7 @@ function wipe_compose
 	local _addr=$(cvw_xml -r host/addr)
 
 	cvw_say -a "remove remote docker-compose.yaml"
-	ssh -t root@$_addr "rm -f /root/docker-compose.yaml"
+	ssh $SSH_T_FLAGS root@$_addr "rm -f /root/docker-compose.yaml"
 }
 
 
@@ -234,15 +235,15 @@ function copy_config
 {
 	local _addr=$(cvw_xml -r host/addr)
 
-	cvw_say -a "rsync $_addr:/usr/local/sbin"
+	[[ -z $1 ]] && cvw_say -a "rsync $_addr:/usr/local/sbin"
 	rsync -az /usr/local/sbin/cvw_* root@$_addr:/usr/local/sbin
 
-	cvw_say -a "rsync $_addr:/var/local/cfg"
+	[[ -z $1 ]] && cvw_say -a "rsync $_addr:/var/local/cfg"
 	chmod -R go-rwx cfg
 	rsync $RSYNC_FLAGS --copy-links cfg/ root@$_addr:/var/local/cfg
 
 	if [[ -d ./cvw ]] ; then
-		cvw_say -a "rsync $_addr:/var/local/cvw"
+		[[ -z $1 ]] && cvw_say -a "rsync $_addr:/var/local/cvw"
 		rsync $RSYNC_FLAGS cvw/ root@$_addr:/var/local/cvw
 	fi
 }
@@ -252,12 +253,12 @@ function wipe_config
 {
 	local _addr=$(cvw_xml -r host/addr)
 
-	cvw_say -a "remove remote CVW files"
-	ssh -t root@$_addr "rm -rf /var/local/cfg /tmp/cvw /tmp/letsencrypt.tar.gz /tmp/opendkim.tar.gz"
+	[[ -z $1 ]] && cvw_say -a "remove remote CVW files"
+	ssh $SSH_T_FLAGS root@$_addr "rm -rf /var/local/cfg /tmp/cvw /tmp/letsencrypt.tar.gz /tmp/opendkim.tar.gz"
 }
 
 
-while getopts ":abBcCdDeEf:F:g:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
+while getopts ":abBcCdDeEf:Fg:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		a)
@@ -304,7 +305,8 @@ while getopts ":abBcCdDeEf:F:g:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 		;;
 
 		F)
-			_fetch_backup=$OPTARG
+			_fetch_backup=1
+			_finito=1
 		;;
 
 		g)
@@ -403,7 +405,7 @@ while getopts ":abBcCdDeEf:F:g:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 			setup_config
 			cvw_say -a "Remove /usr/local/sbin/cvw_... commands"
 			sudo rm -rf /usr/local/sbin/cvw_*
-			ssh -t root@$_addr "rm -rf /usr/local/sbin/cvw_*"
+			ssh $SSH_T_FLAGS root@$_addr "rm -rf /usr/local/sbin/cvw_*"
 			exit
 		;;
 
@@ -498,7 +500,7 @@ if [[ $_compose ]] ; then
 	copy_compose
 	cvw_say -a "docker-compose $_cmd"
 	cvw_say
-	ssh -tq root@$_addr /usr/local/bin/docker-compose "$_cmd"
+	ssh $SSH_T_FLAGS root@$_addr /usr/local/bin/docker-compose "$_cmd"
 	cvw_say
 	wipe_compose
 	exit
@@ -511,7 +513,7 @@ if [[ $_docker ]] ; then
 	[[ -z $_cmd ]] && _cmd="ps -a"
 	cvw_say -a "docker $_cmd"
 	cvw_say
-	ssh -tq root@$_addr docker "$_cmd"
+	ssh $SSH_T_FLAGS root@$_addr docker "$_cmd"
 	cvw_say
 	exit
 fi
@@ -522,7 +524,7 @@ if [[ $_update ]] ; then
 	setup_config
 	copy_config
 	cvw_say -a "updating $_fqdn $_debug $_info"
-	time ssh -t root@$_addr "cvw_boot $_debug $_info"
+	time ssh $SSH_T_FLAGS root@$_addr "cvw_boot $_debug $_info"
 	exit
 fi
 
@@ -532,7 +534,7 @@ if [[ $_upgrade ]] ; then
 	setup_config
 	copy_config
 	cvw_say -a "upgrading $_fqdn $_debug $_info"
-	time ssh -t root@$_addr "cvw_boot -u $_debug $_info"
+	time ssh $SSH_T_FLAGS root@$_addr "cvw_boot -u $_debug $_info"
 	exit
 fi
 
@@ -542,11 +544,11 @@ if [[ $_root_login ]] ; then
 	if [[ $# -ge 1 ]] ; then
 		cvw_say -a "root@$_fqdn: '$@'"
 		cvw_say
-		ssh -t -X root@$_addr "$@"
+		ssh $SSH_T_FLAGS -X root@$_addr "$@"
 	else
 		copy_config
 		cvw_say
-		ssh -t -X root@$_addr
+		ssh $SSH_T_FLAGS -X root@$_addr
 		wipe_config
 	fi
 	exit
@@ -565,9 +567,9 @@ if [[ $_user_login ]] ; then
 	cvw_say
 	if [[ $# -ge 1 ]] ; then
 		cvw_say -a "$_user_login@$_fqdn: '$@'"
-		ssh -t -X $_user_login@$_addr "$@"
+		ssh $SSH_T_FLAGS -X $_user_login@$_addr "$@"
 	else
-		ssh -t -X $_user_login@$_addr
+		ssh $SSH_T_FLAGS -X $_user_login@$_addr
 	fi
 	exit
 fi
@@ -592,9 +594,9 @@ fi
 
 if [[ $_restart ]] ; then
 	setup_config
-	ssh -t root@$_addr "systemctl -t service stop $_restart"
+	ssh $SSH_T_FLAGS root@$_addr "systemctl -t service stop $_restart"
 	sleep 5
-	ssh -t root@$_addr "systemctl -t service start $_restart"
+	ssh $SSH_T_FLAGS root@$_addr "systemctl -t service start $_restart"
 	exit
 fi
 
@@ -610,24 +612,24 @@ if [[ $_prepare ]] ; then
 		scp $HOME/.ssh/id_rsa.pub root@$_addr:/root/.ssh/authorized_keys
 	fi
 	cvw_say -a "check if my ssh key has been installed"
-	ssh -t root@$_addr "cat /root/.ssh/authorized_keys"
+	ssh $SSH_T_FLAGS root@$_addr "cat /root/.ssh/authorized_keys"
 	cvw_say
 	mv -f $HOME/.ssh/known_hosts $HOME/.ssh/host_$_fqdn
 	combine_known_hosts
 
 	cvw_say -a "disable password login"
-	ssh -t root@$_addr "sed -i -e '/^PasswordAuthentication/s/yes/no/' /etc/ssh/sshd_config"
+	ssh $SSH_T_FLAGS root@$_addr "sed -i -e '/^PasswordAuthentication/s/yes/no/' /etc/ssh/sshd_config"
 
 	cvw_say -a "make sure scp is available"
-	ssh -t root@$_addr "test -x /usr/bin/scp || yum install -q -y openssh-clients"
+	ssh $SSH_T_FLAGS root@$_addr "test -x /usr/bin/scp || yum install -q -y openssh-clients"
 	cvw_say -a "make sure rsync is available"
-	ssh -t root@$_addr "test -x /usr/bin/rsync || yum install -q -y rsync"
+	ssh $SSH_T_FLAGS root@$_addr "test -x /usr/bin/rsync || yum install -q -y rsync"
 	cvw_say -a "make sure deltarpm is available"
-	ssh -t root@$_addr "test -x /usr/bin/applydeltarpm || yum install -q -y deltarpm"
+	ssh $SSH_T_FLAGS root@$_addr "test -x /usr/bin/applydeltarpm || yum install -q -y deltarpm"
 	cvw_say -a "make sure xmlstarlet is available"
-	ssh -t root@$_addr "test -s /etc/yum.repos.d/epel.repo || yum install -q -y epel-release"
-	ssh -t root@$_addr "rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7"
-	ssh -t root@$_addr "test -x /usr/bin/xmlstarlet || yum install -q -y xmlstarlet"
+	ssh $SSH_T_FLAGS root@$_addr "test -s /etc/yum.repos.d/epel.repo || yum install -q -y epel-release"
+	ssh $SSH_T_FLAGS root@$_addr "rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7"
+	ssh $SSH_T_FLAGS root@$_addr "test -x /usr/bin/xmlstarlet || yum install -q -y xmlstarlet"
 
 	cvw_say -a "ready for install"
 	exit 0
@@ -650,15 +652,19 @@ fi
 
 
 if [[ $_fetch_backup ]] ; then
-	setup_config
-	copy_config
+	setup_config quiet
+	copy_config quiet
 	mkdir -p backup
-	cvw_say -a "Fetch last backup for $_fetch_backup from $_fqdn"
-	ssh -t root@$_addr "rm -rf /tmp/backup.$_fetch_backup.tar.gz"
-	ssh -t root@$_addr "tar -c -v -z -f /tmp/backup.$_fetch_backup.tar.gz -C /var/local/backup/$_fetch_backup backup.0"
-	scp root@$_addr:/tmp/backup.$_fetch_backup.tar.gz backup/$_fetch_backup.tar.gz
-	ssh -t root@$_addr "rm -f /tmp/backup.$_fetch_backup.tar.gz"
-	wipe_config
+	if [[ $# -eq 0 ]] ; then
+		cvw_say -a "Backups on $_fqdn"
+		ssh $SSH_T_FLAGS root@$_addr "cd /var/local/backup && ls -1 | grep -v lost.found | sed 's/^/    --- cvw -F /'"
+	else
+		for _app in $* ; do
+			cvw_say -a "Fetch last backup for $_app from $_fqdn"
+			rsync -v $RSYNC_FLAGS root@$_addr:/var/local/backup/$_app/backup.0/ backup/$_app
+		done
+	fi
+	wipe_config quiet
 	exit
 fi
 
@@ -669,7 +675,7 @@ if [[ $_gen_host_rsa ]] ; then
 		failure "cfg/files/keys/id_rsa exists"
 	fi
 	cvw_say -a "generate RSA host keys on $_addr"
-	ssh -t root@$_addr "ssh-keygen"
+	ssh $SSH_T_FLAGS root@$_addr "ssh-keygen"
 	cvw_say -a "Fetch id_rsa{.pub} from $_addr"
 	scp root@$_addr:/root/.ssh/id_rsa cfg/files/keys/id_rsa
 	scp root@$_addr:/root/.ssh/id_rsa.pub cfg/files/keys/id_rsa.pub
@@ -683,7 +689,7 @@ if [[ $_gen_user_rsa ]] ; then
 		failure "cfg/files/keys/$_gen_user_rsa/id_rsa exists"
 	fi
 	cvw_say -a "generate RSA keys for $_gen_user_rsa on $_addr"
-	ssh -t $_gen_user_rsa@$_addr "ssh-keygen -C '$_gen_user_rsa@$_domain' -N ''"
+	ssh $SSH_T_FLAGS $_gen_user_rsa@$_addr "ssh-keygen -C '$_gen_user_rsa@$_domain' -N ''"
 	cvw_say -a "Fetch id_rsa{.pub} for $_gen_user_rsa from $_addr"
 	mkdir -p cfg/files/keys/$_gen_user_rsa
 	scp $_gen_user_rsa@$_addr:.ssh/id_rsa cfg/files/keys/$_gen_user_rsa/id_rsa
@@ -744,10 +750,10 @@ if [[ $_opendkim ]] ; then
 	setup_config
 	copy_config
 	cvw_say -a "securing OpenDKIM files"
-	ssh -t root@$_addr "tar -c -v -z -f /tmp/opendkim.tar.gz -C /etc opendkim"
+	ssh $SSH_T_FLAGS root@$_addr "tar -c -v -z -f /tmp/opendkim.tar.gz -C /etc opendkim"
 	scp root@$_addr:/tmp/opendkim.tar.gz cfg/files/misc/opendkim.tar.gz
 	wipe_config
-	ssh -t root@$_addr "cat /etc/opendkim/keys/default.txt"
+	ssh $SSH_T_FLAGS root@$_addr "cat /etc/opendkim/keys/default.txt"
 	exit
 fi
 
@@ -756,7 +762,7 @@ if [[ $_lets_encrypt ]] ; then
 	setup_config
 	copy_config
 	cvw_say -a "securing letsencrypt files"
-	ssh -t root@$_addr "tar -c -v -z -f /tmp/letsencrypt.tar.gz -C /etc letsencrypt"
+	ssh $SSH_T_FLAGS root@$_addr "tar -c -v -z -f /tmp/letsencrypt.tar.gz -C /etc letsencrypt"
 	scp root@$_addr:/tmp/letsencrypt.tar.gz cfg/files/misc/letsencrypt.tar.gz
 	wipe_config
 	exit
