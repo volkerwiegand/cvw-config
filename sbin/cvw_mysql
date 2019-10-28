@@ -114,7 +114,9 @@ function mysql_initial
 
 		[mysqld]
 		innodb_large_prefix=true
+		innodb_large_prefix=1
 		innodb_file_format=barracuda
+		innodb_file_per_table=true
 		innodb_file_per_table=1
 	EOF
 	cvw_file -v $_file mariadb
