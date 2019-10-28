@@ -612,7 +612,7 @@ if [[ $_prepare ]] ; then
 		scp $HOME/.ssh/id_rsa.pub root@$_addr:/root/.ssh/authorized_keys
 	fi
 	cvw_say -a "check if my ssh key has been installed"
-	ssh $SSH_T_FLAGS root@$_addr "cat /root/.ssh/authorized_keys"
+	ssh -t root@$_addr "cat /root/.ssh/authorized_keys"
 	cvw_say
 	mv -f $HOME/.ssh/known_hosts $HOME/.ssh/host_$_fqdn
 	combine_known_hosts
