@@ -180,7 +180,8 @@
     <download id="open3a">
       <link>https://www.open3a.de/page-Download</link>
       <url>https://www.open3a.de/multiCMSDownload.php?filedl=103</url>
-      <name>open3A_2.9.zip</name>
+      <name>open3A_3.0.zip</name>
+      <sha256>4fa957cedc5382f2bd643b3f621cf7be664451b5f768889830ef0866b679a3ca</sha256>
     </download>
     <download id="opencart">
       <link>https://www.opencart.com/index.php?route=cms/download/history</link>
