@@ -24,8 +24,12 @@ function usage
 {
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
-		Syntax: $_prog -i id [-m] [-s] [-u user] dir [guard]     Download and unpack into dir
-		    or: $_prog -f path [-m] [-s] [-u user] dir [guard]   Unpack archive into dir
+		Syntax: $_prog -i id   [opts] dir [guard]   Download and unpack into dir
+		    or: $_prog -f path [opts] dir [guard]   Unpack existing archive into dir
+		Options for -i and -f:
+		    -m        Make directory before saving
+		    -s mode   Skip one directory level
+		    -u user   Set ownership to user[:group]
 		Called with: '$_prog $_args'
 	EOF
 
@@ -88,7 +92,7 @@ fi
 rm -rf $_box
 mkdir -p $_box
 
-if [[ $_file =~ .*\.zip$ ]] ; then
+if [[ $_file =~ \.zip$ ]] ; then
 	cvw_rpm -i unzip
 	if [ $_mflag ] ; then
 		mkdir -p $_dir
@@ -96,20 +100,20 @@ if [[ $_file =~ .*\.zip$ ]] ; then
 	fi
 	cvw_say -s "unzipping $_file into $_dir"
 	unzip -q -d $_box $HOME/src/files/$_file 2>>/tmp/cvw/error
-elif [[ $_file =~ .*\.tar\.gz$ ]] ; then
+elif [[ $_file =~ \.tar\.gz$ ]] ; then
 	cvw_say -s "untarring $_file into $_dir"
 	tar -x -z -C $_box -f $HOME/src/files/$_file 2>>/tmp/cvw/error
-elif [[ $_file =~ .*\.tgz$ ]] ; then
+elif [[ $_file =~ \.tgz$ ]] ; then
 	cvw_say -s "untarring $_file into $_dir"
 	tar -x -z -C $_box -f $HOME/src/files/$_file 2>>/tmp/cvw/error
-elif [[ $_file =~ .*\.tar\.bz2$ ]] ; then
+elif [[ $_file =~ \.tar\.bz2$ ]] ; then
 	cvw_say -s "untarring $_file into $_dir"
 	tar -x -j -C $_box -f $HOME/src/files/$_file 2>>/tmp/cvw/error
-elif [[ $_file =~ .*\.tar\.xz$ ]] ; then
+elif [[ $_file =~ \.tar\.xz$ ]] ; then
 	cvw_say -s "untarring $_file into $_dir"
 	tar -x -J -C $_box -f $HOME/src/files/$_file 2>>/tmp/cvw/error
 else
-	cvw_say -f "$_prog: $_file is not an archive"
+	cvw_say -f "$_prog: $_file is not a known archive"
 fi
 
 mkdir -p $_dir
@@ -119,7 +123,12 @@ else
 	rsync -a $_box/*/ $_dir
 fi
 rm -rf $_box
-chown -R $_user:$_user $_dir 2>>/tmp/cvw/error
+
+if [[ $_user =~ : ]] ; then
+	chown -R $_user $_dir 2>>/tmp/cvw/error
+else
+	chown -R $_user:$_user $_dir 2>>/tmp/cvw/error
+fi
 
 exit 0
 
