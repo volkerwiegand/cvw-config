@@ -654,14 +654,15 @@ fi
 if [[ $_fetch_backup ]] ; then
 	setup_config quiet
 	copy_config quiet
-	mkdir -p backup
 	if [[ $# -eq 0 ]] ; then
 		cvw_say -a "Backups on $_fqdn"
 		ssh $SSH_T_FLAGS root@$_addr "cd /var/local/backup && ls -1 | grep -v lost.found | sed 's/^/    --- cvw -F /'"
 	else
+		[[ $CVW_BACKUP ]] && _cvw_backup=$CVW_BACKUP/$_fqdn
+		mkdir -p ${_cvw_backup:-backup}
 		for _app in $* ; do
 			cvw_say -a "Fetch last backup for $_app from $_fqdn"
-			rsync -v $RSYNC_FLAGS root@$_addr:/var/local/backup/$_app/backup.0/ backup/$_app
+			rsync -v $RSYNC_FLAGS root@$_addr:/var/local/backup/$_app/backup.0/ ${_cvw_backup:-backup}/$_app
 		done
 	fi
 	wipe_config quiet
