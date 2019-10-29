@@ -50,7 +50,7 @@ function usage
 		    or: $_prog -G bits           Generate Diffie-Hellman group
 		    or: $_prog -h                Generate and fetch RSA host keys
 		    or: $_prog -H user           Generate and fetch RSA user keys
-		    or: $_prog -j                Ping the remote machine
+		    or: $_prog -j [4|6]          Ping the remote machine
 		    or: $_prog -k [port]         Set remote SSH port in ~/.ssh/config
 		    or: $_prog -K                Delete remote SSH port
 		    or: $_prog -l [cmd]          Remote login as root
@@ -557,7 +557,13 @@ fi
 
 if [[ $_ping ]] ; then
 	setup_config quiet
-	ping $_fqdn
+	if [[ $1 -eq 4 ]] ; then
+		ping -4 $_fqdn
+	elif [[ $1 -eq 6 ]] ; then
+		ping -6 $_fqdn
+	else
+		ping $_fqdn
+	fi
 	exit
 fi
 
