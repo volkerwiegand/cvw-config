@@ -22,7 +22,7 @@ _prog=${0##*/}
 _args="$*"
 _name="Nextcloud"
 _slug="nextcloud"
-_dflt="16_0_0"
+_dflt="16_0_5"
 
 
 function usage
