@@ -166,11 +166,23 @@
       <name>modified-shop_2.0.2.2-r10690_install.zip</name>
       <version>2.0.2.2</version>
     </download>
-    <download id="nextcloud">
+    <download id="nextcloud_16_0_0">
       <link>https://download.nextcloud.com/server/releases/</link>
       <url>https://download.nextcloud.com/server/releases/nextcloud-16.0.0.tar.bz2</url>
       <md5>70bec3fa700168df44ab73d54842cb48</md5>
       <sha256>4532f7028b1d9bf060f75ac4fbbde52a59ecd9c9155f3178a038d3cf3609402e</sha256>
+    </download>
+    <download id="nextcloud_16_0_5">
+      <link>https://download.nextcloud.com/server/releases/</link>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-16.0.5.tar.bz2</url>
+      <md5>797e4bac37e7cf0c70279070ef87be28</md5>
+      <sha256>8709c64fa776fd731c8e5f1ab25d592a2e690e5e18a81601cccf363795fae551</sha256>
+    </download>
+    <download id="nextcloud_17_0_0">
+      <link>https://download.nextcloud.com/server/releases/</link>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-17.0.0.tar.bz2</url>
+      <md5>5aa71278c3ace9b45cb7ab147ff52721</md5>
+      <sha256>6081421b33ecdb3130b2bfb2293a3f4045aeb0b471ee570e675de3d931a142a6</sha256>
     </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>

@@ -22,6 +22,7 @@ _prog=${0##*/}
 _args="$*"
 _name="Nextcloud"
 _slug="nextcloud"
+_dflt="16_0_0"
 
 
 function usage
@@ -78,6 +79,7 @@ function nextcloud_install
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _release=$(cvw_xml -R software/$_slug/release $_dflt)
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
@@ -104,7 +106,7 @@ function nextcloud_install
 
 	cvw_mysql -c $_slug $_slug $_pass utf8mb4_general_ci
 
-	cvw_unpack -u apache -i $_slug $_root/app index.php
+	cvw_unpack -u apache -i ${_slug}_$_release $_root/app index.php
 
 	_file="$_root/app/config/config.php"
 	if [[ ! -s $_file ]] ; then
