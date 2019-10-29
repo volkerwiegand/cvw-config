@@ -566,24 +566,6 @@
       <rpm>perl-XML-Writer</rpm>
       <rpm>perl-YAML</rpm>
     </rpm_list>
-    <rpm_list id="php56u">
-      <rpm>php56u</rpm>
-      <rpm>php56u-bcmath</rpm>
-      <rpm>php56u-cli</rpm>
-      <rpm>php56u-common</rpm>
-      <rpm>php56u-devel</rpm>
-      <rpm>php56u-gd</rpm>
-      <rpm>php56u-imap</rpm>
-      <rpm>php56u-intl</rpm>
-      <rpm>php56u-mbstring</rpm>
-      <rpm>php56u-opcache</rpm>
-      <rpm>php56u-pdo</rpm>
-      <rpm>php56u-pecl-apcu</rpm>
-      <rpm>php56u-pecl-redis</rpm>
-      <rpm>php56u-pecl-memcache</rpm>
-      <rpm>php56u-soap</rpm>
-      <rpm>php56u-xml</rpm>
-    </rpm_list>
     <rpm_list id="php72u">
       <rpm>mod_php72u</rpm>
       <rpm>php72u-bcmath</rpm>
