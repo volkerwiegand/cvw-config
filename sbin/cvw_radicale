@@ -55,8 +55,13 @@ function generate_template
 	    </user>
 
 	    <!-- software -->
-	    <$_slug active="true" git="true">
+	    <$_slug active="true" git="true" public="true">
 	      <port>5232</port>
+	      <uri>/radicale</uri>
+	      <user id="user" active="true">
+	        <name>CardDAV User</name>
+	        <password>secret-password</password>
+	      </user>
 	    </$_slug>
 
 	EOF
@@ -86,6 +91,7 @@ function radicale_install
 	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _port=$(cvw_xml -r software/$_slug/port)
+	local _uri=$(cvw_xml -r software/$_slug/uri)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_user -s $_slug
 	local _home=$(cvw_user -h $_slug)
@@ -95,18 +101,21 @@ function radicale_install
 	local _repo=$_home/collections
 	local _conf=/etc/$_slug
 	local _cert=/etc/letsencrypt/live/$_fqdn
-	local _hook="# hook"
-	local _file _user
+	local _hook _file _user
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
-			      WebGUI ..................: https://$_fqdn:$_port/
 			      Username ................: $_slug
 			      User Info ...............: $_info
 			      User E-Mail .............: $_addr
 			      Password ................: $_pass
 		EOF
+		if cvw_xml -t software/$_slug/public ; then
+			echo "      WebGUI ..................: https://$_fqdn:$_port/" >>/tmp/cvw/info
+		else
+			echo "      WebGUI ..................: $(cvw_url -r $_uri)" >>/tmp/cvw/info
+		fi
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
@@ -157,17 +166,27 @@ function radicale_install
 			radicale_exec "git add README.md .gitignore"
 			radicale_exec "git commit -m 'first commit'"
 		fi
-
-		_hook="hook"
 	fi
 
 	_file=$_conf/config
-	cat >$_file.tmp_VW <<-EOF
-		[server]
-		hosts = 0.0.0.0:$_port
-		ssl = true
-		certificate = $_cert/fullchain.pem
-		key = $_cert/privkey.pem
+	if cvw_xml -t software/$_slug/public ; then
+		cat >$_file.tmp_VW <<-EOF
+			[server]
+			hosts = 0.0.0.0:$_port
+			ssl = true
+			certificate = $_cert/fullchain.pem
+			key = $_cert/privkey.pem
+		EOF
+	else
+		cat >$_file.tmp_VW <<-EOF
+			hosts = 0.0.0.0:$_port
+			ssl = false
+		EOF
+	fi
+	cat >>$_file.tmp_VW <<-EOF
+
+		[rights]
+		type = authenticated
 
 		[auth]
 		type = htpasswd
@@ -176,11 +195,10 @@ function radicale_install
 
 		[storage]
 		filesystem_folder = $_repo
-		$_hook = git add -A && (git diff --cached --quiet || git commit -m "Changes by "%(user)s)
-
-		[rights]
-		type = authenticated
 	EOF
+	if cvw_xml -t software/$_slug/git ; then
+		echo 'hook = git add -A && (git diff --cached --quiet || git commit -m "Changes by "%(user)s)' >>$_file.tmp_VW
+	fi
 	cvw_file -v $_file $_slug
 
 	_file=/etc/systemd/system/$_slug.service
@@ -204,12 +222,47 @@ function radicale_install
 	EOF
 	cvw_file -v $_file $_slug
 
+	if cvw_xml -t software/$_slug/public ; then
+		cvw_url -a "$_name" ":$_port/"
+		cvw_firewall -t $_port
+	else
+		if cvw_xml -a software/nginx ; then
+			_file="/tmp/cvw/nginx.options"
+			cat >$_file <<-EOF
+				location $_uri/ {
+				    proxy_pass        http://localhost:$_port/;
+				    proxy_set_header  X-Script-Name /radicale;
+				    proxy_set_header  X-Forwarded-For \$proxy_add_x_forwarded_for;
+				    proxy_pass_header Authorization;
+				}
+			EOF
+			cvw_nginx -p $_slug
+		fi
+
+		if cvw_xml -a software/apache ; then
+			cat >/tmp/cvw/apache.block <<-EOF
+
+				   <IfModule mod_rewrite.c>
+				      RewriteEngine On
+				      RewriteRule ^$_uri$ $_uri/ [R,L]
+				      RewriteRule ^/\\.well-known/carddav $_uri/ [R=301,L]
+				      RewriteRule ^/\\.well-known/caldav $_uri/ [R=301,L]
+				   </IfModule>
+
+				   <Location "$_uri/">
+				      ProxyPass        http://localhost:$_port/ retry=0
+				      ProxyPassReverse http://localhost:$_port/
+				      RequestHeader    set X-Script-Name /radicale/
+				   </Location>
+			EOF
+			cvw_apache -p $_slug
+		fi
+		cvw_url -a "$_name" $_uri/
+	fi
+
 	cvw_service -s $_slug
-	cvw_firewall -t $_port
 
 	cvw_borgclient -d $_repo
-
-	cvw_url -a "$_name" ":$_port/"
 
 	cvw_say -o "$_slug"
 }
