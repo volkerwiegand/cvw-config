@@ -51,9 +51,11 @@ function nextcloud_generate
 	local _domain=${_fqdn#*.}
 
 	cat <<-EOF
-	    <nextcloud active="true">
+	    <nextcloud active="true" wellknown="true">
+	      <release>16_0_5</release>
 	      <uri>/cloud</uri>
 	      <password>$(cvw -p 20)</password>
+	      <loglevel>1</loglevel>
 	      <admin>
 	        <name>Cloud Admin</name>
 	        <password>$(cvw -p 20)</password>
@@ -93,6 +95,7 @@ function nextcloud_install
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
+			      Software Release  .......: $_release
 			      Database password .......: $_pass
 			      Login URL ...............: $(cvw_url -r $_uri)index.php/login
 			      Admin Name ..............: $_adm_name
@@ -109,7 +112,9 @@ function nextcloud_install
 	cvw_unpack -u apache -i ${_slug}_$_release $_root/app index.php
 
 	_file="$_root/app/config/config.php"
-	if [[ ! -s $_file ]] ; then
+	if [[ -s $_file ]] ; then
+		nextcloud_occ maintenance:mode --on
+	else
 		cvw_user -r apache -d $_root/app \
 			php occ maintenance:install \
 			--database      "mysql" \
@@ -163,6 +168,8 @@ function nextcloud_install
 		nextcloud_occ --no-interaction db:add-missing-indices
 	fi
 
+	nextcloud_occ maintenance:mode --off
+
 	if cvw_xml -a software/nginx ; then
 		_file="/tmp/cvw/nginx.options"
 		cat >$_file <<-EOF
@@ -213,8 +220,14 @@ function nextcloud_install
 			     RewriteRule ^/\\.well-known/host-meta $_uri/public.php?service=host-meta [QSA,L]
 			     RewriteRule ^/\\.well-known/host-meta\\.json $_uri/public.php?service=host-meta-json [QSA,L]
 			     RewriteRule ^/\\.well-known/webfinger $_uri/public.php?service=webfinger [QSA,L]
-			     RewriteRule ^/\\.well-known/carddav $_uri/remote.php/dav/ [R=301,L]
-			     RewriteRule ^/\\.well-known/caldav $_uri/remote.php/dav/ [R=301,L]
+		EOF
+		if cvw_xml -t software/$_slug/wellknown ; then
+			cat >>/tmp/cvw/apache.block <<-EOF
+				     RewriteRule ^/\\.well-known/carddav $_uri/remote.php/dav/ [R=301,L]
+				     RewriteRule ^/\\.well-known/caldav  $_uri/remote.php/dav/ [R=301,L]
+			EOF
+		fi
+		cat >>/tmp/cvw/apache.block <<-EOF
 			   </IfModule>
 		EOF
 		cvw_apache -p $_slug
