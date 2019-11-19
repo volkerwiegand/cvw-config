@@ -22,6 +22,7 @@ _prog=${0##*/}
 _args="$*"
 _name="gogs (Go Git Service)"
 _slug="gogs"
+_dflt="0_11_91"
 
 
 function usage
@@ -47,14 +48,30 @@ function gogs_install
 {
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _port=$(cvw_xml -R software/$_slug/port 8888)
-	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _release=$(cvw_xml -R software/$_slug/release $_dflt)
 	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _port=$(cvw_xml -R software/$_slug/port 8888)
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _secret=$(cvw_xml -r software/$_slug/secret)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_user -s gogs
 	local _home=$(cvw_user -h gogs)
+	local _register="no"
+	cvw_xml -t software/$_slug/register && _register="yes"
 	local _file
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Software Release  .......: $_release
+			      Database password .......: $_pass
+			      Root URL ................: https://$_fqdn$_uri
+			      Secret Key ..............: $_secret
+			      Registration ............: $_register
+		EOF
+	fi
+	[[ -s /tmp/cvw/error ]] && exit 1
 
 	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
 		$_home/gogs-repositories \
@@ -98,7 +115,7 @@ function gogs_install
 		[service]
 	EOF
 
-	if cvw_xml -t software/$_slug/register ; then
+	if [[ $_register == "yes" ]] ; then
 		cat >>$_file.tmp_VW <<-EOF
 			REGISTER_EMAIL_CONFIRM = true
 			ENABLE_NOTIFY_MAIL = false
@@ -128,9 +145,8 @@ function gogs_install
 
 		[security]
 		INSTALL_LOCK = true
-		SECRET_KEY = $(cvw_xml -r software/$_slug/secret)
+		SECRET_KEY = $_secret
 	EOF
-	[[ -s /tmp/cvw/error ]] && exit 1
 	cvw_file -v $_file gogs
 
 	_file="/usr/lib/systemd/system/gogs.service"
