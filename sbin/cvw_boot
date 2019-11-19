@@ -122,6 +122,7 @@ cvw_nextcloud      -i ; error_check
 cvw_seafile        -i ; error_check
 cvw_webdav         -i ; error_check
 cvw_radicale       -i ; error_check
+cvw_infcloud       -i ; error_check
 cvw_davical        -i ; error_check
 cvw_agendav        -i ; error_check
 cvw_prosody        -i ; error_check

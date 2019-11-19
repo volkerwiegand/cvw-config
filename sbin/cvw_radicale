@@ -124,6 +124,11 @@ function radicale_install
 	cvw_rpm -i python3-pip
 	python3 -m pip install --upgrade "passlib[bcrypt]"
 	python3 -m pip install --upgrade $_slug
+
+	if cvw_xml -t software/$_slug/infcloud ; then
+		python3 -m pip install --upgrade git+https://github.com/Unrud/RadicaleInfCloud
+	fi
+
 	mkdir -p $_conf
 	install -o $_slug -g $_slug -d $_repo
 

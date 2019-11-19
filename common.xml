@@ -136,6 +136,10 @@
       <url>https://github.com/getgrav/grav-skeleton-rtfm-site/releases/download/1.0.2/grav-skeleton-rtfm-site-v1.0.2.zip</url>
       <md5>93b2d24fa2298a2e83e32e0073822a13</md5>
     </download>
+    <download id="infcloud">
+      <link>https://www.inf-it.com/open-source/clients/infcloud/</link>
+      <url>https://www.inf-it.com/InfCloud_0.13.1.zip</url>
+    </download>
     <download id="joomla">
       <link>https://downloads.joomla.org/latest</link>
       <url>https://downloads.joomla.org/cms/joomla3/3-8-0/joomla_3-8-0-stable-full_package-tar-bz2?format=bz2</url>
