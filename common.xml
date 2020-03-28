@@ -188,6 +188,12 @@
       <md5>5aa71278c3ace9b45cb7ab147ff52721</md5>
       <sha256>6081421b33ecdb3130b2bfb2293a3f4045aeb0b471ee570e675de3d931a142a6</sha256>
     </download>
+    <download id="nextcloud_18_0_3">
+      <link>https://download.nextcloud.com/server/releases/</link>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-18.0.3.tar.bz2</url>
+      <md5>e6e6e63f641248716c758948baef18df</md5>
+      <sha256>7b67e709006230f90f95727f9fa92e8c73a9e93458b22103293120f9cb50fd72</sha256>
+    </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
       <url>https://nodejs.org/dist/v6.11.0/node-v6.11.0-linux-x64.tar.xz</url>

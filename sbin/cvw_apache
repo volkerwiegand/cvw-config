@@ -6,7 +6,7 @@
 ###### cvw_apache - Install or disable Apache httpd
 ######              http://httpd.apache.org/
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -216,6 +216,14 @@ function apache_initial
 		      nokeepalive ssl-unclean-shutdown \\
 		      downgrade-1.0 force-response-1.0
 	EOF
+
+	if cvw_xml -c software/apache/redir_root ; then
+		_target=$(cvw_xml -r software/apache/redir_root)
+		cat >>$_CONF_FILE.tmp_VW <<-EOF
+
+			   RedirectMatch ^/\$ $_target
+		EOF
+	fi
 
 	if cvw_xml -a software/docker ; then
 		for _container in $(cvw_xml -i software/docker/container) ; do
