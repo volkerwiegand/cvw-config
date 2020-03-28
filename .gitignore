@@ -4,6 +4,7 @@
 *.de/
 *.org/
 *.net/
+*.eu/
 
 # Ignore files containing private data
 #

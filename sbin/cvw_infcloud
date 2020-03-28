@@ -1,0 +1,123 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_infcloud - Install or remove InfCloud
+######                https://www.inf-it.com/open-source/clients/infcloud/
+######                https://www.inf-it.com/infcloud/readme.txt
+######
+###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="InfCloud"
+_slug="infcloud"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function generate
+{
+	cat <<-EOF
+	    <$_slug active="true">
+	      <uri>/infcloud</uri>
+	    </$_slug>
+
+	EOF
+	exit 0
+}
+
+
+function infcloud_install
+{
+	cvw_say -h "Installing $_name"
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _conf=$_root/app/config.js
+
+	cvw_unpack -i $_slug $_root/app index.html
+
+	mkdir -p $_root/saved
+	if [[ ! -s $_root/saved/config.js ]] ; then
+		cp $_conf $_root/saved/config.js
+	fi
+
+	cat >>$_conf.tmp_VW <<-EOF
+	//
+	// Generated file - do not edit
+	//
+	var globalNetworkCheckSettings={
+	  href: location.protocol+'//'+location.hostname+
+	    (location.port ? ':'+location.port: '')+
+	    location.pathname.replace(RegExp('/+[^/]+/*(index\\.html)?\$'),'')+
+	    '/caldav.php/',
+	  timeOut: 90000,
+	  lockTimeOut: 10000,
+	  checkContentType: true,
+	  settingsAccount: true,
+	  delegation: true,
+	  additionalResources: [],
+	  hrefLabel: null,
+	  forceReadOnly: null,
+	  ignoreAlarms: false,
+	  backgroundCalendars: []
+	}
+
+	EOF
+
+	cvw_say -o "$_slug"
+}
+
+
+while getopts ":ig" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				infcloud_install
+			else
+				cvw_php -z $_slug
+			fi
+			exit 0
+		;;
+
+		g)
+			generate
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
