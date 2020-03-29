@@ -148,7 +148,12 @@ function php_install
 
 function php_remove
 {
-	cvw_say -s "$_slug:remove (not implemented)"
+	if false ; then
+		cvw_say -h "Removing $_name"
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
 }
 
 

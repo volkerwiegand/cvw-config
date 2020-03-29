@@ -362,6 +362,9 @@
       <md5>9eafba953b987548106ca833f7247523</md5>
     </download>
 
+    <git id="mailcow">
+      <url>https://github.com/mailcow/mailcow-dockerized.git</url>
+    </git>
     <git id="gitolite">
       <url>https://github.com/sitaramc/gitolite.git</url>
     </git>
