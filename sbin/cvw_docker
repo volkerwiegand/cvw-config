@@ -7,7 +7,7 @@
 ######              https://docs.docker.com/
 ######              https://docs.docker.com/compose/
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -45,31 +45,22 @@ function usage
 function docker_install
 {
 	cvw_say -h "Installing $_name"
+	cvw_user -s lumper
 	local _file _port
 
-	_file="/etc/yum.repos.d/docker.repo"
-	cat >$_file.tmp_VW <<-EOF
-		[dockerrepo]
-		name=Docker Repository
-		baseurl=https://yum.dockerproject.org/repo/main/centos/7/
-		enabled=1
-		gpgcheck=1
-		priority=19
-		gpgkey=https://yum.dockerproject.org/gpg
-	EOF
-	cvw_file -v $_file
+	if [[ ! -s /root/get-docker.sh ]] ; then
+		curl -sSL https://get.docker.com/ >/root/get-docker.sh
+	fi
+	if [[ ! -x /usr/bin/docker ]] ; then
+		sh /root/get-docker.sh
+	fi
+	cvw_download -i docker_completion /etc/bash_completion.d
 
-	cvw_yum -a docker
-	cvw_rpm -i docker-engine
-	cvw_rpm -i docker-engine-selinux
 	cvw_service -S docker
 
 	cvw_download -i docker_compose /usr/local/bin
-	pushd /usr/local/bin >/dev/null
-	chmod +x docker-compose-Linux-x86_64 2>>/tmp/cvw/error
-	ln -nfs docker-compose-Linux-x86_64 docker-compose
-	popd >/dev/null
-	[[ -s /tmp/cvw/error ]] && exit 1
+	chmod +x /usr/local/bin/docker-compose
+	cvw_download -i docker_compose_completion /etc/bash_completion.d
 
 	cvw_xml -l software/$_slug/tcp_port | sort -u | while read _port ; do
 		cvw_firewall -t $_port
@@ -81,13 +72,9 @@ function docker_install
 
 function docker_remove
 {
-	if cvw_rpm -c docker-engine ; then
+	if [[ -x /usr/bin/docker ]] ; then
 		cvw_say -h "Removing $_name"
-		rm -f /usr/local/bin/docker-compose*
-		cvw_rpm -e docker-engine-selinux
-		cvw_rpm -e docker-engine
-		rm -f /etc/yum.repos.d/docker.repo
-		rm -f /tmp/cvw/error
+		rm -f /usr/local/bin/docker-compose
 		cvw_say -o "$_slug:remove"
 	fi
 }

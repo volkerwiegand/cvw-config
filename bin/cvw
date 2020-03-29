@@ -37,11 +37,8 @@ function check_singleton
 function usage
 {
 	cat >&2 <<-EOF
-		Syntax: $_prog -a                Assemble docker-compose.yaml from sources
-		    or: $_prog -b                Add BorgBackup client to server
-		    or: $_prog -B                Delete BorgBackup client from server
-		    or: $_prog -c [cmd [args]]   Run remote docker-compose command for app
-		    or: $_prog -d [cmd [args]]   Run remote docker command
+		Syntax: $_prog -c [cmd [args]]   Run remote docker-compose as 'lumper'
+		    or: $_prog -d [cmd [args]]   Run remote docker as 'root'
 		    or: $_prog -e [-D] [i]       Execute config [debug] [info]
 		    or: $_prog -E [-D] [i]       Execute with upgrade [debug] [info]
 		    or: $_prog -f file [name]    Fetch <file> from server [local name]
@@ -179,6 +176,7 @@ function setup_config
 
 	[[ -z $1 ]] && echo "--> updating /var/local/cfg"
 	xmllint --output cfg/config.xml --xinclude config.in.xml
+	mkdir -p cfg
 	rsync -a ../files/ cfg/files
 	sudo ln -nfs $(pwd)/cfg /var/local/cfg 2>/tmp/cvw/error
 
@@ -195,28 +193,6 @@ function setup_config
 	rm -f /tmp/cvw/error
 
 	return 0
-}
-
-
-function copy_compose
-{
-	[[ -s docker-compose.yaml ]] || failure "missing docker-compose.yaml"
-	local _addr=$(cvw_xml -r host/addr)
-
-	cvw_say -a "rsync $_addr:/var/local/cvw"
-	sudo rsync -a --delete --no-owner --no-group cvw/ /var/local/cvw 2>>/tmp/cvw/error
-	rsync $RSYNC_FLAGS cvw/ root@$_addr:/var/local/cvw 2>>/tmp/cvw/error
-	cvw_say -a "copy docker-compose.yaml"
-	scp docker-compose.yaml root@$_addr:/root/docker-compose.yaml 2>>/tmp/cvw/error
-}
-
-
-function wipe_compose
-{
-	local _addr=$(cvw_xml -r host/addr)
-
-	cvw_say -a "remove remote docker-compose.yaml"
-	ssh $SSH_T_FLAGS root@$_addr "rm -f /root/docker-compose.yaml"
 }
 
 
@@ -258,22 +234,9 @@ function wipe_config
 }
 
 
-while getopts ":abBcCdDeEf:Fg:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
+while getopts ":cCdDeEf:Fg:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 	_finito=""
 	case $opt in
-		a)
-			_assemble=1
-			_finito=1
-		;;
-
-		b)
-			_add_borgclient=1
-		;;
-
-		B)
-			_del_borgclient=1
-		;;
-
 		c)
 			_compose=1
 			_finito=1
@@ -418,46 +381,6 @@ done
 shift $(($OPTIND-1))
 
 
-if [[ $_add_borgclient ]] ; then
-	setup_config quiet
-	if ! cvw_xml -a software/borgclient ; then
-		failure "BorgBackup client not active"
-	fi
-	if [[ ! -s cfg/files/keys/id_rsa.pub ]] ; then
-		failure "id_rsa.pub not found - maybe run cvw -H"
-	fi
-	_host=$(cvw_xml -r software/borgclient/host | cut -d: -f1)
-	_root=$(find .. -type d -name "*$_host" -print)
-	if [[ -z $_root ]] ; then
-		failure "BorgBackup server '$_host' not found"
-	fi
-	if [[ ! -d $_root/cfg/files/borgserver ]] ; then
-		failure "BorgBackup server $_host has no borgserver dir"
-	fi
-	cp cfg/files/keys/id_rsa.pub $_root/cfg/files/borgserver/$_fqdn
-	echo "Current BorgBackup clients:"
-	ls -1 $_root/cfg/files/borgserver
-	exit
-fi
-
-
-if [[ $_del_borgclient ]] ; then
-	setup_config quiet
-	if ! cvw_xml -a software/borgclient ; then
-		failure "BorgBackup client not active"
-	fi
-	_host=$(cvw_xml -r software/borgclient/host | cut -d: -f1)
-	_root=$(find .. -type d -name "*$_host" -print)
-	if [[ -z $_root ]] ; then
-		failure "BorgBackup server '$_host' not found"
-	fi
-	rm -f $_root/cfg/files/borgserver/$_fqdn
-	echo "Current BorgBackup clients:"
-	ls -1 $_root/cfg/files/borgserver
-	exit
-fi
-
-
 if [[ $_template ]] ; then
 	setup_config quiet
 	rm -rf /tmp/cvw
@@ -476,33 +399,14 @@ if [[ $_query_url ]] ; then
 fi
 
 
-if [[ $_assemble ]] ; then
-	[[ -s docker-compose.conf ]] || failure "missing docker-compose.conf"
-	cat >docker-compose.tmp <<-EOF
-		version: '2'
-
-		services:
-
-	EOF
-	grep -v "^#" docker-compose.conf | grep -v "^$" | while read _file ; do
-		cvw_say -a "$_file"
-		cat docker-compose.d/$_file.yaml >>docker-compose.tmp || exit 1
-	done
-	mv docker-compose.tmp docker-compose.yaml
-	exit
-fi
-
-
 if [[ $_compose ]] ; then
 	_addr=$(cvw_xml -r host/addr)
 	_cmd="$@"
-	[[ -z $_cmd ]] && _cmd="up -d"
-	copy_compose
+	[[ -z $_cmd ]] && _cmd="help"
 	cvw_say -a "docker-compose $_cmd"
 	cvw_say
-	ssh $SSH_T_FLAGS root@$_addr /usr/local/bin/docker-compose "$_cmd"
+	ssh $SSH_T_FLAGS lumper@$_addr docker-compose "$_cmd"
 	cvw_say
-	wipe_compose
 	exit
 fi
 
