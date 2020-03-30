@@ -75,8 +75,6 @@ function opencart_install_native
 			rm -rf $_root/install # just in case
 			mv $_root/app/install $_root/install
 			chown -R root:root $_root/install
-			cvw_borgclient -m $_slug
-			cvw_borgclient -d $_root/app
 		else
 			cvw_say -s "waiting for install: https://$_fqdn${_uri%/}/install"
 		fi

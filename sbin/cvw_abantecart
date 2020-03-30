@@ -69,8 +69,6 @@ function abantecart_install_native
 		cvw_say -s "hiding install directory"
 		rm -rf $_root/install # just in case
 		mv $_root/app/install $_root/install
-
-		cvw_borgclient -m $_slug
 	fi
 
 	if cvw_xml -a software/nginx ; then

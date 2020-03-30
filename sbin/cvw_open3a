@@ -89,11 +89,6 @@ function open3a_install
 		cvw_apache -p $_slug
 	fi
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/app/specifics
-	cvw_borgclient -d $_root/app/system/Backup
-	cvw_borgclient -d $_root/app/system/DBData
-
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"

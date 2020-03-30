@@ -110,8 +110,6 @@ if false ; then
 		cvw_say -s "hiding install directory"
 		rm -rf $_root/install # just in case
 		mv $_root/app/install $_root/install
-	else
-		cvw_borgclient -m $_slug
 	fi
 fi
 

@@ -81,10 +81,6 @@ function randshop_install
 			mv $_root/app/install $_root/install
 			chown -R root:root $_root/install
 		fi
-
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_root/app/data
-		cvw_borgclient -d $_root/app/images/dbimages
 	fi
 
 	if cvw_xml -a software/nginx ; then

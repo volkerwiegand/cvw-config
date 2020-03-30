@@ -90,9 +90,6 @@ if false ; then
 			cvw_file -e $_file "s|^AddDefaultCharset.*|AddDefaultCharset UTF-8|"
 			cvw_file -e $_file "s|^RewriteBase.*|RewriteBase ${_uri%/}/|"
 		fi
-
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_root/app
 	else
 		cvw_say -a "waiting for install .....: https://$_fqdn${_uri%/}/_installer"
 	fi

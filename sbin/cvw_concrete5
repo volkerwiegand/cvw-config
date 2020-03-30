@@ -77,12 +77,6 @@ function concrete5_install_native
 		cvw_apache -p $_slug
 	fi
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/app/application/files
-	cvw_borgclient -d $_root/app/application/config
-	cvw_borgclient -d $_root/app/packages
-	cvw_borgclient -d $_root/app/updates
-
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"

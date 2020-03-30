@@ -156,10 +156,6 @@ function mantis_install
 			rm -rf $_root/admin # just in case
 			mv $_root/app/admin $_root/admin
 		fi
-
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_root/app/plugins
-		cvw_borgclient -d $_root/app/uploads
 	else
 		cvw_say -a "waiting for install .....: $(cvw_url -r $_uri)admin/install.php"
 	fi

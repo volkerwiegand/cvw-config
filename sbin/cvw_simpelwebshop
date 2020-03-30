@@ -6,7 +6,7 @@
 ###### cvw_simpelwebshop - Install or remove SimpelWebshop
 ######                     http://www.simpelwebshop.de/index.html
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -113,12 +113,6 @@ function simpelwebshop_install
 			rm -rf $_root/install.php # just in case
 			mv $_root/app/include/install.php $_root/install.php
 		fi
-
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_root/app/include
-		cvw_borgclient -d $_root/app/artikel
-		cvw_borgclient -d $_root/app/bilder
-		cvw_borgclient -d $_root/app/backup
 	fi
 
 	if cvw_xml -a software/nginx ; then

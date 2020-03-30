@@ -60,9 +60,6 @@ function shopware_install
 
 	cvw_unpack -m -s -u apache -i $_slug $_root/app shopware.php
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/app
-
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi

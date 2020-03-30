@@ -133,8 +133,6 @@ function cubecart_install
 			rm -rf $_root/setup # just in case
 			mv $_root/app/setup $_root/setup
 		fi
-
-		cvw_borgclient -m $_slug
 	else
 		cvw_say -s "waiting for installation: https://$_fqdn$_uri/setup"
 	fi

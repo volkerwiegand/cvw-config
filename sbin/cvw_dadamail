@@ -137,9 +137,6 @@ function dadamail_install
 		popd >/dev/null
 		rm -rf $_root/install
 		mv $_root/app/install $_root/install
-	else
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_root/app
 	fi
 
 	chown -R apache $_root/app $_root/static

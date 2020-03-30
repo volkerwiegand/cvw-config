@@ -8,7 +8,7 @@
 ######                 https://codex.wordpress.org/Installing_WordPress
 ######                 https://de.wordpress.org/
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -238,11 +238,6 @@ function wordpress_install
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
 	fi
-
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_app/wp-content/plugins
-	cvw_borgclient -d $_app/wp-content/themes
-	cvw_borgclient -d $_app/wp-content/uploads
 
 	cvw_url -a "$_name" $_uri
 

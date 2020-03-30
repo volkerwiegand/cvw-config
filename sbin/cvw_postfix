@@ -457,9 +457,6 @@ function postfix_install_standalone
 	cvw_rpm -i unbound
 	cvw_service -s unbound
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_vmail_dir
-
 	cvw_say -o "$_slug:initial"
 }
 

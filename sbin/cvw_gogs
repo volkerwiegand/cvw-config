@@ -183,10 +183,6 @@ function gogs_install
 		EOF
 	fi
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_home/gogs-repositories
-	cvw_borgclient -d $_home/app/log
-
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"

@@ -12,7 +12,7 @@
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
-######          TODO backup postgresql databases for kivitendo, not entire dir
+######          TODO backup
 ######          TODO use kivitendo with nginx
 ######
 #################################################################################
@@ -240,9 +240,6 @@ function kivitendo_install
 		EOF
 		cvw_apache -p $_slug
 	fi
-
-	# TODO backup postgresql
-	cvw_borgclient -d $_root/app
 
 	cvw_url -a "$_name" $_uri
 

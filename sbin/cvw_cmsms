@@ -109,9 +109,6 @@ function cmsms_install
 		for _subdir in images fonts js ; do
 			mkdir -p $_root/app/assets/$_subdir
 		done
-
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_root/app
 	else
 		cvw_unpack -s -i $_slug $_root/app README-PHAR.TXT
 		cvw_say -s "waiting for install: https://$_fqdn/$_phar"

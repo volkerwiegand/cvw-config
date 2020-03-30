@@ -82,9 +82,6 @@ function xiopo_install
 			cvw_say -s "hiding install dir"
 			mv $_root/app/install $_root
 		fi
-
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_root/app
 	else
 		chown -R apache:apache $_root
 		cvw_say -s "waiting for install: https://$_fqdn$_uri/install/"

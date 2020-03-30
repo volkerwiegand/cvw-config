@@ -119,9 +119,6 @@ function dokuwiki_install
 			rm -rf $_root/install.php # just in case
 			mv $_root/app/install.php $_root/install.php
 		fi
-
-		cvw_borgclient -d $_root/app/conf
-		cvw_borgclient -d $_root/app/data
 	else
 		cvw_say -s "waiting for installation"
 	fi

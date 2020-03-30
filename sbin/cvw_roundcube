@@ -100,10 +100,6 @@ function roundcube_install
 	if grep -q -s $_pass $_conf ; then
 		chmod 0700 $_root/app/installer
 		_installer="false"
-
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_root/app/logs
-		cvw_borgclient -d $_root/app/temp
 	else
 		cvw_say -a "Installer URL ...........: $(cvw_url -r $_uri)installer/"
 		_installer="true"

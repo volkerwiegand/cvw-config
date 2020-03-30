@@ -126,11 +126,6 @@ function owncloud_install_native
 		EOF
 	fi
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/data
-	cvw_borgclient -d $_root/app/config
-	cvw_borgclient -d $_root/app/themes
-
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"

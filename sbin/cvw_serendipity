@@ -91,13 +91,6 @@ function serendipity_install
 		cp $_app/.htaccess $_root/htaccess
 		cp $_app/$_file $_root/$_file
 
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_app/archives
-		cvw_borgclient -d $_app/plugins
-		cvw_borgclient -d $_app/templates_c
-		cvw_borgclient -d $_app/uploads
-		cvw_borgclient -d $_app/spamblock
-
 	else
 		cvw_say -a "waiting for installation"
 	fi

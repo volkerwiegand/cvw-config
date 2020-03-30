@@ -152,9 +152,6 @@ if false ; then
 	cvw_file -v $_file $(cvw_php -s)
 fi
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/app
-
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi

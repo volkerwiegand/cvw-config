@@ -111,8 +111,6 @@ function prosody_install
 
 	prosodyctl --root cert import /etc/letsencrypt/live
 
-	cvw_borgclient -m $_slug
-
 	cvw_firewall -s xmpp-client
 	cvw_firewall -s xmpp-server
 

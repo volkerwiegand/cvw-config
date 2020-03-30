@@ -87,9 +87,6 @@ if false ; then
 		chown -R apache $_root/app/image
 		chown -R apache $_root/app/system/storage
 
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_root/app
-
 		cvw_say -s "running in production"
 	else
 		chown -R apache:apache $_root/app

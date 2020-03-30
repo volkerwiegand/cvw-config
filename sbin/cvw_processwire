@@ -147,9 +147,6 @@ function processwire_install
 		if grep -q -s $_pass $_file ; then
 			chmod 0400 $_file
 		fi
-
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_app/site
 	else
 		for _site in $(cvw_xml -l software/$_slug/site | sort) ; do
 			cvw_say -s "adding site $_site"

@@ -233,9 +233,6 @@ function nextcloud_install
 		cvw_apache -p $_slug
 	fi
 
-	cvw_borgclient -m $_slug
-	cvw_borgclient -d $_root/data
-
 	cvw_url -a "$_name" $_uri
 
 	cvw_say -o "$_slug"

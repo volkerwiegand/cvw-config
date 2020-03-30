@@ -265,9 +265,6 @@ function rails_app_install
 		cvw_file -r $_file
 	fi
 
-	cvw_borgclient -m $_id
-	cvw_borgclient -d $_dir/shared/public/uploads
-
 	if cvw_xml -a software/nginx ; then
 		# this is for static files (assets e.g.)
 		_root=$(cvw_xml -r system/app_root)/nginx

@@ -92,8 +92,6 @@ function grav_install
 	EOF
 	cvw_file -v $_file
 
-	cvw_borgclient -d $_app
-
 	if cvw_xml -a software/nginx ; then
 		cvw_nginx -p $_slug
 	fi

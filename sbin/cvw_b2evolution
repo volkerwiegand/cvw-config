@@ -106,11 +106,6 @@ function b2evolution_install
 			rm -rf $_root/install # just in case
 			mv $_app/install $_root/install
 		fi
-
-		cvw_borgclient -m $_slug
-		cvw_borgclient -d $_app/conf
-		cvw_borgclient -d $_app/media
-		cvw_borgclient -d $_app/plugins
 	else
 		cvw_say -a "waiting for installation"
 		chown apache $_app/conf
