@@ -70,6 +70,10 @@ function mailcow_install
 		MAILCOW_HOSTNAME=$_fqdn MAILCOW_TZ=$_zone ./generate_config.sh
 	fi
 
+	cvw_xml -l software/$_slug/tcp_port | sort -u | while read _port ; do
+		cvw_firewall -t $_port
+	done
+
 	docker-compose up -d
 
 	cvw_say -o "$_slug"
@@ -78,8 +82,13 @@ function mailcow_install
 
 function mailcow_remove
 {
-	if true ; then
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _base=$_root/mailcow
+
+	if [[ -d $_base ]] ; then
 		cvw_say -h "Removing $_name"
+		cd $_base
+		docker-compose down	# --rmi all --volumes
 		cvw_say -o "$_slug:remove"
 	fi
 
