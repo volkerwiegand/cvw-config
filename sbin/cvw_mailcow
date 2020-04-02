@@ -57,6 +57,7 @@ function mailcow_generate
 function mailcow_install
 {
 	cvw_say -h "Installing $_name"
+	cvw_xml -a software/docker || cvw_say -f "$_prog: requires docker"
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _zone=$(cvw_xml -r system/timezone)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
