@@ -114,6 +114,7 @@ function nextcloud_install
 	_file="$_root/app/config/config.php"
 	if [[ -s $_file ]] ; then
 		nextcloud_occ maintenance:mode --on
+		_exist=1
 	else
 		cvw_user -r apache -d $_root/app \
 			php occ maintenance:install \
@@ -163,7 +164,9 @@ function nextcloud_install
 
 	if grep -q -s upgrade /tmp/cvw/updating ; then
 		nextcloud_occ config:system:set mysql.utf8mb4 --type boolean --value=true
-		nextcloud_occ maintenance:repair
+		if [[ $_exist ]] ; then
+			nextcloud_occ maintenance:repair
+		fi
 		nextcloud_occ --no-interaction db:convert-filecache-bigint
 		nextcloud_occ --no-interaction db:add-missing-indices
 	fi

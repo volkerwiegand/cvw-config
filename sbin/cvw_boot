@@ -70,6 +70,7 @@ error_check
 cvw_user           -i ; error_check
 cvw_mount          -i ; error_check
 cvw_volume         -i ; error_check
+cvw_storagebox     -i ; error_check
 cvw_ntp            -i ; error_check
 cvw_yum            -i ; error_check
 cvw_docker         -i ; error_check

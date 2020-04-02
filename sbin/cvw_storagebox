@@ -1,0 +1,108 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_storagebox - Configure Storage Box integration
+######                  This is specific for Hetzner
+######                  https://wiki.hetzner.de/index.php/Storage_Boxes
+######
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Hetzner Storage Box"
+_slug="storagebox"
+
+_fstab="/etc/fstab"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i       Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function storagebox_mount
+{
+	local _id="$1"
+	local _base="system/$_slug:$_id"
+	local _account=$(cvw_xml -r $_base/account)
+	local _password=$(cvw_xml -r $_base/password)
+	local _mount=$(cvw_xml -r $_base/mountpoint)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file _device _option
+
+	cvw_say -s "mounting storagebox $_account"
+	mkdir -p $_mount
+	cvw_rpm -i cifs-utils
+
+	_file=/etc/backup-credentials.txt
+	cat >$_file.tmp_VW <<-EOF
+		username=$_account
+		password=$_password
+	EOF
+	cvw_file -m 0600 -v $_file
+
+	rm -rf $_fstab.tmp_VW
+	grep -v "$_account" $_fstab >$_fstab.tmp_VW
+	_device="//$_account.your-storagebox.de/$_account"
+	_option="iocharset=utf8,rw,credentials=$_file,uid=0,gid=0,file_mode=0660,dir_mode=0770"
+	echo "$_device $_mount cifs $_option 0 0" >>$_fstab.tmp_VW
+	cvw_file -v $_fstab
+
+	mount -a
+}
+
+
+function storagebox_install
+{
+	cvw_say -h "Installing $_name"
+
+	cvw_xml -i system/$_slug | sort | while read _id ; do
+		storagebox_mount $_id
+	done
+
+	cvw_say -o "$_slug"
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -c system/$_slug ; then
+				storagebox_install
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

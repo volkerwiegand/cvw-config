@@ -65,14 +65,18 @@ function volume_mount
 	fi
 	mount -a
 
-	_device=$(df -P | awk '$6=="'$_path'" {print $1}')
-	cvw_say -s "resizing device $_device"
-	resize2fs $_device 2>/tmp/cvw/resize
-	if [[ $? -ne 0 ]] ; then
-			cat /tmp/cvw/resize >>/tmp/cvw/error
-			exit 1
-	fi
-	rm -f /tmp/cvw/resize
+	# FIXME do not try to resize partition on CentOS 7
+	# e2fsprogs are still v1.42, not 1.43 or above
+	# The metadata_csum is not supported in CentOS 7
+	#
+	# _device=$(df -P | awk '$6=="'$_path'" {print $1}')
+	# cvw_say -s "resizing device $_device"
+	# resize2fs $_device 2>/tmp/cvw/resize
+	# if [[ $? -ne 0 ]] ; then
+			# cat /tmp/cvw/resize >>/tmp/cvw/error
+			# exit 1
+	# fi
+	# rm -f /tmp/cvw/resize
 }
 
 

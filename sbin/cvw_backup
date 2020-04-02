@@ -171,6 +171,28 @@ cat >>$_bkup.tmp_VW <<-EOF
 
 	[[ \$_verbose ]] && /usr/bin/du -hs \$_dest.?
 	/bin/rm -rf \$_dest
+	[[ \$_verbose ]] && exit 0
+
+	# Save to background (Storage Box) if enabled
+	if mount | grep -q /var/backup ; then
+	  _monthly=/var/backup/$_app/backup.\$(LANG=C date +%B).tgz
+	  _weekdaily=/var/backup/$_app/backup.\$(LANG=C date +%A).tgz
+	  if [[ ! -s \$_monthly ]] ; then
+	    /usr/bin/tar -c -z -f \$_monthly -C \$_dest.0 .
+	    _result=\$?
+	    if [[ \$_result -ne 0 ]]; then
+	      /usr/bin/logger -t $_app "ALERT tar \$_monthly exited with \$_result"
+	      exit 1
+	    fi
+	  elif [[ ! -s \$_weekdaily ]] ; then
+	    /usr/bin/tar -c -z -f \$_weekdaily -C \$_dest.0 .
+	    _result=\$?
+	    if [[ \$_result -ne 0 ]]; then
+	      /usr/bin/logger -t $_app "ALERT tar \$_weekdaily exited with \$_result"
+	      exit 1
+	    fi
+	  fi
+	fi
 
 	exit 0
 EOF
