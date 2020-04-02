@@ -47,6 +47,16 @@ function mailcow_generate
 {
 	cat <<-EOF
 	    <mailcow active="true">
+	      <tcp_port>25</tcp_port>
+	      <tcp_port>80</tcp_port>
+	      <tcp_port>110</tcp_port>
+	      <tcp_port>143</tcp_port>
+	      <tcp_port>443</tcp_port>
+	      <tcp_port>465</tcp_port>
+	      <tcp_port>587</tcp_port>
+	      <tcp_port>993</tcp_port>
+	      <tcp_port>995</tcp_port>
+	      <tcp_port>4190</tcp_port>
 	    </mailcow>
 
 	EOF
@@ -60,9 +70,8 @@ function mailcow_install
 	cvw_xml -a software/docker || cvw_say -f "$_prog: requires docker"
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _zone=$(cvw_xml -r system/timezone)
-	local _root=$(cvw_xml -r system/app_root)/$_slug
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _base=$_root/mailcow
+	local _base=/root/docker
 
 	cvw_git -i mailcow -d $_base
 	cd $_base
@@ -86,12 +95,11 @@ function mailcow_install
 
 function mailcow_remove
 {
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _base=$_root/mailcow
+	local _base=/root/docker
+	cd $_base
 
-	if [[ -d $_base ]] ; then
+	if [[ -s docker-compose.yml ]] ; then
 		cvw_say -h "Removing $_name"
-		cd $_base
 		docker-compose down	# --rmi all --volumes
 		cvw_say -o "$_slug:remove"
 	fi

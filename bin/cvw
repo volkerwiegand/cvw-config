@@ -410,7 +410,7 @@ if [[ $_compose ]] ; then
 	[[ -z $_cmd ]] && _cmd="help"
 	cvw_say -a "docker-compose $_cmd"
 	cvw_say
-	ssh $SSH_T_FLAGS root@$_addr docker-compose "$_cmd"
+	ssh $SSH_T_FLAGS root@$_addr "cd /root/docker && docker-compose $_cmd"
 	cvw_say
 	exit
 fi
