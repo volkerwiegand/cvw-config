@@ -70,12 +70,15 @@ function mailcow_install
 	if [[ ! -s $_base/mailcow.conf ]] ; then
 		MAILCOW_HOSTNAME=$_fqdn MAILCOW_TZ=$_zone ./generate_config.sh
 	fi
+	if [[ ! -s $_base/mailcow.conf ]] ; then
+		cvw_say -f "$_prog: could not generate $_base/mailcow.conf"
+	fi
 
 	cvw_xml -l software/$_slug/tcp_port | sort -u | while read _port ; do
 		cvw_firewall -t $_port
 	done
 
-	docker-compose up -d
+	# docker-compose up -d
 
 	cvw_say -o "$_slug"
 }
