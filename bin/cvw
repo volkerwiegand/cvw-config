@@ -5,7 +5,7 @@
 ######
 ###### cvw - CVW config system master command
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -175,14 +175,14 @@ function setup_config
 	sudo rm -f /usr/local/sbin/cvw_*
 	sudo rsync -a --no-owner --no-group ../sbin/ /usr/local/sbin 2>/tmp/cvw/error
 
-	[[ -z $1 ]] && echo "--> updating /var/local/cfg"
+	[[ -z $1 ]] && echo "--> updating /var/lib/cvw_cfg"
 	xmllint --output cfg/config.xml --xinclude config.in.xml
 	rsync -a ../files/ cfg/files
-	sudo ln -nfs $(pwd)/cfg /var/local/cfg 2>/tmp/cvw/error
+	sudo ln -nfs $(pwd)/cfg /var/lib/cvw_cfg 2>/tmp/cvw/error
 
 	if [[ -d cvw ]] ; then
-		[[ -z $1 ]] && echo "--> updating /var/local/cvw"
-		sudo rsync -a --delete --no-owner --no-group cvw/ /var/local/cvw 2>/tmp/cvw/error
+		[[ -z $1 ]] && echo "--> updating /var/lib/cvw_data"
+		sudo rsync -a --delete --no-owner --no-group cvw/ /var/lib/cvw_data 2>/tmp/cvw/error
 	fi
 
 	[[ -z $1 ]] && echo "--> setting up access to host"
@@ -201,9 +201,9 @@ function copy_local_cvw
 	[[ -d cvw ]] || failure "missing cvw subdir"
 	local _addr=$(cvw_xml -r host/addr)
 
-	cvw_say -a "rsync $_addr:/var/local/cvw"
-	sudo rsync -a --delete --no-owner --no-group cvw/ /var/local/cvw 2>>/tmp/cvw/error
-	rsync $RSYNC_FLAGS cvw/ root@$_addr:/var/local/cvw 2>>/tmp/cvw/error
+	cvw_say -a "rsync $_addr:/var/lib/cvw_data"
+	sudo rsync -a --delete --no-owner --no-group cvw/ /var/lib/cvw_data 2>>/tmp/cvw/error
+	rsync $RSYNC_FLAGS cvw/ root@$_addr:/var/lib/cvw_data 2>>/tmp/cvw/error
 }
 
 
@@ -214,13 +214,13 @@ function copy_config
 	[[ -z $1 ]] && cvw_say -a "rsync $_addr:/usr/local/sbin"
 	rsync -az /usr/local/sbin/cvw_* root@$_addr:/usr/local/sbin
 
-	[[ -z $1 ]] && cvw_say -a "rsync $_addr:/var/local/cfg"
+	[[ -z $1 ]] && cvw_say -a "rsync $_addr:/var/lib/cvw_cfg"
 	chmod -R go-rwx cfg
-	rsync $RSYNC_FLAGS --copy-links cfg/ root@$_addr:/var/local/cfg
+	rsync $RSYNC_FLAGS --copy-links cfg/ root@$_addr:/var/lib/cvw_cfg
 
 	if [[ -d ./cvw ]] ; then
-		[[ -z $1 ]] && cvw_say -a "rsync $_addr:/var/local/cvw"
-		rsync $RSYNC_FLAGS cvw/ root@$_addr:/var/local/cvw
+		[[ -z $1 ]] && cvw_say -a "rsync $_addr:/var/lib/cvw_data"
+		rsync $RSYNC_FLAGS cvw/ root@$_addr:/var/lib/cvw_data
 	fi
 }
 
@@ -230,7 +230,7 @@ function wipe_config
 	local _addr=$(cvw_xml -r host/addr)
 
 	[[ -z $1 ]] && cvw_say -a "remove remote CVW files"
-	ssh $SSH_T_FLAGS root@$_addr "rm -rf /var/local/cfg /tmp/cvw /tmp/letsencrypt.tar.gz /tmp/opendkim.tar.gz"
+	ssh $SSH_T_FLAGS root@$_addr "rm -rf /var/lib/cvw_cfg /var/lib/cvw_data /tmp/cvw /tmp/letsencrypt.tar.gz /tmp/opendkim.tar.gz"
 }
 
 

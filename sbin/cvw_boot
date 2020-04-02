@@ -167,7 +167,7 @@ if [[ -s /tmp/cvw/info ]] ; then
 	cat /tmp/cvw/info
 fi
 
-rm -rf /var/local/cfg /tmp/cvw
+rm -rf /var/lib/cvw_cfg /tmp/cvw
 echo "<<< All done, exiting."
 echo ""
 exit 0

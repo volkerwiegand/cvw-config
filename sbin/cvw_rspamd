@@ -88,7 +88,7 @@ function rspamd_install
 	local _milter=$(cvw_xml -r software/$_slug/milter)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _multi=/etc/rspamd/local.d/multimap.conf
-	local _w_src=/var/local/cfg/files/misc/rspamd.white.domains
+	local _w_src=/var/lib/cvw_cfg/files/misc/rspamd.white.domains
 	local _w_dst=/etc/rspamd/local.d/whitelist.sender.domain.map
 	local _file _reject
 

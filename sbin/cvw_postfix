@@ -261,7 +261,7 @@ function postfix_install_standalone
 	postconf -e "broken_sasl_auth_clients=yes"
 
 	_file=/etc/postfix/master.cf
-	cp /var/local/cfg/files/misc/postfix.master.cf $_file.tmp_VW
+	cp /var/lib/cvw_cfg/files/misc/postfix.master.cf $_file.tmp_VW
 	cvw_file -v $_file postfix
 
 

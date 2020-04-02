@@ -143,7 +143,7 @@ fi
 
 if [[ $_edit_file ]] ; then
 	[[ $# -ge 1 ]] || usage
-	_cmnd="/var/local/cfg/files/sed/$1"
+	_cmnd="/var/lib/cvw_cfg/files/sed/$1"
 	shift
 	rm -f /tmp/cvw/changed
 	sed -f $_cmnd $_file >$_file.tmp_VW

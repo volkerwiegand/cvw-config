@@ -76,7 +76,7 @@ function open3a_install
 		chown -R apache:apache $_root/app/$_subdir
 	done
 
-	find /var/local/cfg/files/misc -name "open3a.*.sql.gz" | while read _file ; do
+	find /var/lib/cvw_cfg/files/misc -name "open3a.*.sql.gz" | while read _file ; do
 		cvw_say -s "Backup $_file"
 		install -o apache -g apache $_file $_root/app/system/Backup
 	done

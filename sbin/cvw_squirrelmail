@@ -63,7 +63,7 @@ function init_squirrelmail
 	if cvw_xml -a software/rails ; then
 		cvw_file -b $_http
 		if ! grep -q passenger $_http ; then
-			_diff="/var/local/cfg/files/diffs/squirrelmail.diff"
+			_diff="/var/lib/cvw_cfg/files/diffs/squirrelmail.diff"
 			patch -d /etc/httpd/conf.d -i $_diff 2>/tmp/cvw/error
 		fi
 	fi

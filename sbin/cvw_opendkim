@@ -60,7 +60,7 @@ function opendkim_install
 	cvw_rpm -i opendkim
 	cvw_service -s opendkim
 
-	_file="/var/local/cfg/files/misc/opendkim.tar.gz"
+	_file="/var/lib/cvw_cfg/files/misc/opendkim.tar.gz"
 	if [[ -s $_file ]] ; then
 		cvw_say -s "extracting opendkim.tar.gz"
 		tar -x -z -C /etc -f $_file

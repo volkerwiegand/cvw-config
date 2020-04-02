@@ -23,7 +23,7 @@ _name="Xiopo Newsmailer"
 _slug="xiopo"
 
 
-_archive="/var/local/cfg/files/misc/XiopoNewsmailer_Free_Edition_5_0.zip"
+_archive="/var/lib/cvw_cfg/files/misc/XiopoNewsmailer_Free_Edition_5_0.zip"
 
 
 function usage

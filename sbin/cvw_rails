@@ -382,7 +382,7 @@ function rails_install
 		rm -f $_file
 	fi
 
-	_file="/var/local/cfg/files/keys/rails.id_rsa"
+	_file="/var/lib/cvw_cfg/files/keys/rails.id_rsa"
 	if [[ -s $_file && -s $_file.pub ]] ; then
 		cvw_say -s "installing SSH deploy key"
 		install -o rails -g rails -m 0600 $_file     $_home/.ssh/id_rsa

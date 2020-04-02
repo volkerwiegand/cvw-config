@@ -59,7 +59,7 @@ function gitolite_install
 	fi
 
 	if [[ ! -d $_home/repositories ]] ; then
-		cp /var/local/cfg/files/keys/$_admin.pub $_home 2>>/tmp/cvw/error
+		cp /var/lib/cvw_cfg/files/keys/$_admin.pub $_home 2>>/tmp/cvw/error
 		cvw_user -r gitolite "$_home/bin/gitolite setup -pk $_admin.pub"
 		rm -f $_home/$_admin.pub
 	fi

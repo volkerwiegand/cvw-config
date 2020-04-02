@@ -22,7 +22,7 @@ _name="Open Letters"
 _slug="openletters"
 
 
-_archive="/var/local/cfg/files/misc/2017-02-19_OpenLetters_release_1.2.zip"
+_archive="/var/lib/cvw_cfg/files/misc/2017-02-19_OpenLetters_release_1.2.zip"
 
 
 function usage

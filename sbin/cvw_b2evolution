@@ -80,7 +80,7 @@ function b2evolution_install
 		chown -R apache $_app/$_subdir
 	done
 
-	_subdir="/var/local/cfg/files/b2evolution/skins"
+	_subdir="/var/lib/cvw_cfg/files/b2evolution/skins"
 
 	if [[ -d $_subdir ]] ; then
 		find $_subdir -name "*.zip" -print | while read _file ; do

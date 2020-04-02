@@ -129,7 +129,7 @@ function processwire_install
 		EOF
 		cvw_file -u apache -v $_file $(cvw_php -s)
 
-		_conf=/var/local/cfg/files/processwire/config.php
+		_conf=/var/lib/cvw_cfg/files/processwire/config.php
 		_file=$_app/site/config.php
 		if [[ -s $_conf ]] ; then
 			cp $_conf $_file.tmp_VW

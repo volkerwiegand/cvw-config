@@ -125,7 +125,7 @@ function user_setup
 
 	_sshdir="$_home/.ssh"
 	mkdir -p $_sshdir
-	_rsakey="/var/local/cfg/files/keys/$_id/id_rsa"
+	_rsakey="/var/lib/cvw_cfg/files/keys/$_id/id_rsa"
 	if [[ -s $_rsakey ]] ; then
 		cp $_rsakey $_sshdir/id_rsa.tmp_VW
 		cvw_file -v $_sshdir/id_rsa
@@ -134,7 +134,7 @@ function user_setup
 	fi
 	if cvw_xml -c $_base/authorized ; then
 		_auth=$(cvw_xml -r $_base/authorized)
-		_keys="/var/local/cfg/files/keys/$_auth"
+		_keys="/var/lib/cvw_cfg/files/keys/$_auth"
 		cp $_keys $_sshdir/authorized_keys.tmp_VW 2>>/tmp/cvw/error
 		cvw_file -v $_sshdir/authorized_keys
 	fi
@@ -194,7 +194,7 @@ function init_users
 		cvw_say -s "############################################"
 	fi
 
-	_file="/var/local/cfg/files/diffs/sudoers.diff"
+	_file="/var/lib/cvw_cfg/files/diffs/sudoers.diff"
 	if [[ -s $_file ]] ; then
 		cvw_say -s "enabling password-less sudo for %wheel"
 		if ! grep -q "^%wheel.*NOPASSWD" /etc/sudoers ; then
@@ -203,7 +203,7 @@ function init_users
 		fi
 	fi
 
-	_dir="/var/local/cfg/files/profile.d"
+	_dir="/var/lib/cvw_cfg/files/profile.d"
 	if [[ -d $_dir ]] ; then
 		find $_dir -name "*.sh" -print | sort | while read _line ; do
 			_file="/etc/profile.d/${_line##*/}"

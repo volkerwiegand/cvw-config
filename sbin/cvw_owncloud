@@ -74,7 +74,7 @@ function owncloud_install_native
 	done
 
 	_file=$_root/app/config/config.php
-	_conf=/var/local/cfg/files/misc/owncloud.config.php
+	_conf=/var/lib/cvw_cfg/files/misc/owncloud.config.php
 	if [[ -s $_conf ]] ; then
 		cvw_file -b $_file
 		cp $_conf $_file.tmp_VW

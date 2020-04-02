@@ -42,7 +42,7 @@ function init_init
 
 	rm -rf /tmp/cvw
 	test -e /tmp/cvw && failure "pre-existing /tmp/cvw"
-	test -d /var/local/cfg || failure "non-existing /var/local/cfg"
+	test -d /var/lib/cvw_cfg || failure "non-existing /var/lib/cvw_cfg"
 	mkdir -p -m 0700 /tmp/cvw /var/local/backup
 
 	cvw_say
@@ -152,7 +152,7 @@ function init_init
 		fi
 	done
 
-	_src="/var/local/cfg/files/keys"
+	_src="/var/lib/cvw_cfg/files/keys"
 	_dst="/etc/pki/tls/dhparam.pem"
 	if [[ -s $_src/dh4096_param.pem ]] ; then
 		cvw_say -s "copying 4096 bit DH group"
