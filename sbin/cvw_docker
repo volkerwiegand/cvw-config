@@ -45,7 +45,6 @@ function usage
 function docker_install
 {
 	cvw_say -h "Installing $_name"
-	cvw_user -s lumper
 	local _file _port
 
 	if [[ ! -s /root/get-docker.sh ]] ; then
@@ -56,7 +55,7 @@ function docker_install
 	fi
 	cvw_download -i docker_completion /etc/bash_completion.d
 
-	cvw_service -S docker
+	cvw_service -s docker
 
 	cvw_download -i docker_compose /usr/local/bin
 	chmod +x /usr/local/bin/docker-compose

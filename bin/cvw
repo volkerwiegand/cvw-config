@@ -165,6 +165,11 @@ function setup_config
 	[[ -d ../sbin       ]] || failure "missing ../sbin dir"
 	[[ -d ../files      ]] || failure "missing ../files dir"
 
+	if [[ ! -s cfg/files/keys/dh2048_param.pem ]] ; then
+		mkdir -p cfg/files/keys
+		openssl dhparam -out cfg/files/keys/dh2048_param.pem 2048
+	fi
+
 	[[ -z $1 ]] && echo "--> creating /tmp/cvw"
 	rm -rf /tmp/cvw
 	mkdir /tmp/cvw
