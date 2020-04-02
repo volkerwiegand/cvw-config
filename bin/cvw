@@ -37,8 +37,8 @@ function check_singleton
 function usage
 {
 	cat >&2 <<-EOF
-		Syntax: $_prog -c [cmd [args]]   Run remote docker-compose as 'lumper'
-		    or: $_prog -d [cmd [args]]   Run remote docker as 'root'
+		Syntax: $_prog -c [cmd [args]]   Run remote docker-compose
+		    or: $_prog -d [cmd [args]]   Run remote docker
 		    or: $_prog -e [-D] [i]       Execute config [debug] [info]
 		    or: $_prog -E [-D] [i]       Execute with upgrade [debug] [info]
 		    or: $_prog -f file [name]    Fetch <file> from server [local name]
@@ -405,7 +405,7 @@ if [[ $_compose ]] ; then
 	[[ -z $_cmd ]] && _cmd="help"
 	cvw_say -a "docker-compose $_cmd"
 	cvw_say
-	ssh $SSH_T_FLAGS lumper@$_addr docker-compose "$_cmd"
+	ssh $SSH_T_FLAGS root@$_addr docker-compose "$_cmd"
 	cvw_say
 	exit
 fi
