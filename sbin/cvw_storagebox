@@ -54,6 +54,15 @@ function storagebox_mount
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _file _device _option
 
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Account .................: $_account
+			      Password ................: $_password
+			      Mountpoint ..............: $_mount
+		EOF
+	fi
+
 	cvw_say -s "mounting storagebox $_account"
 	mkdir -p $_mount
 	cvw_rpm -i cifs-utils

@@ -73,6 +73,13 @@ function mailcow_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _base=/root/docker
 
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Hostname ................: $_fqdn
+		EOF
+	fi
+
 	cvw_git -i mailcow -d $_base
 	cd $_base
 
