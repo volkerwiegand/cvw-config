@@ -175,6 +175,7 @@ cat >>$_bkup.tmp_VW <<-EOF
 
 	# Save to background (Storage Box) if enabled
 	if mount | grep -q /var/backup ; then
+	  mkdir -p /var/backup/$_app
 	  _monthly=/var/backup/$_app/backup.\$(LANG=C date +%B).tgz
 	  _weekdaily=/var/backup/$_app/backup.\$(LANG=C date +%A).tgz
 	  if [[ ! -s \$_monthly ]] ; then
