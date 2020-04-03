@@ -87,8 +87,6 @@ function mailcow_install
 		cvw_firewall -t $_port
 	done
 
-	docker-compose pull
-
 	# In order to start the party, a simple one-liner will do.
 	# docker-compose up -d
 
