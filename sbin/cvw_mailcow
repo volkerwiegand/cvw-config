@@ -72,6 +72,7 @@ function mailcow_install
 	local _zone=$(cvw_xml -r system/timezone)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _base=/root/docker
+	local _file
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
@@ -89,6 +90,25 @@ function mailcow_install
 	if [[ ! -s $_base/mailcow.conf ]] ; then
 		cvw_say -f "$_prog: could not generate $_base/mailcow.conf"
 	fi
+
+	_file=$_base/data/conf/nginx/redirect.conf
+	cat >$_file.tmp_VW <<-EOF
+		server {
+		  root /web;
+		  listen 80 default_server;
+		  listen [::]:80 default_server;
+		  include /etc/nginx/conf.d/server_name.active;
+		  if ( \$request_uri ~* "%0A|%0D" ) { return 403; }
+		  location ^~ /.well-known/acme-challenge/ {
+		    allow all;
+		    default_type "text/plain";
+		  }
+		  location / {
+		    return 301 https://\$host\$uri\$is_args\$args;
+		  }
+		}
+	EOF
+	cvw_file -v $_file
 
 	cvw_xml -l software/$_slug/tcp_port | sort -u | while read _port ; do
 		cvw_firewall -t $_port
