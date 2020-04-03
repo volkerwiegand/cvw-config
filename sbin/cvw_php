@@ -6,11 +6,9 @@
 ###### cvw_php - Install or remove PHP
 ######           https://secure.php.net/
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
-######
-######          TODO implement removing PHP
 ######
 #################################################################################
 
@@ -148,8 +146,8 @@ function php_install
 
 function php_remove
 {
-	if false ; then
-		cvw_say -h "Removing $_name"
+	if [[ -x /usr/bin/php ]] ; then
+		cvw_say -h "Please remove $_name manually"
 		cvw_say -o "$_slug:remove"
 	fi
 

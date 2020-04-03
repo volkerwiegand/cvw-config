@@ -47,6 +47,8 @@ function docker_install
 	cvw_say -h "Installing $_name"
 	local _file _port
 
+	cvw_backup $_slug /var/lib/docker/volumes
+
 	if [[ ! -s /root/get-docker.sh ]] ; then
 		curl -sSL https://get.docker.com/ >/root/get-docker.sh
 	fi
@@ -72,10 +74,12 @@ function docker_install
 function docker_remove
 {
 	if [[ -x /usr/bin/docker ]] ; then
-		cvw_say -h "Removing $_name"
-		rm -f /usr/local/bin/docker-compose
+		cvw_backup -z $_app
+		cvw_say -h "Please remove $_name manually"
 		cvw_say -o "$_slug:remove"
 	fi
+
+	rm -f /tmp/cvw/error
 }
 
 

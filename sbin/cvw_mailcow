@@ -87,6 +87,9 @@ function mailcow_install
 		cvw_firewall -t $_port
 	done
 
+	docker-compose pull
+
+	# In order to start the party, a simple one-liner will do.
 	# docker-compose up -d
 
 	cvw_say -o "$_slug"
@@ -95,12 +98,8 @@ function mailcow_install
 
 function mailcow_remove
 {
-	local _base=/root/docker
-	cd $_base
-
-	if [[ -s docker-compose.yml ]] ; then
-		cvw_say -h "Removing $_name"
-		docker-compose down	# --rmi all --volumes
+	if [[ -s /root/docker/docker-compose.yml ]] ; then
+		cvw_say -h "Please remove $_name manually"
 		cvw_say -o "$_slug:remove"
 	fi
 
