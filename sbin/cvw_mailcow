@@ -105,6 +105,8 @@ function mailcow_install
 
 	_file=$_base/data/web/inc/vars.local.inc.php
 	cat >$_file.tmp_VW <<-EOF
+		<?php
+
 		\$DEFAULT_LANG = '$_mcow';
 	EOF
 	cvw_file -v $_file
