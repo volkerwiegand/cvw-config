@@ -70,14 +70,26 @@ function mailcow_install
 	cvw_xml -a software/docker || cvw_say -f "$_prog: requires docker"
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _zone=$(cvw_xml -r system/timezone)
+	local _lang=$(cvw_xml -r system/language)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _base=/root/docker
-	local _file
+	local _file _mcow _sogo
+
+	case $_lang in
+		de*)	_mcow=de
+			_sogo=German
+			;;
+		*)	_mcow=en
+			_sogo=English
+			;;
+	esac
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
 			      Hostname ................: $_fqdn
+			      Mailcow Language ........: $_mcow
+			      SOGo Language ...........: $_sogo
 		EOF
 	fi
 
@@ -90,6 +102,15 @@ function mailcow_install
 	if [[ ! -s $_base/mailcow.conf ]] ; then
 		cvw_say -f "$_prog: could not generate $_base/mailcow.conf"
 	fi
+
+	_file=$_base/data/web/inc/vars.local.inc.php
+	cat >$_file.tmp_VW <<-EOF
+		\$DEFAULT_LANG = '$_mcow';
+	EOF
+	cvw_file -v $_file
+
+	_file=$_base/data/conf/sogo/sogo.conf
+	cvw_file -e $_file "/SOGoLanguage/s/= .*/= $_sogo;/"
 
 	_file=$_base/data/conf/nginx/redirect.conf
 	cat >$_file.tmp_VW <<-EOF
