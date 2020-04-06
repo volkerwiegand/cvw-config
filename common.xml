@@ -591,6 +591,7 @@
       <rpm>php72u-common</rpm>
       <rpm>php72u-devel</rpm>
       <rpm>php72u-gd</rpm>
+      <rpm>php72u-gmp</rpm>
       <rpm>php72u-imap</rpm>
       <rpm>php72u-intl</rpm>
       <rpm>php72u-mbstring</rpm>
