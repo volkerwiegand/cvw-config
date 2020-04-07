@@ -140,6 +140,7 @@ function wordpress_install
 	[[ -f $_file ]] && mv -f $_file $_file.bak_VW
 
 	_file=$_app/.htaccess
+	[[ -r $_file ]] || touch $_file
 	cvw_file -e $_file "s#RewriteBase.*#RewriteBase ${_uri%/}/#"
 
 	_file="$_app/wp-config.php"
