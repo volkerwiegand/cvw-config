@@ -152,6 +152,10 @@ function nextcloud_install
 		nextcloud_occ config:system:set skeletondirectory --value=$_root/skeleton
 	fi
 
+	if ! grep -q "overwriteprotocol" $_file ; then
+		nextcloud_occ config:system:set overwriteprotocol --value=https
+	fi
+
 	if ! grep -q "$_fqdn" $_file ; then
 		nextcloud_occ config:system:set trusted_domains 1 --value=$_fqdn
 	fi
