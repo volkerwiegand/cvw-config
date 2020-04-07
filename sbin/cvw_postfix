@@ -474,6 +474,14 @@ function postfix_install_smarthost
 	local _domain=${_fqdn#*.}
 	local _maps=/etc/postfix/sasl_passwd
 
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Smarthost / Port ........: $_host:$_port
+			      Login / Password ........: $_user:$_pass
+		EOF
+	fi
+
 	cvw_rpm -i sendmail	# provides alternatives mta
 	cvw_rpm -i postfix
 	cvw_rpm -i mailx
