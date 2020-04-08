@@ -55,6 +55,7 @@ function usage
 		    or: $_prog -p len            Generate random password
 		    or: $_prog -P [-C]           Prepare for setup [copy SSH key]
 		    or: $_prog -q app            Display URL for <app> update check
+		    or: $_prog -Q app            Compute MD5 sum for <app>
 		    or: $_prog -r [svc]          Restart all or single service(s)
 		    or: $_prog -t                Compile and test config.xml
 		    or: $_prog -u [app]          Update (sync) remote app tree (e.g. CMS)
@@ -239,7 +240,7 @@ function wipe_config
 }
 
 
-while getopts ":cCdDeEf:Fg:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
+while getopts ":cCdDeEf:Fg:G:hH:ijkKlL:p:Pq:Q:r:tux:X:yYz" opt ; do
 	_finito=""
 	case $opt in
 		c)
@@ -336,7 +337,12 @@ while getopts ":cCdDeEf:Fg:G:hH:ijkKlL:p:Pq:r:tux:X:yYz" opt ; do
 		;;
 
 		q)
-			_query_url=$OPTARG
+			_query_link=$OPTARG
+			_finito=1
+		;;
+
+		Q)
+			_query_md5sum=$OPTARG
 			_finito=1
 		;;
 
@@ -394,12 +400,25 @@ if [[ $_template ]] ; then
 fi
 
 
-if [[ $_query_url ]] ; then
+if [[ $_query_link ]] ; then
 	setup_config quiet
+	cvw_say
+	 _url=$(cvw_xml -r common/download:$_query_link/link)
+	cvw_say -a "$_url"
+	_file=$(cvw_download -f $_query_link)
+	cvw_say -s "$_file"
+	cvw_say
 	rm -rf /tmp/cvw
+	exit
+fi
+
+
+if [[ $_query_md5sum ]] ; then
+	setup_config quiet
 	echo ""
-	cvw_${_query_url#cvw_} -q
+	cvw_download -m $_query_md5sum
 	echo ""
+	rm -rf /tmp/cvw
 	exit
 fi
 

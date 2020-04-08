@@ -2,14 +2,17 @@
     <download id="agendav">
       <link>http://agendav.org/</link>
       <url>https://github.com/agendav/agendav/releases/download/2.2.0/agendav-2.2.0.tar.gz</url>
+      <md5>3f35837571ec4da34afcae2ec1d3c34d</md5>
     </download>
     <download id="automx">
       <link>https://github.com/sys4/automx/releases</link>
       <url>https://github.com/sys4/automx/archive/v0.10.2.tar.gz</url>
+      <md5>b2d8adbf14b610cd2aeaef3e2fdaedae</md5>
     </download>
     <download id="b2evolution">
       <link>http://b2evolution.net/downloads/</link>
-      <url>https://github.com/b2evolution/b2evolution/archive/6.9.6.zip</url>
+      <url>https://github.com/b2evolution/b2evolution/archive/6.11.5.zip</url>
+      <md5>b34f1d19b7446c538e84bcc97f2378d9</md5>
     </download>
     <download id="backdrop">
       <link>https://github.com/backdrop/backdrop/releases</link>
@@ -332,7 +335,8 @@
     </download>
     <download id="weblate">
       <link>https://weblate.org/de/download/</link>
-      <url>https://dl.cihar.com/weblate/Weblate-2.14.1.tar.xz</url>
+      <url>https://dl.cihar.com/weblate/Weblate-3.11.2.tar.xz</url>
+      <md5>f1d90e3ce126c1c17ff1741d7fe3a2ac</md5>
     </download>
     <download id="wkhtmltox">
       <status>currently-unknown</status>
@@ -341,13 +345,13 @@
     </download>
     <download id="wordpress">
       <link>https://de.wordpress.org/releases/</link>
-      <url>https://de.wordpress.org/wordpress-5.3.2-de_DE.tar.gz</url>
-      <md5>cd5170b6184bbec59ae7bcdbe868af56</md5>
+      <url>https://de.wordpress.org/wordpress-5.4-de_DE.tar.gz</url>
+      <md5>a7d7635909639d4104bc6df27de2f359</md5>
     </download>
     <download id="yellow">
       <link>https://github.com/datenstrom/yellow/releases</link>
-      <url>https://github.com/datenstrom/yellow/archive/v0.7.2.tar.gz</url>
-      <md5>9eafba953b987548106ca833f7247523</md5>
+      <url>https://github.com/datenstrom/yellow/archive/v0.8.11.tar.gz</url>
+      <md5>ae5767df8d703623069dbbd77a0c11ff</md5>
     </download>
 
     <git id="mailcow">

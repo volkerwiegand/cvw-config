@@ -26,6 +26,7 @@ function usage
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i id dir   Download id into dir
 		    or: $_prog -f id       Return filename for id
+		    or: $_prog -m id       Return md5sum for id
 		    or: $_prog -v id       Return version for id
 		Called with: '$_prog $_args'
 	EOF
@@ -84,7 +85,7 @@ function get_data
 }
 
 
-while getopts ":i:f:v:" opt ; do
+while getopts ":i:f:m:v:" opt ; do
 	case $opt in
 		i)
 			get_data $OPTARG
@@ -94,6 +95,11 @@ while getopts ":i:f:v:" opt ; do
 			get_data $OPTARG
 			echo -n $_file
 			exit 0
+		;;
+
+		m)
+			get_data $OPTARG
+			_calc_md5=1
 		;;
 
 		v)
@@ -109,8 +115,13 @@ while getopts ":i:f:v:" opt ; do
 done
 shift $(($OPTIND-1))
 
-[[ $# -eq 1 ]] || usage
-_dir=$1
+if [[ $_calc_md5 ]] ; then
+	_dir=/tmp/cvw/calc_md5
+	mkdir -p $_dir 2>>/tmp/cvw/error
+else
+	[[ $# -eq 1 ]] || usage
+	_dir=$1
+fi
 
 if [[ ! -d $_dir ]] ; then
 	cvw_say -s "creating $_dir"
@@ -127,9 +138,16 @@ if [[ ! -s $_dir/$_file ]] ; then
 	cvw_say -s "download complete"
 fi
 
+_sum=$(md5sum $_dir/$_file | awk '{ print $1 }')
+
+if [[ $_calc_md5 ]] ; then
+	cvw_say -a "MD5: $_sum"
+	rm -rf /tmp/cvw/calc_md5
+	exit 0
+fi
+
 if [[ $_md5 ]] ; then
 	cvw_say -s "md5 $_file"
-	_sum=$(md5sum $_dir/$_file | awk '{ print $1 }')
 	if [[ $_sum != $_md5 ]] ; then
 		echo "$_prog: bad MD5 checksum for $_file" >>/tmp/cvw/error
 		exit 1
