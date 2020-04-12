@@ -20,7 +20,8 @@ set -e -o pipefail
 _prog=${0##*/}
 _args="$*"
 _name="Roundcube webmail"
-_slug="roundcube"
+
+_plugins=""
 
 
 function usage
@@ -47,15 +48,27 @@ function usage
 function generate
 {
 	cat <<-EOF
-	    <$_slug active="true">
+	    <roundcube active="true">
 	      <uri>/webmail</uri>
 	      <alias>/roundcube</alias>
 	      <password>$(cvw -p 20)</password>
 	      <key>$(cvw -p 10).--.$(cvw -p 10)</key>
-	    </$_slug>
+	    </roundcube>
 
 	EOF
 	exit 0
+}
+
+
+function roundcube_add_plugin
+{
+	local _plugin=$1
+
+	if [[ -n "$_plugins" ]] ; then
+		_plugins="$_plugins, '$_plugin'"
+	else
+		_plugins=" '$_plugin'"
+	fi
 }
 
 
@@ -66,32 +79,38 @@ function roundcube_install
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _lang=$(cvw_xml -r system/language)
-	local _root=$(cvw_xml -r system/app_root)/$_slug
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _pass=$(cvw_xml -r software/$_slug/password)
-	local _key=$(cvw_xml -r software/$_slug/key)
-	local _admin=$(cvw_xml -R software/$_slug/admin admin)
+	local _root=$(cvw_xml -r system/app_root)/roundcube
+	local _uri=$(cvw_xml -r software/roundcube/uri)
+	local _pass=$(cvw_xml -r software/roundcube/password)
+	local _key=$(cvw_xml -r software/roundcube/key)
+	local _admin=$(cvw_xml -R software/roundcube/admin admin)
+	local _host=$(cvw_xml -r software/roundcube/host)
+	local _prod=$(cvw_xml -r software/roundcube/product)
+	local _support=$(cvw_xml -r software/roundcube/support)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _conf=$_root/app/config/config.inc.php
-	local _file _installer _plugin _plugins
+	local _file _installer _plugin _memcache _redis
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
 			      URL .....................: https://$_fqdn$_uri/
+			      IMAP / SMTP Host ........: $_host
 			      Admin Email .............: $_admin@${_fqdn#*.}
 			      Admin Password ..........: $(cvw_user -p $_admin)
+			      Product Name ............: $_prod
+			      Support URL .............: $_support
 		EOF
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+	cvw_backup -m roundcube -u roundcube -p $_pass roundcube \
 		$_root/app/logs \
 		$_root/app/temp
 
-	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+	cvw_mysql -c roundcube roundcube $_pass utf8_general_ci
 
-	cvw_unpack -i $_slug $_root/app index.php
+	cvw_unpack -i roundcube $_root/app index.php
 	for _subdir in temp logs ; do
 		mkdir -p $_root/app/$_subdir
 		chown -R apache $_root/app/$_subdir
@@ -105,20 +124,103 @@ function roundcube_install
 		_installer="true"
 	fi
 
-	_plugins=""
-	for _plugin in $(cvw_xml -l software/$_slug/plugin | sort) ; do
-		if [[ -n "$_plugins" ]] ; then
-			_plugins="$_plugins, "
+	if cvw_xml -a software/memcache ; then
+		_memcache="array('localhost:11211')"
+	else
+		_memcache="null"
+	fi
+
+	if cvw_xml -a software/redis ; then
+		_redis="array('localhost:6379')"
+	else
+		_redis="null"
+	fi
+
+	if cvw_xml -a software/roundcube/carddav ; then
+		cvw_unpack -i roundcube_carddav $_root/app/plugins/carddav package.xml
+		local _c_name=$(cvw_xml -r software/roundcube/carddav/name)
+		local _c_user=$(cvw_xml -r software/roundcube/carddav/username)
+		local _c_pass=$(cvw_xml -r software/roundcube/carddav/password)
+		local _c_url=$(cvw_xml -r software/roundcube/carddav/url)
+		[[ -s /tmp/cvw/error ]] && exit 1
+
+		if [[ -s /tmp/cvw/info ]] ; then
+			cat >>/tmp/cvw/info <<-EOF
+				      CardDAV Name ............: $_c_name
+				      CardDAV Username ........: $_c_user
+				      CardDAV Password ........: $_c_pass
+				      CardDAV URL .............: $_c_url
+			EOF
 		fi
-			_plugins="$_plugins'$_plugin'"
+
+		_file=$_root/app/plugins/carddav/config.inc.php
+		cat >$_file.tmp_VW <<-EOF
+			<?php
+			\$prefs['_GLOBAL']['fixed'] = true;
+			\$prefs['_GLOBAL']['hide_preferences'] = false;
+			\$prefs['_GLOBAL']['pwstore_scheme'] = 'encrypted';
+			\$prefs['_GLOBAL']['suppress_version_warning'] = false;
+			\$prefs['_GLOBAL']['sync_collection_workaround'] = false;
+			\$prefs['$_c_name'] = array(
+			    'name'         =>  '$_c_name',
+			    'username'     =>  '$_c_user',
+			    'password'     =>  '$_c_pass',
+			    'url'          =>  '$_c_url',
+
+			    'active'       =>  true,
+			    'readonly'     =>  false,
+			    'refresh_time' => '02:00:00',
+
+			    'fixed'        =>  array( 'name', 'username', 'password', 'url' ),
+			    'hide'         =>  false,
+			);
+		EOF
+		cvw_file -v $_file $(cvw_php -s)
+		roundcube_add_plugin "carddav"
+	fi
+
+	if cvw_xml -t software/roundcube/disable_csrf ; then
+		mkdir -p $_root/app/plugins/disable_csrf
+		_file=$_root/app/plugins/disable_csrf/disable_csrf.php
+		cat >$_file.tmp_VW <<-EOF
+			<?php
+			class disablecsrf extends rcube_plugin
+			{
+			  public \$task = 'login';
+
+			  function init()
+			  {
+			    \$this->add_hook('authenticate', array(\$this, 'authenticate'));
+			  }
+
+			  function authenticate(\$args)
+			  {
+			    \$args['valid'] = true;
+			    return \$args;
+			  }
+			}
+		EOF
+		cvw_file -v $_file $(cvw_php -s)
+		roundcube_add_plugin "disable_csrf"
+	fi
+
+	for _plugin in $(cvw_xml -l software/roundcube/plugin | sort) ; do
+		roundcube_add_plugin $_plugin
 	done
+
+	if [[ -n "$_plugins" ]] ; then
+		_plugins="$_plugins "
+	fi
 	cat >$_conf.tmp_VW <<-EOF
 		<?php
-		\$config['db_dsnw']           = 'mysql://$_slug:$_pass@localhost/$_slug';
-		\$config['default_host']      = 'localhost';
-		\$config['support_url']       = 'mailto:postmaster@${_fqdn#*.}';
+		\$config['db_dsnw']           = 'mysql://roundcube:$_pass@localhost/roundcube';
+		\$config['default_host']      = 'tls://$_host';
+		\$config['smtp_server']       = 'tls://$_host';
+		\$config['memcache_hosts']    = $_memcache;
+		\$config['redis_hosts']       = $_redis;
 		\$config['des_key']           = '$_key';
-		\$config['product_name']      = '$_name';
+		\$config['product_name']      = '$_prod';
+		\$config['support_url']       = '$_support';
 		\$config['plugins']           = array($_plugins);
 		\$config['language']          = '$_lang';
 		\$config['spellcheck_engine'] = 'googie';
@@ -127,14 +229,14 @@ function roundcube_install
 	cvw_file -v $_conf $(cvw_php -s)
 
 	if cvw_xml -a software/nginx ; then
-		cvw_nginx -p $_slug
+		cvw_nginx -p roundcube
 	fi
 
 	if cvw_xml -a software/apache ; then
 		_file=/tmp/cvw/apache.block
 		echo "" >$_file
 		echo "   Alias $_uri $_root/app" >>$_file
-		for _alias in $(cvw_xml -l software/$_slug/alias | sort) ; do
+		for _alias in $(cvw_xml -l software/roundcube/alias | sort) ; do
 			echo "   Alias $_alias $_root/app" >>$_file
 		done
 		cat >>$_file <<-EOF
@@ -147,25 +249,25 @@ function roundcube_install
 			      Require all granted
 			   </Directory>
 		EOF
-		cvw_apache -p $_slug
+		cvw_apache -p roundcube
 	fi
 
 	cvw_url -a "$_name" $_uri
-	for _alias in $(cvw_xml -l software/$_slug/alias | sort) ; do
+	for _alias in $(cvw_xml -l software/roundcube/alias | sort) ; do
 		cvw_url -a "$_name" $_alias
 	done
 
-	cvw_say -o "$_slug"
+	cvw_say -o "roundcube"
 }
 
 
 while getopts ":ig" opt ; do
 	case $opt in
 		i)
-			if cvw_xml -a software/$_slug ; then
+			if cvw_xml -a software/roundcube ; then
 				roundcube_install
 			else
-				cvw_php -z $_slug
+				cvw_php -z roundcube
 			fi
 			exit 0
 		;;
