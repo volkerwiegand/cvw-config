@@ -684,6 +684,10 @@ fi
 if [[ $_opendkim ]] ; then
 	setup_config
 	copy_config
+	if ! cvw_xml -a software/opendkim ; then
+		wipe_config
+		failure "OpenDKIM is not configured"
+	fi
 	cvw_say -a "securing OpenDKIM files"
 	ssh $SSH_T_FLAGS root@$_addr "tar -c -v -z -f /tmp/opendkim.tar.gz -C /etc opendkim"
 	scp root@$_addr:/tmp/opendkim.tar.gz cfg/files/misc/opendkim.tar.gz
@@ -696,6 +700,10 @@ fi
 if [[ $_lets_encrypt ]] ; then
 	setup_config
 	copy_config
+	if ! cvw_xml -a software/certbot ; then
+		wipe_config
+		failure "Let's Encrypt is not configured"
+	fi
 	cvw_say -a "securing letsencrypt files"
 	ssh $SSH_T_FLAGS root@$_addr "tar -c -v -z -f /tmp/letsencrypt.tar.gz -C /etc letsencrypt"
 	scp root@$_addr:/tmp/letsencrypt.tar.gz cfg/files/misc/letsencrypt.tar.gz
