@@ -87,7 +87,7 @@ function mailcow_install
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
-			      Hostname ................: $_fqdn
+			      Admin Login .............: https://$_fqdn/
 			      Mailcow Language ........: $_mcow
 			      SOGo Language ...........: $_sogo
 		EOF
