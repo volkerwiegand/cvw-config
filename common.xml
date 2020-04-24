@@ -112,9 +112,9 @@
     </download>
     <download id="docker_compose">
       <link>https://github.com/docker/compose/releases/</link>
-      <url>https://github.com/docker/compose/releases/download/1.25.4/docker-compose-Linux-x86_64</url>
+      <url>https://github.com/docker/compose/releases/download/1.25.5/docker-compose-Linux-x86_64</url>
       <name>docker-compose</name>
-      <md5>28c8173eb3d1c3d5005c28dabfb7cb4e</md5>
+      <md5>3485ce0470f084d338732c541873339a</md5>
     </download>
     <download id="docker_compose_completion">
       <link>https://github.com/docker/compose/releases/</link>
@@ -177,8 +177,8 @@
     </download>
     <download id="mantis">
       <link>http://mantisbt.org/download.php</link>
-      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.22.1/mantisbt-2.22.1.tar.gz</url>
-      <md5>ced6493cb2c1ea6bbf8b95b5082e7d98</md5>
+      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.24.0/mantisbt-2.24.0.tar.gz</url>
+      <md5>3c9afeae994efaaaca4918a70267011a</md5>
     </download>
     <download id="modified">
       <link>http://www.modified-shop.org/download</link>
@@ -274,8 +274,13 @@
     </download>
     <download id="roundcube">
       <link>https://roundcube.net/download/</link>
-      <url>https://github.com/roundcube/roundcubemail/releases/download/1.3.9/roundcubemail-1.3.9-complete.tar.gz</url>
-      <sha256>726db4ffb33a7154dd432cbb99810ab9d02512c7f1987a6119e9ac7f595521ad</sha256>
+      <url>https://github.com/roundcube/roundcubemail/releases/download/1.4.3/roundcubemail-1.4.3-complete.tar.gz</url>
+      <md5>196e0b2e446b7001e74411dd4e16cf38</md5>
+    </download>
+    <download id="roundcube_carddav">
+      <link>https://github.com/blind-coder/rcmcarddav/releases</link>
+      <url>https://github.com/blind-coder/rcmcarddav/releases/download/v3.0.3/carddav-3.0.3.zip</url>
+      <md5>bfc5aac64b6daa4359355b4640cedb83</md5>
     </download>
     <download id="rspamd_repo">
       <link>https://rspamd.com/downloads.html</link>
