@@ -185,7 +185,8 @@ cat >>$_bkup.tmp_VW <<-EOF
 	      /usr/bin/logger -t $_app "ALERT tar \$_monthly exited with \$_result"
 	      exit 1
 	    fi
-	  elif [[ ! -s \$_weekdaily ]] ; then
+	  fi
+	  if [[ ! -s \$_weekdaily ]] ; then
 	    /usr/bin/tar -c -z -f \$_weekdaily -C \$_dest.0 --warning=no-file-ignored .
 	    _result=\$?
 	    if [[ \$_result -ne 0 ]]; then
