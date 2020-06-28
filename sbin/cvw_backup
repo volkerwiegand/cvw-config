@@ -176,21 +176,21 @@ cat >>$_bkup.tmp_VW <<-EOF
 	# Save to background (Storage Box) if enabled
 	if mount | grep -q /var/backup ; then
 	  mkdir -p /var/backup/$_app
-	  _monthly=/var/backup/$_app/backup.\$(LANG=C date +%B).tgz
+
 	  _weekdaily=/var/backup/$_app/backup.\$(LANG=C date +%A).tgz
+	  /usr/bin/tar -c -z -f \$_weekdaily -C \$_dest.0 --warning=no-file-ignored .
+	  _result=\$?
+	  if [[ \$_result -ne 0 ]]; then
+	    /usr/bin/logger -t $_app "ALERT tar \$_weekdaily exited with \$_result"
+	    exit 1
+	  fi
+
+	  _monthly=/var/backup/$_app/backup.\$(LANG=C date +%B).tgz
 	  if [[ ! -s \$_monthly ]] ; then
 	    /usr/bin/tar -c -z -f \$_monthly -C \$_dest.0 --warning=no-file-ignored .
 	    _result=\$?
 	    if [[ \$_result -ne 0 ]]; then
 	      /usr/bin/logger -t $_app "ALERT tar \$_monthly exited with \$_result"
-	      exit 1
-	    fi
-	  fi
-	  if [[ ! -s \$_weekdaily ]] ; then
-	    /usr/bin/tar -c -z -f \$_weekdaily -C \$_dest.0 --warning=no-file-ignored .
-	    _result=\$?
-	    if [[ \$_result -ne 0 ]]; then
-	      /usr/bin/logger -t $_app "ALERT tar \$_weekdaily exited with \$_result"
 	      exit 1
 	    fi
 	  fi
