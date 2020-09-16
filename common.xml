@@ -112,9 +112,9 @@
     </download>
     <download id="docker_compose">
       <link>https://github.com/docker/compose/releases/</link>
-      <url>https://github.com/docker/compose/releases/download/1.25.5/docker-compose-Linux-x86_64</url>
+      <url>https://github.com/docker/compose/releases/download/1.27.3/docker-compose-Linux-x86_64</url>
       <name>docker-compose</name>
-      <md5>3485ce0470f084d338732c541873339a</md5>
+      <sha256>92055c48e1514c0377b76ed3df87f505c50099145d86835b06fa5109811b6a83</sha256>
     </download>
     <download id="docker_compose_completion">
       <link>https://github.com/docker/compose/releases/</link>
@@ -198,6 +198,18 @@
       <md5>e6e6e63f641248716c758948baef18df</md5>
       <sha256>7b67e709006230f90f95727f9fa92e8c73a9e93458b22103293120f9cb50fd72</sha256>
     </download>
+    <download id="nextcloud_18_0_6">
+      <link>https://download.nextcloud.com/server/releases/</link>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-18.0.6.tar.bz2</url>
+      <md5></md5>
+      <sha256></sha256>
+    </download>
+    <download id="nextcloud_19_0_1">
+      <link>https://download.nextcloud.com/server/releases/</link>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-19.0.1.tar.bz2</url>
+      <md5>19c18c607c967bc05a77dd35d25e5ba4</md5>
+      <sha256>4ef311e00d939915d3a9714cd3a1ad436db9157e04620e4a88c2f427e5e65b2d</sha256>
+    </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
       <url>https://nodejs.org/dist/v6.11.0/node-v6.11.0-linux-x64.tar.xz</url>
@@ -214,6 +226,10 @@
       <url>https://www.opencart.com/index.php?route=cms/download/download__AMP__download_id=47</url>
       <name>2.3.0.2-compiled.zip</name>
       <version>2.3.0.2</version>
+    </download>
+    <download id="openproject_repo">
+      <link>https://docs.openproject.org/installation-and-operations/installation/packaged/#centos-7--rhel-7</link>
+      <url>https://dl.packager.io/srv/opf/openproject/stable/10/installer/el/7.repo</url>
     </download>
     <download id="owncloud">
       <link>https://owncloud.org/install/#edition</link>
@@ -459,6 +475,12 @@
       <load>virtualbox_repo</load>
       <key>https://www.virtualbox.org/download/oracle_vbox.asc</key>
     </repo>
+    <repo id="openproject">
+      <link>https://docs.openproject.org/installation-and-operations/installation/packaged/#centos-7--rhel-7</link>
+      <file>openproject</file>
+      <prio>49</prio>
+      <load>openproject_repo</load>
+    </repo>
 
     <rpm_list id="general">
       <rpm>yum-utils</rpm>
@@ -613,6 +635,27 @@
       <rpm>php72u-process</rpm>
       <rpm>php72u-soap</rpm>
       <rpm>php72u-xml</rpm>
+    </rpm_list>
+    <rpm_list id="php74">
+      <rpm>mod_php74</rpm>
+      <rpm>php74-bcmath</rpm>
+      <rpm>php74-cli</rpm>
+      <rpm>php74-common</rpm>
+      <rpm>php74-devel</rpm>
+      <rpm>php74-gd</rpm>
+      <rpm>php74-gmp</rpm>
+      <rpm>php74-imap</rpm>
+      <rpm>php74-intl</rpm>
+      <rpm>php74-mbstring</rpm>
+      <rpm>php74-opcache</rpm>
+      <rpm>php74-pdo</rpm>
+      <rpm>php74-pecl-apcu</rpm>
+      <rpm>php74-pecl-imagick</rpm>
+      <rpm>php74-pecl-redis</rpm>
+      <rpm>php74-pecl-zip</rpm>
+      <rpm>php74-process</rpm>
+      <rpm>php74-soap</rpm>
+      <rpm>php74-xml</rpm>
     </rpm_list>
     <rpm_list id="automx">
       <rpm>mod_wsgi</rpm>

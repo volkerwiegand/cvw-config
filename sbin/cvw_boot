@@ -131,6 +131,7 @@ cvw_shariff        -i ; error_check
 cvw_roundcube      -i ; error_check
 cvw_squirrelmail   -i ; error_check
 cvw_mantis         -i ; error_check
+cvw_openproject    -i ; error_check
 cvw_dokuwiki       -i ; error_check
 cvw_modified       -i ; error_check
 cvw_randshop       -i ; error_check

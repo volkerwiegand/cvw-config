@@ -22,7 +22,7 @@ _prog=${0##*/}
 _args="$*"
 _name="Nextcloud"
 _slug="nextcloud"
-_dflt="16_0_5"
+_dflt="19_0_1"
 
 
 function usage
@@ -52,7 +52,7 @@ function nextcloud_generate
 
 	cat <<-EOF
 	    <nextcloud active="true" wellknown="true">
-	      <release>16_0_5</release>
+	      <release>19_0_1</release>
 	      <uri>/cloud</uri>
 	      <password>$(cvw -p 20)</password>
 	      <loglevel>1</loglevel>
@@ -90,7 +90,7 @@ function nextcloud_install
 	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
 	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _file
+	local _conf _file
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
@@ -111,8 +111,8 @@ function nextcloud_install
 
 	cvw_unpack -u apache -i ${_slug}_$_release $_root/app index.php
 
-	_file="$_root/app/config/config.php"
-	if [[ -s $_file ]] ; then
+	_conf="$_root/app/config/config.php"
+	if [[ -s $_conf ]] ; then
 		nextcloud_occ maintenance:mode --on
 		_exist=1
 	else
@@ -133,14 +133,14 @@ function nextcloud_install
 	fi
 	touch $_root/data/.ocdata
 	chown -R apache:apache $_root/data
-	if ! grep -q "$_root/data" $_file ; then
+	if ! grep -q "$_root/data" $_conf ; then
 		nextcloud_occ config:system:set datadirectory --value=$_root/data
 	fi
 
 	if [[ ! -d $_root/log ]] ; then
 		install -o apache -g apache -d $_root/log
 	fi
-	if ! grep -q "logfile" $_file ; then
+	if ! grep -q "logfile" $_conf ; then
 		nextcloud_occ config:system:set logfile --value=$_root/log/nextcloud.log
 		nextcloud_occ config:system:set loglevel --value=$_loglvl
 	fi
@@ -148,21 +148,21 @@ function nextcloud_install
 	if [[ ! -d $_root/skeleton ]] ; then
 		install -o apache -g apache -d $_root/skeleton
 	fi
-	if ! grep -q "skeletondirectory" $_file ; then
+	if ! grep -q "skeletondirectory" $_conf ; then
 		nextcloud_occ config:system:set skeletondirectory --value=$_root/skeleton
 	fi
 
-	if ! grep -q "overwriteprotocol" $_file ; then
+	if ! grep -q "overwriteprotocol" $_conf ; then
 		nextcloud_occ config:system:set overwriteprotocol --value=https
 	fi
 
-	if ! grep -q "$_fqdn" $_file ; then
+	if ! grep -q "$_fqdn" $_conf ; then
 		nextcloud_occ config:system:set trusted_domains 1 --value=$_fqdn
 	fi
-	if ! grep -q "APCu" $_file ; then
+	if ! grep -q "APCu" $_conf ; then
 		nextcloud_occ config:system:set memcache.local --value=\\\\OC\\\\Memcache\\\\APCu
 	fi
-	if ! grep -q "default_language" $_file ; then
+	if ! grep -q "default_language" $_conf ; then
 		nextcloud_occ config:system:set default_language --value=de
 	fi
 
@@ -173,9 +173,18 @@ function nextcloud_install
 		fi
 		nextcloud_occ --no-interaction db:convert-filecache-bigint
 		nextcloud_occ --no-interaction db:add-missing-indices
+		nextcloud_occ --no-interaction db:add-missing-columns
 	fi
 
 	nextcloud_occ maintenance:mode --off
+
+	mkdir -p $_root/cron
+	_file=$_root/cron/apache.crontab
+	cat >$_file.tmp_VW <<-EOF
+		*/5  *  *  *  * php -f $_root/app/cron.php
+	EOF
+	cvw_file -v $_file
+	crontab -u apache $_file
 
 	if cvw_xml -a software/nginx ; then
 		_file="/tmp/cvw/nginx.options"
