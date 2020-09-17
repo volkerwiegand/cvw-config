@@ -45,7 +45,7 @@ function usage
 function docker_install
 {
 	cvw_say -h "Installing $_name"
-	local _file _port
+	local _dir _file _target _port
 
 	cvw_backup $_slug /var/lib/docker/volumes
 
@@ -62,6 +62,16 @@ function docker_install
 	cvw_download -i docker_compose /usr/local/bin
 	chmod +x /usr/local/bin/docker-compose
 	cvw_download -i docker_compose_completion /etc/bash_completion.d
+
+	find /var/lib/cvw_cfg/files/compose | while read _dir ; do
+		_file="$_dir/docker-compose.yml"
+		test -r $_file || continue
+		_target="/root/${_dir##*/}/docker-compose.yml"
+		mkdir -p ${_target#/*}
+		cp $_file $_target.tmp_VW
+		cvw_file -v $_target
+		cvw_say -a "docker-compose: $_target"
+	done
 
 	cvw_xml -l software/$_slug/tcp_port | sort -u | while read _port ; do
 		cvw_firewall -t $_port

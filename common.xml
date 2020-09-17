@@ -230,6 +230,7 @@
     <download id="openproject_repo">
       <link>https://docs.openproject.org/installation-and-operations/installation/packaged/#centos-7--rhel-7</link>
       <url>https://dl.packager.io/srv/opf/openproject/stable/10/installer/el/7.repo</url>
+      <name>openproject.repo</name>
     </download>
     <download id="owncloud">
       <link>https://owncloud.org/install/#edition</link>
@@ -480,6 +481,7 @@
       <file>openproject</file>
       <prio>49</prio>
       <load>openproject_repo</load>
+      <key>https://dl.packager.io/srv/opf/openproject/key</key>
     </repo>
 
     <rpm_list id="general">
