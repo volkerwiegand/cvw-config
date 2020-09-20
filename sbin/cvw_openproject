@@ -1,0 +1,145 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_openproject - Install or remove OpenProject
+######                   https://www.openproject.org/
+######
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="OpenProject"
+_slug="openproject"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function openproject_generate
+{
+	cat <<-EOF
+	    <openproject active="true">
+	      <port>8080</port>
+	      <uri>/project</uri>
+	    </openproject>
+
+	EOF
+	exit 0
+}
+
+
+function openproject_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/docker || cvw_say -f "$_prog: requires docker"
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _port=$(cvw_xml -r software/$_slug/port)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Login URL ...............: $(cvw_url -r $_uri)
+			      Internal Port ...........: $_port
+		EOF
+	fi
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	if [[ -d /root/$_slug ]] ; then
+		if grep -q -s upgrade /tmp/cvw/updating ; then
+			(cd /root/$_slug && git pull)
+			[[ $? -eq 0 ]] || exit 1
+		fi
+	else
+		git clone --depth=1 --branch=stable/10 https://github.com/opf/openproject
+		[[ $? -eq 0 ]] || exit 1
+	fi
+
+	_file="/root/$_slug/docker-compose.yml"
+	cvw_file -b $_file
+	cvw_file -e $_file "s|=..OPENPROJECT_RAILS__RELATIVE__URL__ROOT...|=$_uri|"
+	cvw_file -e $_file "s|80..:80|$_port:80|"
+
+	if cvw_xml -a software/apache ; then
+		cat >/tmp/cvw/apache.block <<-EOF
+
+		    RewriteRule "^$_uri\$" "$_uri/" [R,L]
+		    <Location "$_uri/">
+		      RequestHeader     set X-Forwarded-Proto 'https'
+		      ProxyPass         http://127.0.0.1:$_port$_uri/
+		      ProxyPassReverse  http://127.0.0.1:$_port$_uri/
+		    </Location>
+		EOF
+		cvw_apache -p $_slug
+	fi
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "$_slug"
+}
+
+
+function openproject_remove
+{
+	if [[ -d /root/openproject ]] ; then
+		cvw_say -h "Please remove $_name manually"
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":ig" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				openproject_install
+			else
+				openproject_remove
+			fi
+			exit 0
+		;;
+
+		g)
+			openproject_generate
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
