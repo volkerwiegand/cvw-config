@@ -420,10 +420,10 @@
       <includepkgs>nginx*</includepkgs>
     </repo>
     <repo id="postgresql">
-      <link>https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/</link>
-      <file>pgdg-96-centos</file>
+      <link>https://www.postgresql.org/download/linux/redhat/</link>
+      <file>pgdg-redhat-all</file>
       <prio>33</prio>
-      <rpm>https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/pgdg-centos96-9.6-3.noarch.rpm</rpm>
+      <rpm>https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm</rpm>
     </repo>
     <repo id="nodesource">
       <link>https://rpm.nodesource.com/pub_4.x/el/7/x86_64/</link>
@@ -450,10 +450,10 @@
       <fingerprint>62e74ca5</fingerprint>
     </repo>
     <repo id="ius">
-      <link>https://ius.io/GettingStarted/</link>
+      <link>https://ius.io/setup</link>
       <file>ius</file>
       <prio>41</prio>
-      <rpm>https://centos7.iuscommunity.org/ius-release.rpm</rpm>
+      <rpm>https://repo.ius.io/ius-release-el7.rpm</rpm>
       <key>/etc/pki/rpm-gpg/RPM-GPG-KEY-IUS-7</key>
     </repo>
     <repo id="passenger">
