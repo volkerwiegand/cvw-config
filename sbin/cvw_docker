@@ -45,7 +45,8 @@ function usage
 function docker_install
 {
 	cvw_say -h "Installing $_name"
-	local _dir _file _target _port
+	local _compose="/var/lib/cvw_cfg/files/compose"
+	local _dir _app _file _target _port
 
 	cvw_backup $_slug /var/lib/docker/volumes
 
@@ -63,11 +64,12 @@ function docker_install
 	chmod +x /usr/local/bin/docker-compose
 	cvw_download -i docker_compose_completion /etc/bash_completion.d
 
-	find /var/lib/cvw_cfg/files/compose | while read _dir ; do
+	mkdir -p $_compose
+	find $_compose -type d | while read _dir ; do
 		_file="$_dir/docker-compose.yml"
 		test -r $_file || continue
 		_target="/root/${_dir##*/}/docker-compose.yml"
-		mkdir -p ${_target#/*}
+		mkdir -p ${_target%/*}
 		cp $_file $_target.tmp_VW
 		cvw_file -v $_target
 		cvw_say -a "docker-compose: $_target"
@@ -84,7 +86,6 @@ function docker_install
 function docker_remove
 {
 	if [[ -x /usr/bin/docker ]] ; then
-		cvw_backup -z $_app
 		cvw_say -h "Please remove $_name manually"
 		cvw_say -o "$_slug:remove"
 	fi
