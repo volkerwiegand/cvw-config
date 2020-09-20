@@ -191,6 +191,7 @@ function apache_initial
 		   TransferLog       logs/ssl_transfer_log
 		   LogLevel          $_loglvl
 		   DocumentRoot      __DOC_ROOT__
+		   RewriteEngine     On
 		   ProxyPreserveHost On
 		   ProxyRequests     off
 
