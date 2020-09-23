@@ -50,8 +50,8 @@ function usage
 
 function php_install
 {
-	cvw_say -h "Installing $_name"
 	local _release=$(cvw_xml -R software/$_slug/release $_dflt)
+	cvw_say -h "Installing $_name ($_release)"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _timezone=$(cvw_xml -r system/timezone)
 	local _filesize=$(cvw_xml -R software/$_slug/filesize "2000M")
