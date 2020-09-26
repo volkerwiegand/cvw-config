@@ -217,9 +217,9 @@
     </download>
     <download id="open3a">
       <link>https://www.open3a.de/page-Download</link>
-      <url>https://www.open3a.de/multiCMSDownload.php?filedl=103</url>
-      <name>open3A_3.0.zip</name>
-      <sha256>4fa957cedc5382f2bd643b3f621cf7be664451b5f768889830ef0866b679a3ca</sha256>
+      <url>https://www.open3a.de/multiCMSDownload.php?filedl=122</url>
+      <name>open3A_3.2.zip</name>
+      <sha256>ed04a258bbc4be4d2edc4bc74d7c10565b2e1d42215658eea872e1aea886ca2b</sha256>
     </download>
     <download id="opencart">
       <link>https://www.opencart.com/index.php?route=cms/download/history</link>
@@ -367,8 +367,8 @@
     </download>
     <download id="wordpress">
       <link>https://de.wordpress.org/releases/</link>
-      <url>https://de.wordpress.org/wordpress-5.4-de_DE.tar.gz</url>
-      <md5>a7d7635909639d4104bc6df27de2f359</md5>
+      <url>https://de.wordpress.org/wordpress-5.5.1-de_DE.tar.gz</url>
+      <md5>8ba329f195c44b60675961c19d5cea79</md5>
     </download>
     <download id="yellow">
       <link>https://github.com/datenstrom/yellow/releases</link>
