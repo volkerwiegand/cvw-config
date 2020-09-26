@@ -149,7 +149,7 @@ fi
 if [[ $_md5 ]] ; then
 	cvw_say -s "md5 $_file"
 	if [[ $_sum != $_md5 ]] ; then
-		echo "$_prog: bad MD5 checksum for $_file" >>/tmp/cvw/error
+		echo "$_prog: bad MD5 checksum for $_file ($_sum)" >>/tmp/cvw/error
 		exit 1
 	fi
 fi
@@ -158,7 +158,7 @@ if [[ $_sha1 ]] ; then
 	cvw_say -s "sha1 $_file"
 	_sum=$(sha1sum $_dir/$_file | awk '{ print $1 }')
 	if [[ $_sum != $_sha1 ]] ; then
-		echo "$_prog: bad SHA1 checksum for $_file" >>/tmp/cvw/error
+		echo "$_prog: bad SHA1 checksum for $_file ($_sum)" >>/tmp/cvw/error
 		exit 1
 	fi
 fi
@@ -167,7 +167,7 @@ if [[ $_sha256 ]] ; then
 	cvw_say -s "sha256 $_file"
 	_sum=$(sha256sum $_dir/$_file | awk '{ print $1 }')
 	if [[ $_sum != $_sha256 ]] ; then
-		echo "$_prog: bad SHA256 checksum for $_file" >>/tmp/cvw/error
+		echo "$_prog: bad SHA256 checksum for $_file ($_sum)" >>/tmp/cvw/error
 		exit 1
 	fi
 fi
