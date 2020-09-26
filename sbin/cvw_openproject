@@ -5,6 +5,7 @@
 ######
 ###### cvw_openproject - Install or remove OpenProject
 ######                   https://www.openproject.org/
+######                   https://www.openproject.org/download-and-installation/
 ######
 ###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
@@ -45,8 +46,13 @@ function usage
 function openproject_generate
 {
 	cat <<-EOF
-	    <openproject active="true">
+	    <openproject active="true" docker="true">
 	      <port>8080</port>
+	      <uri>/project</uri>
+	    </openproject>
+
+	    <openproject active="true" docker="false">
+	      <password>aZ33qfoG6v0nlMow0sHL</password>
 	      <uri>/project</uri>
 	    </openproject>
 
@@ -55,9 +61,9 @@ function openproject_generate
 }
 
 
-function openproject_install
+function openproject_install_docker
 {
-	cvw_say -h "Installing $_name"
+	cvw_say -h "Installing $_name (Docker)"
 	cvw_xml -a software/docker || cvw_say -f "$_prog: requires docker"
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _port=$(cvw_xml -r software/$_slug/port)
@@ -107,13 +113,37 @@ function openproject_install
 }
 
 
-function openproject_remove
+function openproject_install_native
+{
+	cvw_say -h "Installing $_name (Native)"
+	cvw_xml -a software/postgresql || cvw_say -f "$_prog: requires postgresql"
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pswd=$(cvw_xml -r software/$_slug/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+
+	cvw_postgresql -u openproject $_pswd
+
+	cvw_yum -a openproject
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "$_slug"
+}
+
+
+function openproject_remove_docker
 {
 	if [[ -d /root/openproject ]] ; then
-		cvw_say -h "Please remove $_name manually"
+		cvw_say -h "Please remove $_name (Docker) manually"
 		cvw_say -o "$_slug:remove"
 	fi
 
+	rm -f /tmp/cvw/error
+}
+
+
+function openproject_remove_native
+{
 	rm -f /tmp/cvw/error
 }
 
@@ -122,9 +152,17 @@ while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
-				openproject_install
+				if cvw_xml -t software/$_slug/docker ; then
+					openproject_install_docker
+				else
+					openproject_install_native
+				fi
 			else
-				openproject_remove
+				if cvw_xml -t software/$_slug/docker ; then
+					openproject_remove_docker
+				else
+					openproject_remove_native
+				fi
 			fi
 			exit 0
 		;;
