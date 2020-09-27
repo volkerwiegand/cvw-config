@@ -52,6 +52,7 @@ function openproject_generate
 	    </openproject>
 
 	    <openproject active="true" docker="false">
+	      <port>3080</port>
 	      <password>aZ33qfoG6v0nlMow0sHL</password>
 	      <uri>/project</uri>
 	    </openproject>
@@ -117,13 +118,46 @@ function openproject_install_native
 {
 	cvw_say -h "Installing $_name (Native)"
 	cvw_xml -a software/postgresql || cvw_say -f "$_prog: requires postgresql"
+	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _port=$(cvw_xml -r software/$_slug/port)
 	local _pswd=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _domain=${_fqdn#*.}
 
 	cvw_postgresql -u openproject $_pswd
+	cvw_postgresql -c openproject openproject
 
 	cvw_yum -a openproject
+	cvw_rpm -i openproject
+
+	openproject config:set ADMIN_EMAIL="admin@$_domain"
+	openproject config:set DATABASE_URL="postgresql://openproject:$_pswd@localhost:5432/openproject"
+	openproject config:set OPENPROJECT_RAILS__FORCE__SSL="false"
+	openproject config:set PORT="$_port"
+	openproject config:set SERVER_PROTOCOL_FORCE_HTTPS="false"
+
+	if cvw_xml -a software/apache ; then
+		cat >/tmp/cvw/apache.block <<-EOF
+
+		    RewriteRule "^$_uri\$" "$_uri/" [R,L]
+		    <Location "$_uri/">
+		      RequestHeader     set X-Forwarded-Proto 'https'
+		      ProxyPass         http://127.0.0.1:$_port$_uri/ retry=0
+		      ProxyPassReverse  http://127.0.0.1:$_port$_uri/
+		    </Location>
+		    <LocationMatch "^$_uri/sys">
+		      Require local
+		    </LocationMatch>
+		    Alias $_uri/assets  /opt/openproject/public/assets
+		    Alias $_uri/uploads /opt/openproject/public/uploads
+		    <Directory "/opt/openproject/public">
+		      Options -Indexes
+		      Require all granted
+		    </Directory>
+		EOF
+		cvw_apache -p $_slug
+	fi
 
 	cvw_url -a "$_name" $_uri
 

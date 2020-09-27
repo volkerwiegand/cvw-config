@@ -29,6 +29,7 @@ function usage
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
 		Syntax: $_prog -i             Install or $_name
+		    or: $_prog -c name user   Create database with owner
 		    or: $_prog -d             Get PostgreSQL data directory
 		    or: $_prog -p user pass   Update password in .pgpass
 		    or: $_prog -P user        Remove password for user
@@ -57,7 +58,15 @@ function postgresql_check_user
 }
 
 
-function postgresql_addpass
+function postgresql_check_db
+{
+	local _db=$1
+
+	psql -U postgres -tAc "SELECT 1 FROM pg_catalog.pg_database WHERE datname='$_db';" | grep -q 1
+}
+
+
+function postgresql_add_pass
 {
 	local _user=$1
 	local _pass=$2
@@ -76,11 +85,10 @@ function postgresql_addpass
 }
 
 
-function postgresql_adduser
+function postgresql_add_user
 {
 	local _user=$1
 	local _pass=$2
-	local _check
 
 	if ! postgresql_check_user $_user ; then
 		psql -U postgres -c "CREATE USER $_user WITH LOGIN CREATEDB;"
@@ -90,12 +98,34 @@ function postgresql_adduser
 }
 
 
+function postgresql_add_db
+{
+	local _db=$1
+	local _user=$2
+
+	if ! postgresql_check_user $_user ; then
+		cvw_say -f "$_prog: missing owner for $_db"
+	fi
+
+	if ! postgresql_check_db $_db ; then
+		psql -U postgres -c "CREATE DATABASE $_db WITH OWNER = $_user;"
+	fi
+}
+
+
 function postgresql_install
 {
 	cvw_say -h "Installing $_name"
 	local _lang=$(cvw_xml -r system/language)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Password ................: $_pass
+		EOF
+	fi
 
 	cvw_yum -a postgresql
 	cvw_rpm -i postgresql10
@@ -149,8 +179,17 @@ function postgresql_remove
 }
 
 
-while getopts ":idp:P:su:U:" opt ; do
+while getopts ":c:dip:P:su:U:" opt ; do
 	case $opt in
+		c)
+			_new_db=$OPTARG
+		;;
+
+		d)
+			echo -n $_DATADIR
+			exit 0
+		;;
+
 		i)
 			if cvw_xml -a software/$_slug ; then
 				postgresql_install
@@ -160,18 +199,13 @@ while getopts ":idp:P:su:U:" opt ; do
 			exit 0
 		;;
 
-		d)
-			echo -n $_DATADIR
-			exit 0
-		;;
-
 		p)
 			_pw_user=$OPTARG
 		;;
 
 		P)
 			if postgresql_check_user $OPTARG ; then
-				postgresql_addpass $OPTARG
+				postgresql_add_pass $OPTARG
 				exit
 			fi
 			exit 0
@@ -201,13 +235,18 @@ while getopts ":idp:P:su:U:" opt ; do
 done
 shift $(($OPTIND-1))
 
-if [[ $_pw_user ]] ; then
-	postgresql_addpass $_pw_user $1
+if [[ $_new_user ]] ; then
+	postgresql_add_user $_new_user $1
 	exit
 fi
 
-if [[ $_new_user ]] ; then
-	postgresql_adduser $_new_user $1
+if [[ $_pw_user ]] ; then
+	postgresql_add_pass $_pw_user $1
+	exit
+fi
+
+if [[ $_new_db ]] ; then
+	postgresql_add_db $_new_db $1
 	exit
 fi
 

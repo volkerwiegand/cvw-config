@@ -6,6 +6,7 @@
 ###### cvw_docker - Install or remove Docker and Compose
 ######              https://docs.docker.com/
 ######              https://docs.docker.com/compose/
+######              https://unix.stackexchange.com/questions/199966/
 ######
 ###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
