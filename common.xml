@@ -112,9 +112,9 @@
     </download>
     <download id="docker_compose">
       <link>https://github.com/docker/compose/releases/</link>
-      <url>https://github.com/docker/compose/releases/download/1.27.3/docker-compose-Linux-x86_64</url>
+      <url>https://github.com/docker/compose/releases/download/1.27.4/docker-compose-Linux-x86_64</url>
       <name>docker-compose</name>
-      <sha256>92055c48e1514c0377b76ed3df87f505c50099145d86835b06fa5109811b6a83</sha256>
+      <sha256>04216d65ce0cd3c27223eab035abfeb20a8bef20259398e3b9d9aa8de633286d</sha256>
     </download>
     <download id="docker_compose_completion">
       <link>https://github.com/docker/compose/releases/</link>
@@ -136,8 +136,8 @@
     </download>
     <download id="gogs">
       <link>https://dl.gogs.io/</link>
-      <url>https://dl.gogs.io/0.11.91/gogs_0.11.91_linux_amd64.tar.gz</url>
-      <sha256>56e03b8c83387a2a3ae4e3b46e8846f3b1ba785a743b33e682024bac746bf4d8</sha256>
+      <url>https://dl.gogs.io/0.12.3/gogs_0.12.3_linux_amd64.tar.gz</url>
+      <sha256>13eefa0a0d6fd7ed0c65b52182b6b6c318d4df71c962c744726a6d56367490ec</sha256>
     </download>
     <download id="golang">
       <link>https://golang.org/dl/</link>
@@ -170,6 +170,11 @@
       <link>https://github.com/kivitendo/kivitendo-erp/releases</link>
       <url>https://github.com/kivitendo/kivitendo-erp/archive/release-3.5.0.tar.gz</url>
       <sha256>10ddc17b7d7445c60ae4c622efd69292869628f3c2dacfeeedd5d94eaa1a838b</sha256>
+    </download>
+    <download id="leantime">
+      <link>https://github.com/Leantime/leantime/releases</link>
+      <url>https://github.com/Leantime/leantime/releases/download/v2.1.4/Leantime-v2.1.4.tar.gz</url>
+      <sha256>42b0f8938de9347732289ce4da84298fa47e73b3bfdcedcdb95fcc8a8e171a5f</sha256>
     </download>
     <download id="mailscanner">
       <link>https://www.mailscanner.info/downloads/</link>
@@ -212,8 +217,8 @@
     </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
-      <url>https://nodejs.org/dist/v6.11.0/node-v6.11.0-linux-x64.tar.xz</url>
-      <sha256>2f0c0833a1dc0d1d52ef42d275d40125c5163bf92d2a663139beef70896f544d</sha256>
+      <url>https://nodejs.org/dist/v12.19.0/node-v12.19.0-linux-x64.tar.gz</url>
+      <sha256>f37a5bf0965e8ab7b1b078392638778286ceee8fdb895c050889a61772944bda</sha256>
     </download>
     <download id="open3a">
       <link>https://www.open3a.de/page-Download</link>
@@ -303,6 +308,11 @@
       <link>https://rspamd.com/downloads.html</link>
       <url>http://rspamd.com/rpm-stable/centos-7/rspamd.repo</url>
     </download>
+    <download id="ruby">
+      <link>https://www.ruby-lang.org/en/downloads/</link>
+      <url>https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.2.tar.gz</url>
+      <sha256>6e5706d0d4ee4e1e2f883db9d768586b4d06567debea353c796ec45e8321c3d4</sha256>
+    </download>
     <download id="seafile">
       <link>https://www.seafile.com/en/download/</link>
       <url>https://download.seadrive.org/seafile-server_7.0.4_x86-64.tar.gz</url>
@@ -355,6 +365,11 @@
       <link>https://github.com/fruux/sabre-dav/releases</link>
       <url>https://github.com/fruux/sabre-dav/releases/download/3.2.2/sabredav-3.2.2.zip</url>
     </download>
+    <download id="web2project">
+      <link>https://github.com/web2project/web2project/releases</link>
+      <url>https://github.com/web2project/web2project/archive/version3.4.tar.gz</url>
+      <name>web2project-3.4.tar.gz</name>
+    </download>
     <download id="weblate">
       <link>https://weblate.org/de/download/</link>
       <url>https://dl.cihar.com/weblate/Weblate-3.11.2.tar.xz</url>
@@ -367,8 +382,8 @@
     </download>
     <download id="wordpress">
       <link>https://de.wordpress.org/releases/</link>
-      <url>https://de.wordpress.org/wordpress-5.5.1-de_DE.tar.gz</url>
-      <md5>8ba329f195c44b60675961c19d5cea79</md5>
+      <url>https://de.wordpress.org/wordpress-5.5.3-de_DE.tar.gz</url>
+      <md5>46041d9b07dc819e05e57e7c06cda517</md5>
     </download>
     <download id="yellow">
       <link>https://github.com/datenstrom/yellow/releases</link>
@@ -505,63 +520,48 @@
       <rpm>bash-completion</rpm>
       <rpm>httpd-tools</rpm>
     </rpm_list>
-    <rpm_list id="devel">
+    <rpm_list id="development">
       <rpm>autoconf</rpm>
       <rpm>automake</rpm>
       <rpm>binutils</rpm>
       <rpm>bison</rpm>
-      <rpm>flex</rpm>
-      <rpm>gcc</rpm>
-      <rpm>gcc-c++</rpm>
-      <rpm>libtool</rpm>
-      <rpm>make</rpm>
-      <rpm>openssl-devel</rpm>
-    </rpm_list>
-    <rpm_list id="rbenv">
-      <rpm>automake</rpm>
-      <rpm>gcc</rpm>
-      <rpm>gdbm-devel</rpm>
-      <rpm>libcurl-devel</rpm>
-      <rpm>libffi-devel</rpm>
-      <rpm>libyaml-devel</rpm>
-      <rpm>ncurses-devel</rpm>
-      <rpm>openssl-devel</rpm>
-      <rpm>readline-devel</rpm>
-      <rpm>sqlite-devel</rpm>
-      <rpm>zlib-devel</rpm>
-      <rpm>v8-devel</rpm>
-    </rpm_list>
-    <rpm_list id="development">
-      <rpm>gcc-go</rpm>
-      <rpm>rcs</rpm>
-      <rpm>cvs</rpm>
-      <rpm>subversion</rpm>
       <rpm>bzr</rpm>
+      <rpm>cvs</rpm>
       <rpm>darcs</rpm>
       <rpm>mercurial</rpm>
-      <rpm>glibc-devel</rpm>
-      <rpm>python-devel</rpm>
-      <rpm>zlib-devel</rpm>
+      <rpm>rcs</rpm>
+      <rpm>subversion</rpm>
+      <rpm>flex</rpm>
+      <rpm>gcc-c++</rpm>
+      <rpm>gcc-go</rpm>
+      <rpm>gcc</rpm>
+      <rpm>make</rpm>
+      <rpm>libtool</rpm>
       <rpm>bzip2-devel</rpm>
-      <rpm>pcre-devel</rpm>
       <rpm>expat-devel</rpm>
-      <rpm>json-c-devel</rpm>
-      <rpm>jansson-devel</rpm>
-      <rpm>gettext-devel</rpm>
-      <rpm>readline-devel</rpm>
-      <rpm>ncurses-devel</rpm>
       <rpm>gdbm-devel</rpm>
-      <rpm>libcurl-devel</rpm>
-      <rpm>libxslt-devel</rpm>
-      <rpm>libxml2-devel</rpm>
-      <rpm>libacl-devel</rpm>
-      <rpm>libtidy-devel</rpm>
+      <rpm>gettext-devel</rpm>
+      <rpm>glibc-devel</rpm>
       <rpm>ImageMagick-devel</rpm>
-      <rpm>openldap-devel</rpm>
-      <rpm>sqlite-devel</rpm>
+      <rpm>jansson-devel</rpm>
+      <rpm>json-c-devel</rpm>
+      <rpm>libacl-devel</rpm>
+      <rpm>libcurl-devel</rpm>
       <rpm>libffi-devel</rpm>
       <rpm>libicu-devel</rpm>
+      <rpm>libtidy-devel</rpm>
+      <rpm>libxml2-devel</rpm>
+      <rpm>libxslt-devel</rpm>
       <rpm>libyaml-devel</rpm>
+      <rpm>ncurses-devel</rpm>
+      <rpm>openldap-devel</rpm>
+      <rpm>openssl-devel</rpm>
+      <rpm>pcre-devel</rpm>
+      <rpm>python-devel</rpm>
+      <rpm>readline-devel</rpm>
+      <rpm>sqlite-devel</rpm>
+      <rpm>v8-devel</rpm>
+      <rpm>zlib-devel</rpm>
     </rpm_list>
     <rpm_list id="python">
       <rpm>python-setuptools</rpm>
