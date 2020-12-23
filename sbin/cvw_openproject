@@ -6,6 +6,10 @@
 ###### cvw_openproject - Install or remove OpenProject
 ######                   https://www.openproject.org/
 ######                   https://www.openproject.org/download-and-installation/
+######                   https://docs.openproject.org/installation-and-operations/installation/docker/
+######                   https://docs.openproject.org/installation-and-operations/installation/packaged/#el-7
+######                   https://docs.openproject.org/installation-and-operations/configuration/environment/
+######                   https://docs.openproject.org/installation-and-operations/configuration/outbound-emails/
 ######
 ###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
@@ -46,15 +50,8 @@ function usage
 function openproject_generate
 {
 	cat <<-EOF
-	    <openproject active="true" docker="true">
-	      <port>8080</port>
-	      <uri>/project</uri>
-	    </openproject>
-
-	    <openproject active="true" docker="false">
-	      <port>3080</port>
-	      <password>aZ33qfoG6v0nlMow0sHL</password>
-	      <uri>/project</uri>
+	    <openproject active="true">
+	      <release>10</release>
 	    </openproject>
 
 	EOF
@@ -62,47 +59,47 @@ function openproject_generate
 }
 
 
-function openproject_install_docker
+function openproject_install
 {
-	cvw_say -h "Installing $_name (Docker)"
 	cvw_xml -a software/docker || cvw_say -f "$_prog: requires docker"
+	cvw_say -h "Installing $_name"
+	local _release=$(cvw_xml -R software/$_slug/release 10)
 	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _port=$(cvw_xml -r software/$_slug/port)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _file
+	local _tmpl _file
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
-			      Login URL ...............: $(cvw_url -r $_uri)
-			      Internal Port ...........: $_port
+			      Release .................: $_release
 		EOF
 	fi
 	[[ -s /tmp/cvw/error ]] && exit 1
 
-	if [[ -d /root/$_slug ]] ; then
+	if [[ -d /root/openproject ]] ; then
 		if grep -q -s upgrade /tmp/cvw/updating ; then
-			(cd /root/$_slug && git pull)
+			(cd /root/openproject && git pull)
 			[[ $? -eq 0 ]] || exit 1
 		fi
 	else
-		git clone --depth=1 --branch=stable/10 https://github.com/opf/openproject
+		git clone --depth=1 --branch=stable/$_release https://github.com/opf/openproject
 		[[ $? -eq 0 ]] || exit 1
 	fi
 
-	_file="/root/$_slug/docker-compose.yml"
+	_tmpl="/var/lib/cvw_cfg/files/misc/openproject.yml"
+	_file="/root/openproject/docker-compose.yml"
 	cvw_file -b $_file
-	cvw_file -e $_file "s|=..OPENPROJECT_RAILS__RELATIVE__URL__ROOT...|=$_uri|"
-	cvw_file -e $_file "s|80..:80|$_port:80|"
+	cp $_tmpl $_file || cvw_say -s "can't find $_tmpl"
+	cvw_file -e $_file "s|\(openproject/community:\).*|\1$_release|"
 
 	if cvw_xml -a software/apache ; then
 		cat >/tmp/cvw/apache.block <<-EOF
 
-		    RewriteRule "^$_uri\$" "$_uri/" [R,L]
-		    <Location "$_uri/">
-		      RequestHeader     set X-Forwarded-Proto 'https'
-		      ProxyPass         http://127.0.0.1:$_port$_uri/
-		      ProxyPassReverse  http://127.0.0.1:$_port$_uri/
+		    RewriteRule "^\$" "/" [R,L]
+		    <Location "/">
+		      RequestHeader    set X-Forwarded-Proto 'https'
+		      ProxyPass        http://127.0.0.1:8080/
+		      ProxyPassReverse http://127.0.0.1:8080/
 		    </Location>
 		EOF
 		cvw_apache -p $_slug
@@ -114,70 +111,13 @@ function openproject_install_docker
 }
 
 
-function openproject_install_native
-{
-	cvw_say -h "Installing $_name (Native)"
-	cvw_xml -a software/postgresql || cvw_say -f "$_prog: requires postgresql"
-	local _fqdn=$(cvw_xml -r host/fqdn)
-	local _uri=$(cvw_xml -r software/$_slug/uri)
-	local _port=$(cvw_xml -r software/$_slug/port)
-	local _pswd=$(cvw_xml -r software/$_slug/password)
-	[[ -s /tmp/cvw/error ]] && exit 1
-	local _domain=${_fqdn#*.}
-
-	cvw_postgresql -u openproject $_pswd
-	cvw_postgresql -c openproject openproject
-
-	cvw_yum -a openproject
-	cvw_rpm -i openproject
-
-	openproject config:set ADMIN_EMAIL="admin@$_domain"
-	openproject config:set DATABASE_URL="postgresql://openproject:$_pswd@localhost:5432/openproject"
-	openproject config:set OPENPROJECT_RAILS__FORCE__SSL="false"
-	openproject config:set PORT="$_port"
-	openproject config:set SERVER_PROTOCOL_FORCE_HTTPS="false"
-
-	if cvw_xml -a software/apache ; then
-		cat >/tmp/cvw/apache.block <<-EOF
-
-		    RewriteRule "^$_uri\$" "$_uri/" [R,L]
-		    <Location "$_uri/">
-		      RequestHeader     set X-Forwarded-Proto 'https'
-		      ProxyPass         http://127.0.0.1:$_port$_uri/ retry=0
-		      ProxyPassReverse  http://127.0.0.1:$_port$_uri/
-		    </Location>
-		    <LocationMatch "^$_uri/sys">
-		      Require local
-		    </LocationMatch>
-		    Alias $_uri/assets  /opt/openproject/public/assets
-		    Alias $_uri/uploads /opt/openproject/public/uploads
-		    <Directory "/opt/openproject/public">
-		      Options -Indexes
-		      Require all granted
-		    </Directory>
-		EOF
-		cvw_apache -p $_slug
-	fi
-
-	cvw_url -a "$_name" $_uri
-
-	cvw_say -o "$_slug"
-}
-
-
-function openproject_remove_docker
+function openproject_remove
 {
 	if [[ -d /root/openproject ]] ; then
-		cvw_say -h "Please remove $_name (Docker) manually"
+		cvw_say -h "Please remove $_name manually"
 		cvw_say -o "$_slug:remove"
 	fi
 
-	rm -f /tmp/cvw/error
-}
-
-
-function openproject_remove_native
-{
 	rm -f /tmp/cvw/error
 }
 
@@ -186,17 +126,9 @@ while getopts ":ig" opt ; do
 	case $opt in
 		i)
 			if cvw_xml -a software/$_slug ; then
-				if cvw_xml -t software/$_slug/docker ; then
-					openproject_install_docker
-				else
-					openproject_install_native
-				fi
+				openproject_install
 			else
-				if cvw_xml -t software/$_slug/docker ; then
-					openproject_remove_docker
-				else
-					openproject_remove_native
-				fi
+				openproject_remove
 			fi
 			exit 0
 		;;

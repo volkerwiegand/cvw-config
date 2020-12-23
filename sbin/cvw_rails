@@ -389,7 +389,7 @@ function rails_install
 		install -o rails -g rails -m 0644 $_file.pub $_home/.ssh/id_rsa.pub
 	fi
 
-	cvw_rpm -l rbenv
+	cvw_rpm -l development
 	cvw_git -i ruby_rbenv -d $_RBENV_ROOT
 	cvw_git -i ruby_build -d $_RBENV_ROOT/plugins/ruby-build
 

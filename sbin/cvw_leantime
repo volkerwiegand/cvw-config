@@ -1,0 +1,164 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_leantime - Install or remove Leantime
+######                https://leantime.io/
+######                https://docs.leantime.io/#/installation/quick-installation
+######
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Leantime"
+_slug="leantime"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function leantime_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
+	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _root=$(cvw_xml -r system/app_root)/$_slug
+	local _uri=$(cvw_xml -r software/$_slug/uri)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	local _sess=$(cvw_xml -r software/$_slug/session)
+	local _site=$(cvw_xml -r software/$_slug/sitename)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _app=$_root/app
+	local _file
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      DB Name / User ..........: $_slug
+			      DB Pass .................: $_pass
+			      Session Key .............: $_sess
+			      Site Name ...............: $_site
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
+
+	cvw_backup -m $_slug -u $_slug -p $_pass $_slug
+
+	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
+
+	cvw_unpack -i $_slug $_app README.md
+
+	_file=$_app/public/.htaccess
+	cvw_file -e $_file "s|^[# ]*\(RewriteBase\).*|\1 ${_uri%/}/|" $(cvw_php -s)
+
+	_file=$_app/config/configuration.php
+	cat >$_file.tmp_VW <<-EOF
+		<?php
+		namespace leantime\\core;
+
+		class config
+		{
+		  /* General */
+		  public \$sitename  = "$_site";
+		  public \$language  = "de-DE";
+		  public \$mainColor = "1b75bb";
+		  public \$logoPath  = "/images/logo.png";
+		  public \$appUrl    = "https://$_fqdn$_uri";
+
+		  /* Database */
+		  public \$dbHost     = "localhost";
+		  public \$dbUser     = "$_slug";
+		  public \$dbPassword = "$_pass";
+		  public \$dbDatabase = "$_slug";
+
+		  /* Fileupload */
+		  public \$userFilePath = "userfiles/";
+		  public \$useS3        = false;
+
+		  /* Sessions */
+		  public \$sessionpassword   = "$_sess";
+		  public \$sessionExpiration = 28800;
+
+		  /* Email */
+		  public \$email        = "$(cvw_xml -r software/$_slug/smtp/email)";
+		  public \$useSMTP      = true;
+		  public \$smtpHosts    = "$(cvw_xml -r software/$_slug/smtp/host)";
+		  public \$smtpPort     = "$(cvw_xml -r software/$_slug/smtp/port)";
+		  public \$smtpUsername = "$(cvw_xml -r software/$_slug/smtp/username)";
+		  public \$smtpPassword = "$(cvw_xml -r software/$_slug/smtp/password)";
+		  public \$smtpAutoTLS  = true;
+		  public \$smtpSecure   = "STARTTLS";
+		}
+	EOF
+	[[ -s /tmp/cvw/error ]] && exit 1
+	cvw_file -v $_file $(cvw_php -s)
+
+if false ; then
+	chmod -R go-w $_app
+	for _subdir in archives plugins templates_c uploads spamblock ; do
+		mkdir -p $_app/$_subdir
+	done
+
+	chown -R apache:apache $_app
+fi
+
+	if cvw_xml -a software/nginx ; then
+		cvw_nginx -p $_slug
+	fi
+
+	if cvw_xml -a software/apache ; then
+		cvw_apache -p $_slug /public
+	fi
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "$_slug"
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				leantime_install
+			else
+				cvw_php -z $_slug
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
