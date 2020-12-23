@@ -115,6 +115,7 @@ cvw_dadamail       -i ; error_check
 cvw_xiopo          -i ; error_check
 cvw_gogs           -i ; error_check
 cvw_gitolite       -i ; error_check
+cvw_ruby           -i ; error_check
 cvw_rails          -i ; error_check
 cvw_kivitendo      -i ; error_check
 cvw_piwik          -i ; error_check
@@ -132,6 +133,8 @@ cvw_roundcube      -i ; error_check
 cvw_squirrelmail   -i ; error_check
 cvw_mantis         -i ; error_check
 cvw_openproject    -i ; error_check
+cvw_web2project    -i ; error_check
+cvw_leantime       -i ; error_check
 cvw_dokuwiki       -i ; error_check
 cvw_modified       -i ; error_check
 cvw_randshop       -i ; error_check
