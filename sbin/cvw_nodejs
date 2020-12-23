@@ -54,13 +54,12 @@ function nodejs_install
 	cvw_rpm -i nodejs-devel
 
 	if [[ ! -x /usr/local/bin/watchman ]] ; then
-		cvw_rpm -l devel
-		cvw_rpm -i python-devel
+		cvw_rpm -l development
 		pushd /tmp
 		rm -rf /tmp/watchman
 		git clone https://github.com/facebook/watchman.git
 		cd watchman
-		git checkout v4.7.0
+		git checkout v4.9.0
 		./autogen.sh
 		./configure
 		make

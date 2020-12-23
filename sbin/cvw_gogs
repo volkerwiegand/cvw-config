@@ -8,7 +8,7 @@
 ######            https://github.com/gogits/gogs/issues/1202
 ######            https://gogs.io/docs/intro/faqs
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -22,7 +22,7 @@ _prog=${0##*/}
 _args="$*"
 _name="gogs (Go Git Service)"
 _slug="gogs"
-_dflt="0_11_91"
+_dflt="0_12_3"
 
 
 function usage
