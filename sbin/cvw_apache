@@ -30,11 +30,11 @@ function usage
 {
 	rm -rf /tmp/cvw_error
 	cat >/tmp/cvw_error <<-EOF
-		Syntax: $_prog -i        Install or disable $_name
-		    or: $_prog -c        Return config file path
-		    or: $_prog -e file   Enable conf.d/file.conf
-		    or: $_prog -p slug   Add standard PHP block
-		    or: $_prog -x        Execute and cleanup
+		Syntax: $_prog -i                 Install or disable $_name
+		    or: $_prog -c                 Return config file path
+		    or: $_prog -e file            Enable conf.d/file.conf
+		    or: $_prog -p slug [subdir]   Add standard PHP block
+		    or: $_prog -x                 Execute and cleanup
 		Called with: '$_prog $_args'
 	EOF
 
@@ -52,6 +52,7 @@ function usage
 function apache_add_php
 {
 	local _base=$1
+	local _subdir=$2
 	local _root=$(cvw_xml -r system/app_root)/$_base
 	local _uri=$(cvw_xml -r software/$_base/uri)
 	local _conf=$(cvw_apache -c)
@@ -69,14 +70,14 @@ function apache_add_php
 
 		   <Directory __DOC_ROOT__>
 		EOF
-		echo "$_root/app" >/tmp/cvw/apache.doc.root
+		echo "$_root/app$_subdir" >/tmp/cvw/apache.doc.root
 	else
 		echo "" >>$_conf.tmp_VW
-		echo "   Alias $_uri $_root/app" >>$_conf.tmp_VW
+		echo "   Alias $_uri $_root/app$_subdir" >>$_conf.tmp_VW
 		for _alias in $(cvw_xml -l software/$_base/alias | sort) ; do
-			echo "   Alias $_alias $_root/app" >>$_conf.tmp_VW
+			echo "   Alias $_alias $_root/app$_subdir" >>$_conf.tmp_VW
 		done
-		echo "   <Directory $_root/app>" >>$_conf.tmp_VW
+		echo "   <Directory $_root/app$_subdir>" >>$_conf.tmp_VW
 	fi
 
 	cat >>$_conf.tmp_VW <<-EOF
@@ -113,6 +114,9 @@ function apache_initial
 
 	cvw_rpm -i httpd
 	cvw_rpm -i httpd-devel
+	cvw_rpm -i apr-devel
+	cvw_rpm -i apr-util-devel
+
 	cvw_service -s httpd
 	cvw_apache -e welcome
 	cvw_apache -e autoindex
@@ -376,8 +380,7 @@ while getopts ":ce:ip:x" opt ; do
 		;;
 
 		p)
-			apache_add_php $OPTARG
-			exit 0
+			_add_php=$OPTARG
 		;;
 
 		x)
@@ -393,6 +396,11 @@ while getopts ":ce:ip:x" opt ; do
 	esac
 done
 shift $(($OPTIND-1))
+
+if [[ $_add_php ]] ; then
+	apache_add_php $_add_php $1
+	exit 0
+fi
 
 usage
 
