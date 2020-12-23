@@ -6,7 +6,7 @@
 ###### cvw_backup - Backup handling (files and/or MySQL databases)
 ######              (internal service functions)
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -154,31 +154,12 @@ done
 
 cat >>$_bkup.tmp_VW <<-EOF
 
-	/bin/rm -rf \$_dest.7
-	[[ -d \$_dest.6 ]] && /bin/mv \$_dest.6 \$_dest.7
-	[[ -d \$_dest.5 ]] && /bin/mv \$_dest.5 \$_dest.6
-	[[ -d \$_dest.4 ]] && /bin/mv \$_dest.4 \$_dest.5
-	[[ -d \$_dest.3 ]] && /bin/mv \$_dest.3 \$_dest.4
-	[[ -d \$_dest.2 ]] && /bin/mv \$_dest.2 \$_dest.3
-	[[ -d \$_dest.1 ]] && /bin/mv \$_dest.1 \$_dest.2
-	[[ -d \$_dest.0 ]] && /bin/mv \$_dest.0 \$_dest.1
-
-	if [[ -d \$_dest.1 ]] ; then
-	  /usr/bin/rsync -aqz --delete --exclude=lost+found --link-dest=\$_dest.1 \$_dest/ \$_dest.0
-	else
-	  /usr/bin/rsync -aqz --delete --exclude=lost+found \$_dest/ \$_dest.0
-	fi
-
-	[[ \$_verbose ]] && /usr/bin/du -hs \$_dest.?
-	/bin/rm -rf \$_dest
-	[[ \$_verbose ]] && exit 0
-
 	# Save to background (Storage Box) if enabled
 	if mount | grep -q /var/backup ; then
 	  mkdir -p /var/backup/$_app
 
 	  _weekdaily=/var/backup/$_app/backup.\$(LANG=C date +%A).tgz
-	  /usr/bin/tar -c -z -f \$_weekdaily -C \$_dest.0 --warning=no-file-ignored .
+	  /usr/bin/tar -c -z -f \$_weekdaily -C \$_dest --warning=no-file-ignored .
 	  _result=\$?
 	  if [[ \$_result -ne 0 ]]; then
 	    /usr/bin/logger -t $_app "ALERT tar \$_weekdaily exited with \$_result"
@@ -187,7 +168,7 @@ cat >>$_bkup.tmp_VW <<-EOF
 
 	  _monthly=/var/backup/$_app/backup.\$(LANG=C date +%B).tgz
 	  if [[ ! -s \$_monthly ]] ; then
-	    /usr/bin/tar -c -z -f \$_monthly -C \$_dest.0 --warning=no-file-ignored .
+	    /usr/bin/tar -c -z -f \$_monthly -C \$_dest --warning=no-file-ignored .
 	    _result=\$?
 	    if [[ \$_result -ne 0 ]]; then
 	      /usr/bin/logger -t $_app "ALERT tar \$_monthly exited with \$_result"
@@ -206,7 +187,7 @@ _rstr="/usr/local/bin/rstr.$_app"
 cat >$_rstr.tmp_VW <<-EOF
 	#!/bin/bash
 
-	_dest=$_bdir/backup.0
+	_dest=$_bdir/backup
 	if [[ ! -d \$_dest ]] ; then
 	  echo "No backup for $_app -- abort" >&2
 	  exit 1
