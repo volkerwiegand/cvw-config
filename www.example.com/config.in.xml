@@ -6,7 +6,6 @@
     <fqdn>www.example.com</fqdn>
     <addr>192.168.12.34</addr>
     <ssh_port>22221</ssh_port>
-    <ssh_id_file>/path/to/ssh/id_rsa</ssh_id_file>
     <admin>admin@example.com</admin>
   </host>
 
