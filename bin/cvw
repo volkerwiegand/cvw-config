@@ -637,17 +637,14 @@ if [[ $_add_ssh_port ]] ; then
 	setup_config
 	if [[ -n "$1" ]] ; then
 		_ssh_port=$1
-		_ssh_id_file="$HOME/.ssh/id_rsa"
 	else
 		_ssh_port=$(cvw_xml -r host/ssh_port)
-		_ssh_id_file=$(cvw_xml -r host/ssh_id_file)
 		[[ -s /tmp/cvw/error ]] && finish
 	fi
 	cat >$HOME/.ssh/config_$_fqdn <<-EOF
 		# $_fqdn
 		Host $_addr
 		  Port $_ssh_port
-		  IdentityFile $_ssh_id_file
 
 	EOF
 	combine_ssh_configs
