@@ -29,6 +29,7 @@ function usage
 		    or: $_prog -h user                Get user's home dir
 		    or: $_prog -p user                Get user's password
 		    or: $_prog -r user [-d dir] cmd   Run command as user
+		    or: $_prog -R user [-d dir] cmd   Run command as user (quiet)
 		    or: $_prog -s user                Setup (inactive) user
 		    or: $_prog -v user                Verify that user exists
 		    or: $_prog -z user                Zap (delete) user
@@ -216,7 +217,7 @@ function init_users
 }
 
 
-while getopts ":d:e:g:h:ip:r:s:v:z:" opt ; do
+while getopts ":d:e:g:h:ip:r:R:s:v:z:" opt ; do
 	case $opt in
 		d)
 			_dir=$OPTARG
@@ -258,6 +259,11 @@ while getopts ":d:e:g:h:ip:r:s:v:z:" opt ; do
 
 		r)
 			_user=$OPTARG
+			_verbose=1
+		;;
+
+		R)
+			_user=$OPTARG
 		;;
 
 		s)
@@ -293,10 +299,10 @@ if [[ $_user ]] ; then
 	test $# -ge 1 || usage
 
 	if [[ $_dir ]] ; then
-		cvw_say -s "user: $_user ($_dir) -> '$*'"
+		[[ $_verbose ]] && cvw_say -s "user: $_user ($_dir) -> '$*'"
 		su -l $_user -s /bin/bash -c "cd $_dir && $*"
 	else
-		cvw_say -s "user: $_user -> '$*'"
+		[[ $_verbose ]] && cvw_say -s "user: $_user -> '$*'"
 		su -l $_user -s /bin/bash -c "$*"
 	fi
 
