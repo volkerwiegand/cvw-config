@@ -90,12 +90,19 @@ function nextcloud_install
 	local _adm_name=$(cvw_xml -r software/$_slug/admin/name)
 	local _adm_pass=$(cvw_xml -r software/$_slug/admin/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _conf _file
+	local _conf _file _version
+
+	if [[ -d $_root/app ]] ; then
+		_version=$(cvw_user -R apache -d $_root/app php occ status --version)
+	else
+		_version="not installed"
+	fi
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
 			      Software Release  .......: $_release
+			      Installed version .......: $_version
 			      Database password .......: $_pass
 			      Login URL ...............: $(cvw_url -r $_uri)index.php/login
 			      Admin Name ..............: $_adm_name
@@ -171,13 +178,17 @@ function nextcloud_install
 		if [[ $_exist ]] ; then
 			nextcloud_occ maintenance:repair
 		fi
-		nextcloud_occ --no-interaction db:convert-filecache-bigint
-		nextcloud_occ --no-interaction db:add-missing-indices
-		nextcloud_occ --no-interaction db:add-missing-columns
-		nextcloud_occ --no-interaction groupfolders:trashbin:cleanup --force
+		nextcloud_occ db:convert-filecache-bigint
+		nextcloud_occ db:add-missing-indices
+		nextcloud_occ db:add-missing-columns
+		nextcloud_occ db:add-missing-primary-keys
 	fi
 
 	nextcloud_occ maintenance:mode --off
+
+	if grep -q -s upgrade /tmp/cvw/updating ; then
+		nextcloud_occ groupfolders:trashbin:cleanup --force
+	fi
 
 	mkdir -p $_root/cron
 	_file=$_root/cron/apache.crontab
