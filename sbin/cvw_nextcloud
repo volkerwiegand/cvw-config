@@ -181,7 +181,9 @@ function nextcloud_install
 		nextcloud_occ db:convert-filecache-bigint
 		nextcloud_occ db:add-missing-indices
 		nextcloud_occ db:add-missing-columns
-		nextcloud_occ db:add-missing-primary-keys
+		if [[ $_version =~ 20\. ]] ; then
+			nextcloud_occ db:add-missing-primary-keys
+		fi
 	fi
 
 	nextcloud_occ maintenance:mode --off
