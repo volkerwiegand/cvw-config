@@ -6,7 +6,7 @@
 ###### cvw_mysql - Install MySQL (actually MariaDB) server
 ######             https://mariadb.org/
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -81,8 +81,9 @@ function mysql_initial
 		EOF
 	fi
 
-	cvw_rpm -i mariadb-server
-	cvw_rpm -i mariadb-devel
+	[[ -s /etc/yum.repos.d/mariadb.repo ]] || cvw_mariadb_repo_setup
+	cvw_rpm -i MariaDB-server
+	cvw_rpm -i MariaDB-devel
 	cvw_service -S mariadb
 
 	set +e
