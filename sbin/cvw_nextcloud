@@ -8,7 +8,7 @@
 ######                 https://docs.nextcloud.com/server/16/admin_manual/installation/index.html
 ######                 https://doc.owncloud.org/server/9.0/admin_manual/configuration_server/occ_command.html
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -22,7 +22,6 @@ _prog=${0##*/}
 _args="$*"
 _name="Nextcloud"
 _slug="nextcloud"
-_dflt="19_0_1"
 
 
 function usage
@@ -81,7 +80,6 @@ function nextcloud_install
 	cvw_say -h "Installing $_name"
 	cvw_xml -a software/mysql || cvw_say -f "$_prog: requires mysql"
 	cvw_xml -a software/php   || cvw_say -f "$_prog: requires php"
-	local _release=$(cvw_xml -R software/$_slug/release $_dflt)
 	local _fqdn=$(cvw_xml -r host/fqdn)
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _uri=$(cvw_xml -r software/$_slug/uri)
@@ -101,7 +99,6 @@ function nextcloud_install
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
-			      Software Release  .......: $_release
 			      Installed version .......: $_version
 			      Database password .......: $_pass
 			      Login URL ...............: $(cvw_url -r $_uri)index.php/login
@@ -116,7 +113,7 @@ function nextcloud_install
 
 	cvw_mysql -c $_slug $_slug $_pass utf8mb4_general_ci
 
-	cvw_unpack -u apache -i ${_slug}_$_release $_root/app index.php
+	cvw_unpack -u apache -i $_slug $_root/app index.php
 
 	_conf="$_root/app/config/config.php"
 	if [[ -s $_conf ]] ; then

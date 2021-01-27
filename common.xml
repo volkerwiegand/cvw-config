@@ -191,29 +191,11 @@
       <name>modified-shop_2.0.2.2-r10690_install.zip</name>
       <version>2.0.2.2</version>
     </download>
-    <download id="nextcloud_17_0_0">
+    <download id="nextcloud">
       <link>https://download.nextcloud.com/server/releases/</link>
-      <url>https://download.nextcloud.com/server/releases/nextcloud-17.0.0.tar.bz2</url>
-      <md5>5aa71278c3ace9b45cb7ab147ff52721</md5>
-      <sha256>6081421b33ecdb3130b2bfb2293a3f4045aeb0b471ee570e675de3d931a142a6</sha256>
-    </download>
-    <download id="nextcloud_18_0_3">
-      <link>https://download.nextcloud.com/server/releases/</link>
-      <url>https://download.nextcloud.com/server/releases/nextcloud-18.0.3.tar.bz2</url>
-      <md5>e6e6e63f641248716c758948baef18df</md5>
-      <sha256>7b67e709006230f90f95727f9fa92e8c73a9e93458b22103293120f9cb50fd72</sha256>
-    </download>
-    <download id="nextcloud_18_0_6">
-      <link>https://download.nextcloud.com/server/releases/</link>
-      <url>https://download.nextcloud.com/server/releases/nextcloud-18.0.6.tar.bz2</url>
-      <md5></md5>
-      <sha256></sha256>
-    </download>
-    <download id="nextcloud_19_0_1">
-      <link>https://download.nextcloud.com/server/releases/</link>
-      <url>https://download.nextcloud.com/server/releases/nextcloud-19.0.1.tar.bz2</url>
-      <md5>19c18c607c967bc05a77dd35d25e5ba4</md5>
-      <sha256>4ef311e00d939915d3a9714cd3a1ad436db9157e04620e4a88c2f427e5e65b2d</sha256>
+      <url>https://download.nextcloud.com/server/releases/nextcloud-20.0.6.tar.bz2</url>
+      <md5>8907a2a15e8a41b2cef93f5bcdf41827</md5>
+      <sha256>859167170402b876b6ef1a37fa4aaa5617b6bf847bb5d50a94f636bae65a34b9</sha256>
     </download>
     <download id="nodejs">
       <link>https://nodejs.org/en/download/</link>
