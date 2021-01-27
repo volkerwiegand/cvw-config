@@ -20,7 +20,6 @@ _prog=${0##*/}
 _args="$*"
 _name="PHP"
 _slug="php"
-_dflt="php72u"
 
 # systemctl stop httpd
 # yum erase php72u-*
@@ -50,8 +49,7 @@ function usage
 
 function php_install
 {
-	local _release=$(cvw_xml -R software/$_slug/release $_dflt)
-	cvw_say -h "Installing $_name ($_release)"
+	cvw_say -h "Installing $_name (php74)"
 	local _root=$(cvw_xml -r system/app_root)/$_slug
 	local _timezone=$(cvw_xml -r system/timezone)
 	local _filesize=$(cvw_xml -R software/$_slug/filesize "2000M")
@@ -63,11 +61,11 @@ function php_install
 	local _file _var
 
 	cvw_yum -a ius
-	cvw_rpm -l $_release
-	cvw_xml -a software/nginx      && cvw_rpm -i $_release-fpm
-	cvw_xml -a software/mysql      && cvw_rpm -i $_release-mysqlnd
-	cvw_xml -a software/postgresql && cvw_rpm -i $_release-pgsql
-	cvw_xml -a software/openldap   && cvw_rpm -i $_release-ldap
+	cvw_rpm -l php74
+	cvw_xml -a software/nginx      && cvw_rpm -i php74-fpm
+	cvw_xml -a software/mysql      && cvw_rpm -i php74-mysqlnd
+	cvw_xml -a software/postgresql && cvw_rpm -i php74-pgsql
+	cvw_xml -a software/openldap   && cvw_rpm -i php74-ldap
 
 	if cvw_xml -a software/nginx ; then
 		cvw_service -s php-fpm
@@ -141,7 +139,7 @@ function php_install
 		cvw_file -v $_file $(cvw_php -s)
 
 		cvw_rpm -i GeoIP-devel
-		cvw_rpm -i $_release-pecl-geoip
+		cvw_rpm -i php74-pecl-geoip
 	fi
 
 	cvw_say -o "$_slug"
