@@ -52,7 +52,7 @@ function storagebox_mount
 	local _password=$(cvw_xml -r $_base/password)
 	local _mount=$(cvw_xml -r $_base/mountpoint)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	local _file _device _option
+	local _cred _device _option
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
@@ -67,17 +67,17 @@ function storagebox_mount
 	mkdir -p $_mount
 	cvw_rpm -i cifs-utils
 
-	_file=/etc/backup-credentials.txt
-	cat >$_file.tmp_VW <<-EOF
+	_cred=/etc/credentials_$_id.txt
+	cat >$_cred.tmp_VW <<-EOF
 		username=$_account
 		password=$_password
 	EOF
-	cvw_file -m 0600 -v $_file
+	cvw_file -m 0600 -v $_cred
 
 	rm -rf $_fstab.tmp_VW
-	grep -v "$_account" $_fstab >$_fstab.tmp_VW
+	grep -v "$_account.your" $_fstab >$_fstab.tmp_VW
 	_device="//$_account.your-storagebox.de/$_account"
-	_option="iocharset=utf8,rw,credentials=$_file,uid=0,gid=0,file_mode=0660,dir_mode=0770"
+	_option="iocharset=utf8,rw,credentials=$_cred,uid=0,gid=0,file_mode=0660,dir_mode=0770"
 	echo "$_device $_mount cifs $_option 0 0" >>$_fstab.tmp_VW
 	cvw_file -v $_fstab
 

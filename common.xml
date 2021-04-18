@@ -112,9 +112,9 @@
     </download>
     <download id="docker_compose">
       <link>https://github.com/docker/compose/releases/</link>
-      <url>https://github.com/docker/compose/releases/download/1.28.2/docker-compose-Linux-x86_64</url>
+      <url>https://github.com/docker/compose/releases/download/1.29.0/docker-compose-Linux-x86_64</url>
       <name>docker-compose</name>
-      <sha256>e984402b96bb923319f8ac95c8d26944e12d15692ab0fea4fff63ddfd5fd8d64</sha256>
+      <sha256>65bf4d3dcc5ea5dcd4644434271879a2b47e98bcfa6ca958523079c17e5adb5c</sha256>
     </download>
     <download id="docker_compose_completion">
       <link>https://github.com/docker/compose/releases/</link>
