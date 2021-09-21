@@ -166,7 +166,7 @@ cat >>$_bkup.tmp_VW <<-EOF
 	    exit 1
 	  fi
 
-	  _monthly=/var/backup/$_app/backup.\$(LANG=C date +%B).tgz
+	  _monthly=/var/backup/$_app/backup.\$(LANG=C date +%B-%y).tgz
 	  if [[ ! -s \$_monthly ]] ; then
 	    /usr/bin/tar -c -z -f \$_monthly -C \$_dest --warning=no-file-ignored .
 	    _result=\$?
