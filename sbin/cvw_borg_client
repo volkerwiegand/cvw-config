@@ -1,0 +1,146 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_borg_client - Install or remove Borg Backup Client
+######                   https://borgbackup.readthedocs.io/en/1.1-maint/quickstart.html
+######                   https://decatec.de/linux/backup-strategie-fuer-linux-server-mit-borg-backup/
+######
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Borg Backup Client"
+_slug="borg_client"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function borg_client_install
+{
+	cvw_say -h "Installing $_name"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _remote=$(cvw_xml -r software/$_slug/remote)
+	local _phrase=$(cvw_xml -r software/$_slug/passphrase)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _cmd
+
+	cvw_rpm -i borgbackup
+
+	_cmd=/usr/local/bin/bb.init
+	cat >$_cmd.tmp_VW <<-EOF
+		#!/bin/bash
+
+		BORG_NEW_PASSPHRASE=$_phrase borg init --make-parent-dirs --encryption=repokey-blake2 ssh://$_remote/./repos/$_fqdn
+	EOF
+	cvw_file -v $_cmd -m 0755
+
+	_cmd=/usr/local/bin/bb.info
+	cat >$_cmd.tmp_VW <<-EOF
+		#!/bin/bash
+
+		BORG_PASSPHRASE=$_phrase borg info ssh://$_remote/./repos/$_fqdn
+	EOF
+	cvw_file -v $_cmd -m 0755
+
+	_cmd=/usr/local/bin/bb.check
+	cat >$_cmd.tmp_VW <<-EOF
+		#!/bin/bash
+
+		BORG_PASSPHRASE=$_phrase borg check ssh://$_remote/./repos/$_fqdn
+	EOF
+	cvw_file -v $_cmd -m 0755
+
+	_cmd=/usr/local/bin/bb.list
+	cat >$_cmd.tmp_VW <<-EOF
+		#!/bin/bash
+
+		BORG_PASSPHRASE=$_phrase borg list ssh://$_remote/./repos/$_fqdn
+	EOF
+	cvw_file -v $_cmd -m 0755
+
+	_cmd=/usr/local/bin/bb.create
+	cat >$_cmd.tmp_VW <<-EOF
+		#!/bin/bash
+
+		if [[ \$# -lt 2 ]] ; then
+		  echo "Syntax: $_cmd <base> <dir>..." >&2
+		  exit 1
+		fi
+		_base=\$1
+		shift
+
+		BORG_PASSPHRASE=$_phrase borg create ssh://$_remote/./repos/$_fqdn::\$_base-{now:%Y-%m-%d} \$*
+	EOF
+	cvw_file -v $_cmd -m 0755
+
+	set +e
+	/usr/local/bin/bb.info >/dev/null 2>&1
+	if [[ $? -ne 0 ]] ; then
+		set -e
+		/usr/local/bin/bb.init
+	fi
+
+	cvw_say -o "$_slug"
+}
+
+
+function borg_client_remove
+{
+	local _repodir=$(cvw_xml -r software/$_slug/repodir)
+
+	if [[ -d $_repodir ]] ; then
+		cvw_say -h "Please remove $_name manually"
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				borg_client_install
+			else
+				borg_client_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

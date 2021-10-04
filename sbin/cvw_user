@@ -136,8 +136,10 @@ function user_setup
 	if cvw_xml -c $_base/authorized ; then
 		_auth=$(cvw_xml -r $_base/authorized)
 		_keys="/var/lib/cvw_cfg/files/keys/$_auth"
-		cp $_keys $_sshdir/authorized_keys.tmp_VW 2>>/tmp/cvw/error
-		cvw_file -v $_sshdir/authorized_keys
+		if [[ ! -s $_sshdir/authorized_keys ]] ; then
+			cp $_keys $_sshdir/authorized_keys.tmp_VW 2>>/tmp/cvw/error
+			cvw_file -v $_sshdir/authorized_keys
+		fi
 	fi
 	chown -R $_id:$_id $_sshdir
 	chmod -R go-rwx $_sshdir

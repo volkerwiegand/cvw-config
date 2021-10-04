@@ -49,8 +49,6 @@ function docker_install
 	local _compose="/var/lib/cvw_cfg/files/compose"
 	local _dir _app _file _target _port
 
-	cvw_backup $_slug /var/lib/docker/volumes
-
 	if [[ ! -s /root/get-docker.sh ]] ; then
 		curl -sSL https://get.docker.com/ >/root/get-docker.sh
 	fi

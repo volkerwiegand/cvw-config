@@ -68,10 +68,12 @@ cvw_init $_debug $_info $_upgrade
 error_check
 
 cvw_user           -i ; error_check
+cvw_ntp            -i ; error_check
 cvw_mount          -i ; error_check
 cvw_volume         -i ; error_check
 cvw_storagebox     -i ; error_check
-cvw_ntp            -i ; error_check
+cvw_borg_server    -i ; error_check
+cvw_borg_client    -i ; error_check
 cvw_yum            -i ; error_check
 cvw_docker         -i ; error_check
 cvw_certbot        -i ; error_check
@@ -83,6 +85,8 @@ cvw_php            -i ; error_check
 cvw_mysql          -i ; error_check
 cvw_sqlbuddy       -i ; error_check
 cvw_virtualbox     -i ; error_check
+cvw_nfs_server     -i ; error_check
+cvw_nfs_client     -i ; error_check
 cvw_nodejs         -i ; error_check
 cvw_postgresql     -i ; error_check
 cvw_mailcow        -i ; error_check

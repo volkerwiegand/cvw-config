@@ -154,11 +154,12 @@ done
 
 cat >>$_bkup.tmp_VW <<-EOF
 
-	# Save to background (Storage Box) if enabled
+	# Save to background (NFS) if enabled
 	if mount | grep -q /var/backup ; then
 	  mkdir -p /var/backup/$_app
 
 	  _weekdaily=/var/backup/$_app/backup.\$(LANG=C date +%A).tgz
+	  [[ \$_verbose ]] && echo "NFS Backup to \$_weekdaily"
 	  /usr/bin/tar -c -z -f \$_weekdaily -C \$_dest --warning=no-file-ignored .
 	  _result=\$?
 	  if [[ \$_result -ne 0 ]]; then
@@ -166,8 +167,9 @@ cat >>$_bkup.tmp_VW <<-EOF
 	    exit 1
 	  fi
 
-	  _monthly=/var/backup/$_app/backup.\$(LANG=C date +%B-%y).tgz
+	  _monthly=/var/backup/$_app/backup.\$(LANG=C date +%Y-%B).tgz
 	  if [[ ! -s \$_monthly ]] ; then
+	    [[ \$_verbose ]] && echo "NFS Backup to \$_monthly"
 	    /usr/bin/tar -c -z -f \$_monthly -C \$_dest --warning=no-file-ignored .
 	    _result=\$?
 	    if [[ \$_result -ne 0 ]]; then

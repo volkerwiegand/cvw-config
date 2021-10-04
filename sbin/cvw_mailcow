@@ -73,6 +73,7 @@ function mailcow_install
 	local _lang=$(cvw_xml -r system/language)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _base=/root/docker
+	local _backups=/root/mailcow_backups
 	local _file _mcow _sogo
 
 	case $_lang in
@@ -88,6 +89,7 @@ function mailcow_install
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
 			      Admin Login .............: https://$_fqdn/
+			      Backups Directory .......: $_backups
 			      Mailcow Language ........: $_mcow
 			      SOGo Language ...........: $_sogo
 		EOF
@@ -137,6 +139,26 @@ function mailcow_install
 		cvw_firewall -t $_port
 	done
 
+	_file=/etc/cron.daily/bkup.mailcow
+	cat >$_file.tmp_VW <<-EOF
+		#!/bin/bash
+		#
+		set -e
+
+		mkdir -p $_backups
+		export MAILCOW_BACKUP_LOCATION=$_backups
+
+		cd $_base
+		./helper-scripts/backup_and_restore.sh backup all --delete-days 3
+
+		if [[ -x /usr/local/bin/bb.create ]] ; then
+		  /usr/local/bin/bb.create $_slug $_backups
+		fi
+
+		exit 0
+	EOF
+	cvw_file -m 0775 -v $_file
+
 	# In order to start the party, a simple one-liner will do.
 	# docker-compose up -d
 
@@ -147,6 +169,7 @@ function mailcow_install
 function mailcow_remove
 {
 	if [[ -s /root/docker/docker-compose.yml ]] ; then
+		cvw_backup -z $_slug
 		cvw_say -h "Please remove $_name manually"
 		cvw_say -o "$_slug:remove"
 	fi

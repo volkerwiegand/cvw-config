@@ -108,9 +108,6 @@ function nextcloud_install
 	fi
 	[[ -s /tmp/cvw/error ]] && exit 1
 
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-		$_root/data
-
 	cvw_mysql -c $_slug $_slug $_pass utf8mb4_general_ci
 
 	cvw_unpack -u apache -i $_slug $_root/app index.php
@@ -169,6 +166,9 @@ function nextcloud_install
 	if ! grep -q "default_language" $_conf ; then
 		nextcloud_occ config:system:set default_language --value=de
 	fi
+	if ! grep -q "default_phone_region" $_conf ; then
+		nextcloud_occ config:system:set default_phone_region --value=DE
+	fi
 
 	if grep -q -s upgrade /tmp/cvw/updating ; then
 		nextcloud_occ config:system:set mysql.utf8mb4 --type boolean --value=true
@@ -185,7 +185,7 @@ function nextcloud_install
 
 	nextcloud_occ maintenance:mode --off
 
-	if grep -q -s upgrade /tmp/cvw/updating ; then
+	if nextcloud_occ app:list | grep -q groupfolders ; then
 		nextcloud_occ groupfolders:trashbin:cleanup --force
 	fi
 
@@ -196,6 +196,25 @@ function nextcloud_install
 	EOF
 	cvw_file -v $_file
 	crontab -u apache $_file
+
+	if [[ -x /usr/local/bin/bb.create ]] ; then
+		_bkup="/etc/cron.daily/bkup.$_slug"
+		cat >$_bkup.tmp_VW <<-EOF
+			#!/bin/bash
+			set -e
+			cd $_root
+
+			mkdir -p mysqldump
+			/usr/bin/mysqldump -u$_slug -p$_pass $_slug >mysqldump/$_slug.sql
+
+			/usr/local/bin/bb.create $_slug app data mysqldump
+		EOF
+		cvw_file -m 0775 -v $_bkup
+		ln -nfs $_bkup /usr/local/bin/bkup.$_slug
+		rm -f /usr/local/bin/rstr.$_slug
+	else
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/data
+	fi
 
 	if cvw_xml -a software/nginx ; then
 		_file="/tmp/cvw/nginx.options"
@@ -247,6 +266,7 @@ function nextcloud_install
 			     RewriteRule ^/\\.well-known/host-meta $_uri/public.php?service=host-meta [QSA,L]
 			     RewriteRule ^/\\.well-known/host-meta\\.json $_uri/public.php?service=host-meta-json [QSA,L]
 			     RewriteRule ^/\\.well-known/webfinger $_uri/public.php?service=webfinger [QSA,L]
+			     RewriteRule ^/\\.well-known/nodeinfo $_uri/public.php?service=nodeinfo [QSA,L]
 		EOF
 		if cvw_xml -t software/$_slug/wellknown ; then
 			cat >>/tmp/cvw/apache.block <<-EOF

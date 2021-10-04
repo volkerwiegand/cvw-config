@@ -102,7 +102,7 @@ function apache_initial
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _domain=${_fqdn#*.}
 	local _hstnam=${_fqdn%%.*}
-	local _cert _file _alias _redir _container _base _uri _cport
+	local _cert _file _alias _redir _container _base _uri _cport _flatCMS
 
 	if cvw_xml -c software/certbot/fqdn ; then
 		_alias=$(cvw_xml -r software/certbot/fqdn)
@@ -314,6 +314,49 @@ function apache_finish
 			   Redirect    / https://$_fqdn
 			   TransferLog logs/${_vname}_log
 			   LogLevel    info
+			</VirtualHost>
+		EOF
+
+		cvw_file -v $_file httpd
+		cvw_apache -e $_file
+	done
+
+	for _flatCMS in $(cvw_xml -l software/$_slug/flatCMS | sort) ; do
+		_temp="/tmp/cvw/apache.vhost"
+		echo "   ServerName  $_flatCMS" >$_temp
+		if [[ $_flatCMS =~ ^www\. ]] ; then
+			echo "   ServerAlias ${_flatCMS#www.}" >>$_temp
+		fi
+		_vname=$(echo $_flatCMS | tr ' .-' '___')
+		mkdir -p /home/flatCMS/$_vname
+		_file="$_CONF_DIR/$_vname.conf"
+		cat >$_file.tmp_VW <<-EOF
+			<VirtualHost *:$_port>
+			$(cat $_temp)
+		           DocumentRoot /home/flatCMS/$_vname
+			   TransferLog logs/${_vname}_log
+			   LogLevel info
+			   <Directory /home/flatCMS/$_vname>
+			      <IfModule mod_passenger.c>
+			         PassengerEnabled off
+			      </IfModule>
+			      AllowOverride all
+			      Require all granted
+			   </Directory>
+			</VirtualHost>
+
+			<VirtualHost *:$_ssl_port>
+			$(cat $_temp)
+		           DocumentRoot /home/flatCMS/$_vname
+			   TransferLog logs/${_vname}_log
+			   LogLevel info
+			   <Directory /home/flatCMS/$_vname>
+			      <IfModule mod_passenger.c>
+			         PassengerEnabled off
+			      </IfModule>
+			      AllowOverride all
+			      Require all granted
+			   </Directory>
 			</VirtualHost>
 		EOF
 

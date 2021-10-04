@@ -1,0 +1,105 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_borg_server - Install or remove Borg Backup Server
+######                   https://borgbackup.readthedocs.io/en/1.1-maint/quickstart.html
+######                   https://decatec.de/linux/backup-strategie-fuer-linux-server-mit-borg-backup/
+######
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Borg Backup Server"
+_slug="borg_server"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function borg_server_install
+{
+	cvw_say -h "Installing $_name"
+	local _adm _auth _key
+
+	cvw_rpm -i borgbackup
+	cvw_user -s borg
+
+	_auth="$(cvw_user -h borg)/.ssh/authorized_keys"
+	_adm="/var/lib/cvw_cfg/files/keys/authorized_keys"
+
+	if [[ -s $_adm ]] ; then
+		cp $_adm $_auth.tmp_VW
+	else
+		rm -f $_auth.tmp_VW
+	fi
+
+	find /var/lib/cvw_cfg/files/borg -name "*.pub" | sort | while read _key ; do
+		cvw_say -s "serving ${_key##*/}"
+		cat $_key >>$_auth.tmp_VW
+	done
+
+	cvw_file -v $_auth -m 0600 -u borg:borg
+
+	cvw_say -o "$_slug"
+}
+
+
+function borg_server_remove
+{
+	local _repobase=$(cvw_xml -r software/$_slug/repobase)
+
+	if [[ -d $_repobase ]] ; then
+		cvw_say -h "Please remove $_name manually"
+		cvw_say -o "$_slug:remove"
+	fi
+
+	rm -f /tmp/cvw/error
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				borg_server_install
+			else
+				borg_server_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+
