@@ -81,7 +81,11 @@ function borg_client_install
 	cat >$_cmd.tmp_VW <<-EOF
 		#!/bin/bash
 
-		BORG_PASSPHRASE=$_phrase borg list ssh://$_remote/./repos/$_fqdn
+		if [[ \$1 ]] ; then
+		  _archive="::\$1"
+		fi
+
+		BORG_PASSPHRASE=$_phrase borg list ssh://$_remote/./repos/$_fqdn\$_archive
 	EOF
 	cvw_file -v $_cmd -m 0755
 

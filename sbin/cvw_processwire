@@ -90,25 +90,6 @@ function processwire_install
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
-	if [[ -x /usr/local/bin/bb.create ]] ; then
-		_bkup="/etc/cron.daily/bkup.$_slug"
-		cat >$_bkup.tmp_VW <<-EOF
-			#!/bin/bash
-			set -e
-			cd $_root
-
-			mkdir -p mysqldump
-			/usr/bin/mysqldump -u$_slug -p$_pass $_slug >mysqldump/$_slug.sql
-
-			/usr/local/bin/bb.create $_slug app mysqldump
-		EOF
-		cvw_file -m 0775 -v $_bkup
-		ln -nfs $_bkup /usr/local/bin/bkup.$_slug
-		rm -f /usr/local/bin/rstr.$_slug
-	else
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_app/site
-	fi
-
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
 	cvw_unpack -u apache -i $_slug $_app index.php
@@ -175,6 +156,25 @@ function processwire_install
 			chown -R apache:apache $_app
 		done
 		cvw_say -a "waiting for install .....: $(cvw_url -r $_uri)install.php"
+	fi
+
+	if [[ -x /usr/local/bin/bb.create ]] ; then
+		_bkup="/etc/cron.daily/bkup.$_slug"
+		cat >$_bkup.tmp_VW <<-EOF
+			#!/bin/bash
+			set -e
+			cd $_root
+
+			mkdir -p mysqldump
+			/usr/bin/mysqldump -u$_slug -p$_pass $_slug >mysqldump/$_slug.sql
+
+			/usr/local/bin/bb.create $_slug app mysqldump
+		EOF
+		cvw_file -m 0775 -v $_bkup
+		ln -nfs $_bkup /usr/local/bin/bkup.$_slug
+		rm -f /usr/local/bin/rstr.$_slug
+	else
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_app/site
 	fi
 
 	if cvw_xml -a software/nginx ; then

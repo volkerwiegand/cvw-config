@@ -119,6 +119,7 @@ function wordpress_install
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
 			      Title ...................: $(cvw_xml -r software/$_slug/title)
+			      DB Password .............: $_pass
 			      Admin User ..............: $(cvw_xml -r software/$_slug/admin/name)
 			      Admin Password ..........: $(cvw_xml -r software/$_slug/admin/password)
 			      Admin Email .............: $(cvw_xml -r software/$_slug/admin/email)

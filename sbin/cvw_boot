@@ -84,6 +84,7 @@ cvw_apache         -i ; error_check
 cvw_php            -i ; error_check
 cvw_mysql          -i ; error_check
 cvw_sqlbuddy       -i ; error_check
+cvw_phpmyadmin     -i ; error_check
 cvw_virtualbox     -i ; error_check
 cvw_nfs_server     -i ; error_check
 cvw_nfs_client     -i ; error_check

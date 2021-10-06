@@ -234,6 +234,11 @@
       <link>https://www.phplist.org/download-phplist</link>
       <url>https://sourceforge.net/projects/phplist/files/phplist/3.3.1/phplist-3.3.1.tgz</url>
     </download>
+    <download id="phpmyadmin">
+      <link>https://www.phpmyadmin.net/downloads/</link>
+      <url>https://files.phpmyadmin.net/phpMyAdmin/5.1.1/phpMyAdmin-5.1.1-all-languages.zip</url>
+      <md5>24af508733b3b3765c2016c3be8b8012</md5>
+    </download>
     <download id="picocms">
       <link>https://github.com/picocms/Pico/releases/</link>
       <url>https://github.com/picocms/Pico/releases/download/v1.0.6/pico-release-v1.0.6.tar.gz</url>
