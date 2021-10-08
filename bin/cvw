@@ -18,6 +18,8 @@ set -e -o pipefail
 _prog=${0##*/}
 _args="$*"
 
+_sbin=../../cvw-config/sbin
+_files=../../cvw-config/files
 
 function check_singleton
 {
@@ -163,8 +165,8 @@ function combine_ssh_configs
 function setup_config
 {
 	[[ -s config.in.xml ]] || failure "missing config.in.xml"
-	[[ -d ../sbin       ]] || failure "missing ../sbin dir"
-	[[ -d ../files      ]] || failure "missing ../files dir"
+	[[ -d $_sbin        ]] || failure "missing $_sbin dir"
+	[[ -d $_files       ]] || failure "missing $_files dir"
 
 	if [[ ! -s cfg/files/keys/dh2048_param.pem ]] ; then
 		mkdir -p cfg/files/keys
@@ -177,13 +179,13 @@ function setup_config
 	mkdir -p cfg
 
 	[[ -z $1 ]] && echo "--> updating /usr/local/sbin"
-	chmod 0755 ../sbin/cvw_*
+	chmod 0755 $_sbin/cvw_*
 	sudo rm -f /usr/local/sbin/cvw_*
-	sudo rsync -a --no-owner --no-group ../sbin/ /usr/local/sbin 2>/tmp/cvw/error
+	sudo rsync -a --no-owner --no-group $_sbin/ /usr/local/sbin 2>/tmp/cvw/error
 
 	[[ -z $1 ]] && echo "--> updating /var/lib/cvw_cfg"
 	xmllint --output cfg/config.xml --xinclude config.in.xml
-	rsync -a ../files/ cfg/files
+	rsync -a $_files/ cfg/files
 	sudo ln -nfs $(pwd)/cfg /var/lib/cvw_cfg 2>/tmp/cvw/error
 
 	if [[ -d cvw ]] ; then
