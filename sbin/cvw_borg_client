@@ -49,7 +49,16 @@ function borg_client_install
 	local _remote=$(cvw_xml -r software/$_slug/remote)
 	local _phrase=$(cvw_xml -r software/$_slug/passphrase)
 	[[ -s /tmp/cvw/error ]] && exit 1
+	local _repo="ssh://$_remote/./repos/$_fqdn"
 	local _cmd
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Remote Repo .............: $_remote
+			      Passphrase ..............: $_phrase
+		EOF
+	fi
 
 	cvw_rpm -i borgbackup
 
@@ -57,7 +66,7 @@ function borg_client_install
 	cat >$_cmd.tmp_VW <<-EOF
 		#!/bin/bash
 
-		BORG_NEW_PASSPHRASE=$_phrase borg init --make-parent-dirs --encryption=repokey-blake2 ssh://$_remote/./repos/$_fqdn
+		BORG_NEW_PASSPHRASE=$_phrase borg init --make-parent-dirs --encryption=repokey-blake2 $_repo
 	EOF
 	cvw_file -v $_cmd -m 0755
 
@@ -65,7 +74,7 @@ function borg_client_install
 	cat >$_cmd.tmp_VW <<-EOF
 		#!/bin/bash
 
-		BORG_PASSPHRASE=$_phrase borg info ssh://$_remote/./repos/$_fqdn
+		BORG_PASSPHRASE=$_phrase borg info $_repo
 	EOF
 	cvw_file -v $_cmd -m 0755
 
@@ -73,7 +82,7 @@ function borg_client_install
 	cat >$_cmd.tmp_VW <<-EOF
 		#!/bin/bash
 
-		BORG_PASSPHRASE=$_phrase borg check ssh://$_remote/./repos/$_fqdn
+		BORG_PASSPHRASE=$_phrase borg check $_repo
 	EOF
 	cvw_file -v $_cmd -m 0755
 
@@ -83,9 +92,11 @@ function borg_client_install
 
 		if [[ \$1 ]] ; then
 		  _archive="::\$1"
+		  shift
+		  _archive="\$_archive \$*"
 		fi
 
-		BORG_PASSPHRASE=$_phrase borg list ssh://$_remote/./repos/$_fqdn\$_archive
+		BORG_PASSPHRASE=$_phrase borg list $_repo\$_archive
 	EOF
 	cvw_file -v $_cmd -m 0755
 
@@ -100,7 +111,7 @@ function borg_client_install
 		_base=\$1
 		shift
 
-		BORG_PASSPHRASE=$_phrase borg create ssh://$_remote/./repos/$_fqdn::\$_base-{now:%Y-%m-%d} \$*
+		BORG_PASSPHRASE=$_phrase borg create $_repo::\$_base-{now:%Y-%m-%d} \$*
 	EOF
 	cvw_file -v $_cmd -m 0755
 
@@ -117,9 +128,7 @@ function borg_client_install
 
 function borg_client_remove
 {
-	local _repodir=$(cvw_xml -r software/$_slug/repodir)
-
-	if [[ -d $_repodir ]] ; then
+	if [[ -x /usr/local/bin/bb.init ]] ; then
 		cvw_say -h "Please remove $_name manually"
 		cvw_say -o "$_slug:remove"
 	fi
