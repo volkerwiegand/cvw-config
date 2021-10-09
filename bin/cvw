@@ -512,18 +512,11 @@ fi
 
 
 if [[ $_remote_update ]] ; then
-	setup_config
-	if [[ $# -ge 1 ]] ; then
-		_apps="$*"
-	else
-		_apps="grav hugo picocms yellow"
+	if [[ ! -d flatCMS ]] ; then
+		failure "missing flatCMS directory"
 	fi
-	for _app in $_apps ; do
-		[[ -d $_app ]] || continue
-		cvw_say -a "rsync $_fqdn:/var/local/$_app/app"
-		ssh  -t root@$_addr mkdir -p /var/local/$_app/app
-		rsync -avz --no-group --no-owner $_app/ root@$_addr:/var/local/$_app/app 2>>/tmp/cvw/error
-	done
+	setup_config
+	rsync -avz --no-group --no-owner flatCMS/ root@$_addr:/home/flatCMS 2>>/tmp/cvw/error
 	finish
 fi
 
