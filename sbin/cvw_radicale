@@ -119,8 +119,6 @@ function radicale_install
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
 
-	cvw_backup $_slug $_repo
-
 	cvw_rpm -i python3-pip
 	python3 -m pip install --upgrade "passlib[bcrypt]"
 	python3 -m pip install --upgrade $_slug
@@ -263,6 +261,22 @@ function radicale_install
 			cvw_apache -p $_slug
 		fi
 		cvw_url -a "$_name" $_uri/
+	fi
+
+	if [[ -x /usr/local/bin/bb.create ]] ; then
+		_bkup="/etc/cron.daily/bkup.$_slug"
+		cat >$_bkup.tmp_VW <<-EOF
+			#!/bin/bash
+			set -e
+			cd $_home
+
+			/usr/local/bin/bb.create $_slug collections
+		EOF
+		cvw_file -m 0775 -v $_bkup
+		ln -nfs $_bkup /usr/local/bin/bkup.$_slug
+		rm -f /usr/local/bin/rstr.$_slug
+	else
+		cvw_backup $_slug $_repo
 	fi
 
 	cvw_service -s $_slug
