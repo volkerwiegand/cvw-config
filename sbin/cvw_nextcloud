@@ -197,25 +197,6 @@ function nextcloud_install
 	cvw_file -v $_file
 	crontab -u apache $_file
 
-	if [[ -x /usr/local/bin/bb.create ]] ; then
-		_bkup="/etc/cron.daily/bkup.$_slug"
-		cat >$_bkup.tmp_VW <<-EOF
-			#!/bin/bash
-			set -e
-			cd $_root
-
-			mkdir -p mysqldump
-			/usr/bin/mysqldump -u$_slug -p$_pass $_slug >mysqldump/$_slug.sql
-
-			/usr/local/bin/bb.create $_slug app data mysqldump
-		EOF
-		cvw_file -m 0775 -v $_bkup
-		ln -nfs $_bkup /usr/local/bin/bkup.$_slug
-		rm -f /usr/local/bin/rstr.$_slug
-	else
-		cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/data
-	fi
-
 	if cvw_xml -a software/nginx ; then
 		_file="/tmp/cvw/nginx.options"
 		cat >$_file <<-EOF
@@ -278,6 +259,25 @@ function nextcloud_install
 			   </IfModule>
 		EOF
 		cvw_apache -p $_slug
+	fi
+
+	if [[ -x /usr/local/bin/bb.create ]] ; then
+		_bkup="/etc/cron.daily/bkup.$_slug"
+		cat >$_bkup.tmp_VW <<-EOF
+			#!/bin/bash
+			set -e
+			cd $_root
+
+			mkdir -p mysqldump
+			/usr/bin/mysqldump -u$_slug -p$_pass $_slug >mysqldump/$_slug.sql
+
+			/usr/local/bin/bb.create $_slug app data mysqldump
+		EOF
+		cvw_file -m 0775 -v $_bkup
+		ln -nfs $_bkup /usr/local/bin/bkup.$_slug
+		rm -f /usr/local/bin/rstr.$_slug
+	else
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/data
 	fi
 
 	cvw_url -a "$_name" $_uri

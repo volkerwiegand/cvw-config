@@ -7,7 +7,7 @@
 ######                 https://roundcube.net/
 ######                 https://github.com/roundcube/roundcubemail/wiki/Installation
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -103,10 +103,6 @@ function roundcube_install
 		EOF
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
-
-	cvw_backup -m roundcube -u roundcube -p $_pass roundcube \
-		$_root/app/logs \
-		$_root/app/temp
 
 	cvw_mysql -c roundcube roundcube $_pass utf8_general_ci
 
@@ -250,6 +246,25 @@ function roundcube_install
 			   </Directory>
 		EOF
 		cvw_apache -p roundcube
+	fi
+
+	if [[ -x /usr/local/bin/bb.create ]] ; then
+		_bkup="/etc/cron.daily/bkup.roundcube"
+		cat >$_bkup.tmp_VW <<-EOF
+			#!/bin/bash
+			set -e
+			cd $_root
+
+			mkdir -p mysqldump
+			/usr/bin/mysqldump -uroundcube -p$_pass roundcube >mysqldump/roundcube.sql
+
+			/usr/local/bin/bb.create roundcube app mysqldump
+		EOF
+		cvw_file -m 0775 -v $_bkup
+		ln -nfs $_bkup /usr/local/bin/bkup.roundcube
+		rm -f /usr/local/bin/rstr.roundcube
+	else
+		cvw_backup -m roundcube -u roundcube -p $_pass roundcube $_root/app/logs $_root/app/temp
 	fi
 
 	cvw_url -a "$_name" $_uri

@@ -283,13 +283,12 @@
     </download>
     <download id="roundcube">
       <link>https://roundcube.net/download/</link>
-      <url>https://github.com/roundcube/roundcubemail/releases/download/1.4.3/roundcubemail-1.4.3-complete.tar.gz</url>
-      <md5>196e0b2e446b7001e74411dd4e16cf38</md5>
+      <url>https://github.com/roundcube/roundcubemail/releases/download/1.4.11/roundcubemail-1.4.11-complete.tar.gz</url>
+      <sha256>ac7319070c305fc2c88c7723605562d8607030732beee931cdb4091cf05e69b7</sha256>
     </download>
     <download id="roundcube_carddav">
       <link>https://github.com/blind-coder/rcmcarddav/releases</link>
-      <url>https://github.com/blind-coder/rcmcarddav/releases/download/v3.0.3/carddav-3.0.3.zip</url>
-      <md5>bfc5aac64b6daa4359355b4640cedb83</md5>
+      <url>https://github.com/mstilkerich/rcmcarddav/releases/download/v4.2.0/carddav-v4.2.0.tar.gz</url>
     </download>
     <download id="rspamd_repo">
       <link>https://rspamd.com/downloads.html</link>
