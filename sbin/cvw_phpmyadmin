@@ -83,6 +83,10 @@ function phpmyadmin_install
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
+	cvw_mysql -f $_root/app/sql/create_tables.sql $_slug $_pass phpmyadmin
+	cvw_mysql -e "GRANT SELECT, INSERT, DELETE, UPDATE, ALTER ON \`phpmyadmin\`.* TO 'pma'@localhost IDENTIFIED BY '$_pass'"
+	cvw_mysql -e "FLUSH PRIVILEGES"
+
 	cvw_unpack -u apache -i $_slug $_root/app index.php
 
 	install -o apache -g apache -d $_root/uploadDir
