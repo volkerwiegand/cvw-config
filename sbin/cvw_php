@@ -67,6 +67,20 @@ function php_install
 	cvw_xml -a software/postgresql && cvw_rpm -i php74-pgsql
 	cvw_xml -a software/openldap   && cvw_rpm -i php74-ldap
 
+	if [[ -x /usr/bin/php ]] ; then
+		_version=$(php --version | awk '/^PHP/ { print $2 }')
+	else
+		_version="not installed"
+	fi
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Installed version .......: $_version
+		EOF
+	fi
+	[[ -s /tmp/cvw/error ]] && exit 1
+
 	if cvw_xml -a software/nginx ; then
 		cvw_service -s php-fpm
 		_file="/etc/php-fpm.d/www.conf"
