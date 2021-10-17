@@ -259,6 +259,7 @@ function roundcube_install
 			/usr/bin/mysqldump -uroundcube -p$_pass roundcube >mysqldump/roundcube.sql
 
 			/usr/local/bin/bb.create roundcube app mysqldump
+			/usr/local/bin/bb.prune  roundcube
 		EOF
 		cvw_file -m 0775 -v $_bkup
 		ln -nfs $_bkup /usr/local/bin/bkup.roundcube

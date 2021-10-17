@@ -115,6 +115,20 @@ function borg_client_install
 	EOF
 	cvw_file -v $_cmd -m 0755
 
+	_cmd=/usr/local/bin/bb.prune
+	cat >$_cmd.tmp_VW <<-EOF
+		#!/bin/bash
+
+		if [[ \$# -lt 1 ]] ; then
+		  echo "Syntax: $_cmd <base>" >&2
+		  exit 1
+		fi
+		_base=\$1
+
+		BORG_PASSPHRASE=$_phrase borg prune --keep-daily 7 --keep-weekly 4 --keep-monthly 12 --prefix \$_base $_repo
+	EOF
+	cvw_file -v $_cmd -m 0755
+
 	set +e
 	/usr/local/bin/bb.info >/dev/null 2>&1
 	if [[ $? -ne 0 ]] ; then

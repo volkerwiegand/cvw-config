@@ -153,6 +153,7 @@ function mailcow_install
 
 		if [[ -x /usr/local/bin/bb.create ]] ; then
 		  /usr/local/bin/bb.create $_slug $_backups
+		  /usr/local/bin/bb.prune  $_slug
 		fi
 
 		exit 0

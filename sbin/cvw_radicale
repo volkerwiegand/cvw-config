@@ -271,6 +271,7 @@ function radicale_install
 			cd $_home
 
 			/usr/local/bin/bb.create $_slug collections
+			/usr/local/bin/bb.prune  $_slug
 		EOF
 		cvw_file -m 0775 -v $_bkup
 		ln -nfs $_bkup /usr/local/bin/bkup.$_slug
