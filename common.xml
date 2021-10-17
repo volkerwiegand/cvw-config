@@ -182,8 +182,8 @@
     </download>
     <download id="mantis">
       <link>http://mantisbt.org/download.php</link>
-      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.24.0/mantisbt-2.24.0.tar.gz</url>
-      <md5>3c9afeae994efaaaca4918a70267011a</md5>
+      <url>https://sourceforge.net/projects/mantisbt/files/mantis-stable/2.25.2/mantisbt-2.25.2.tar.gz</url>
+      <sha256>8b087e71594fd70d2d2e39d2d2e1285b47a9919d8d8fd268df009df76ebc3671</sha256>
     </download>
     <download id="modified">
       <link>http://www.modified-shop.org/download</link>
