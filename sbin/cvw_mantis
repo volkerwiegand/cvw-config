@@ -7,7 +7,7 @@
 ######              http://mantisbt.org/index.php
 ######              http://mantisbt.org/docs/master/en-US/Admin_Guide/html-single/#admin.install
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -80,10 +80,6 @@ function mantis_install
 		EOF
 		[[ -s /tmp/cvw/error ]] && exit 1
 	fi
-
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-		$_root/app/plugins \
-		$_root/app/uploads
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
@@ -166,6 +162,26 @@ function mantis_install
 
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
+	fi
+
+	if [[ -x /usr/local/bin/bb.create ]] ; then
+		_bkup="/etc/cron.daily/bkup.$_slug"
+		cat >$_bkup.tmp_VW <<-EOF
+			#!/bin/bash
+			set -e
+			cd $_root
+
+			mkdir -p mysqldump
+			/usr/bin/mysqldump -u$_slug -p$_pass $_slug >mysqldump/$_slug.sql
+
+			/usr/local/bin/bb.create $_slug app mysqldump
+			/usr/local/bin/bb.prune  $_slug
+		EOF
+		cvw_file -m 0775 -v $_bkup
+		ln -nfs $_bkup /usr/local/bin/bkup.$_slug
+		rm -f /usr/local/bin/rstr.$_slug
+	else
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug $_root/app/plugins $_root/app/uploads
 	fi
 
 	cvw_url -a "$_name" $_uri
