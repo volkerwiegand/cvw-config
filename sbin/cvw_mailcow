@@ -74,7 +74,7 @@ function mailcow_install
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _base=/root/docker
 	local _backups=/root/mailcow_backups
-	local _file _mcow _sogo
+	local _file _mcow _sogo _bkup
 
 	case $_lang in
 		de*)	_mcow=de
@@ -139,8 +139,8 @@ function mailcow_install
 		cvw_firewall -t $_port
 	done
 
-	_file=/etc/cron.daily/bkup.mailcow
-	cat >$_file.tmp_VW <<-EOF
+	_bkup=/etc/cron.daily/bkup.mailcow
+	cat >$_bkup.tmp_VW <<-EOF
 		#!/bin/bash
 		#
 		set -e
@@ -158,7 +158,8 @@ function mailcow_install
 
 		exit 0
 	EOF
-	cvw_file -m 0775 -v $_file
+	cvw_file -m 0775 -v $_bkup
+	ln -nfs $_bkup /usr/local/bin/bkup.$_slug
 
 	# In order to start the party, a simple one-liner will do.
 	# docker-compose up -d
