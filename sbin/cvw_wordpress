@@ -7,7 +7,7 @@
 ######                 https://de.wordpress.org/
 ######                 https://wordpress.org/support/article/how-to-install-wordpress/
 ######
-###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -113,7 +113,7 @@ function wordpress_install
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
 	local _app=$_root/app
-	local _conf _file _subdir
+	local _conf _file _subdir _bkup
 
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
@@ -123,14 +123,10 @@ function wordpress_install
 			      Admin User ..............: $(cvw_xml -r software/$_slug/admin/name)
 			      Admin Password ..........: $(cvw_xml -r software/$_slug/admin/password)
 			      Admin Email .............: $(cvw_xml -r software/$_slug/admin/email)
+			      Admin URL ...............: $(cvw_url -r $_uri)wp-login.php
 		EOF
 	fi
 	[[ -s /tmp/cvw/error ]] && exit 1
-
-	cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
-		$_app/wp-content/plugins \
-		$_app/wp-content/themes \
-		$_app/wp-content/uploads
 
 	cvw_mysql -c $_slug $_slug $_pass utf8_general_ci
 
@@ -181,6 +177,29 @@ function wordpress_install
 
 	if cvw_xml -a software/apache ; then
 		cvw_apache -p $_slug
+	fi
+
+	if [[ -x /usr/local/bin/bb.create ]] ; then
+		_bkup="/etc/cron.daily/bkup.$_slug"
+		cat >$_bkup.tmp_VW <<-EOF
+			#!/bin/bash
+			set -e
+			cd $_root
+
+			mkdir -p mysqldump
+			/usr/bin/mysqldump -u$_slug -p$_pass $_slug >mysqldump/$_slug.sql
+
+			/usr/local/bin/bb.create $_slug app mysqldump
+			/usr/local/bin/bb.prune  $_slug
+		EOF
+		cvw_file -m 0775 -v $_bkup
+		ln -nfs $_bkup /usr/local/bin/bkup.$_slug
+		rm -f /usr/local/bin/rstr.$_slug
+	else
+		cvw_backup -m $_slug -u $_slug -p $_pass $_slug \
+			$_app/wp-content/plugins \
+			$_app/wp-content/themes \
+			$_app/wp-content/uploads
 	fi
 
 	cvw_url -a "$_name" $_uri
