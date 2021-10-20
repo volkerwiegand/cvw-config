@@ -5,7 +5,7 @@
 ######
 ###### cvw_proftpd - Install or remove ProFTPD FTP server
 ######               http://www.proftpd.org/
-######               https://www.thomas-krenn.com/de/wiki/FTP-Server_unter_Debian_einrichten
+######               https://linuxhint.com/setup_proftpd_ftp_server_centos7/
 ######
 ###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
@@ -45,14 +45,154 @@ function usage
 function proftpd_install
 {
 	cvw_say -h "Installing $_name"
-	local _conf="/etc/proftpd/proftpd.conf"
+	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _ports=$(cvw_xml -r software/$_slug/ports)
+	local _opts=$(cvw_xml -r software/$_slug/options)
+	local _admin=$(cvw_xml -r software/$_slug/admin)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _cert="/etc/letsencrypt/live/$_fqdn"
+	local _conf="/etc/proftpd.conf"
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Passive Ports ...........: $_ports
+			      Options .................: $_opts
+			      Admin Email .............: $_admin
+		EOF
+	fi
 
 	cvw_rpm -i proftpd
 	cvw_rpm -i proftpd-utils
 	cvw_rpm -i ftp
-
 	cvw_service -s proftpd
+
+	cvw_file -e /etc/sysconfig/proftpd "/^PROFTPD_OPTIONS=/s#=.*#=\"$_opts\"#"
+
+	cvw_file -b $_conf
+	cat >$_conf.tmp_VW <<-EOF
+		ServerName                      "$_name"
+		ServerIdent                     on "FTP Server ready."
+		ServerAdmin                     $_admin
+		DefaultServer                   on
+		PassivePorts			${_ports/-/ }
+
+		DefaultRoot			~ !adm
+		AuthPAMConfig			proftpd
+		AuthOrder			mod_auth_pam.c* mod_auth_unix.c
+		UseReverseDNS			off
+		User				nobody
+		Group				nobody
+		MaxInstances			20
+		UseSendfile			off
+		LogFormat			default	"%h %l %u %t \\"%r\\" %s %b"
+		LogFormat			auth	"%v [%P] %h %t \\"%r\\" %s"
+		ModuleControlsACLs		insmod,rmmod allow user root
+		ModuleControlsACLs		lsmod allow user *
+		ControlsEngine			on
+		ControlsACLs			all allow user root
+		ControlsSocketACL		allow user *
+		ControlsLog			/var/log/proftpd/controls.log
+
+		LoadModule mod_ctrls_admin.c
+		LoadModule mod_vroot.c
+
+		<IfModule mod_ctrls_admin.c>
+		  AdminControlsEngine		on
+		  AdminControlsACLs		all allow user root
+		</IfModule>
+
+		<IfModule mod_vroot.c>
+		  VRootEngine			on
+		</IfModule>
+
+		<IfDefine TLS>
+		  TLSEngine			on
+		  TLSRequired			off
+		  TLSRSACertificateFile		$_cert/fullchain.pem
+		  TLSRSACertificateKeyFile	$_cert/privkey.pem
+		  TLSCipherSuite		ALL:!ADH:!DES
+		  TLSOptions			NoCertRequest
+		  TLSVerifyClient		off
+		  TLSLog			/var/log/proftpd/tls.log
+		  <IfModule mod_tls_shmcache.c>
+		    TLSSessionCache		shm:/file=/var/run/proftpd/sesscache
+		  </IfModule>
+		</IfDefine>
+
+		<IfDefine DYNAMIC_BAN_LISTS>
+		  LoadModule			mod_ban.c
+		  BanEngine			on
+		  BanLog			/var/log/proftpd/ban.log
+		  BanTable			/var/run/proftpd/ban.tab
+		  BanOnEvent			MaxLoginAttempts 2/00:10:00 01:00:00
+		  BanMessage			"Host %a has been banned"
+		  BanControlsACLs		all allow user ftpadm
+		</IfDefine>
+
+		<IfDefine QOS>
+		  LoadModule			mod_qos.c
+		  QoSOptions			dataqos throughput ctrlqos lowdelay
+		  #QoSOptions			dataqos CS2 ctrlqos AF41
+		</IfDefine>
+
+		<Global>
+		  Umask				022
+		  AllowOverwrite		yes
+		  <Limit ALL SITE_CHMOD>
+		    AllowAll
+		  </Limit>
+		</Global>
+
+		<IfDefine ANONYMOUS_FTP>
+		  <Anonymous ~ftp>
+		    User			ftp
+		    Group			ftp
+		    AccessGrantMsg		"Anonymous login ok, restrictions apply."
+		    UserAlias			anonymous ftp
+		    MaxClients			10 "Sorry, max %m users -- try again later"
+		    DefaultChdir		/pub
+		    DisplayLogin		/welcome.msg
+		    DisplayChdir		.message
+		    DisplayReadme		README*
+		    DirFakeUser			on ftp
+		    DirFakeGroup		on ftp
+		    <Limit WRITE SITE_CHMOD>
+		      DenyAll
+		    </Limit>
+		    <IfModule mod_vroot.c>
+		      <Directory /uploads/*>
+			AllowOverwrite		no
+			<Limit READ>
+			  DenyAll
+			</Limit>
+			<Limit STOR>
+			  AllowAll
+			</Limit>
+		      </Directory>
+		    </IfModule>
+		    <IfModule !mod_vroot.c>
+		      <Directory uploads/*>
+			AllowOverwrite		no
+			<Limit READ>
+			  DenyAll
+			</Limit>
+			<Limit STOR>
+			  AllowAll
+			</Limit>
+		      </Directory>
+		    </IfModule>
+		    WtmpLog			off
+		    ExtendedLog			/var/log/proftpd/access.log WRITE,READ default
+		    ExtendedLog			/var/log/proftpd/auth.log AUTH auth
+		  </Anonymous>
+		</IfDefine>
+	EOF
+	cvw_file -v $_conf proftpd
+
 	cvw_firewall -s ftp
+	cvw_firewall -t $_ports
 
 	cvw_say -o "$_slug"
 }
@@ -67,7 +207,7 @@ function proftpd_remove
 		cvw_service -d proftpd
 		cvw_rpm -e proftpd
 		cvw_rpm -e proftpd-utils
-		rm -rf /etc/proftpd
+		rm -f /etc/proftpd.conf
 		cvw_say -o "$_slug:remove"
 	fi
 
