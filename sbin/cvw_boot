@@ -155,6 +155,7 @@ cvw_prestashop     -i ; error_check
 cvw_abantecart     -i ; error_check
 cvw_piwigo         -i ; error_check
 cvw_vsftpd         -i ; error_check
+cvw_proftpd        -i ; error_check
 cvw_automx         -i ; error_check
 
 cvw_postfix        -x ; error_check

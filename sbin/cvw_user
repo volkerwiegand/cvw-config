@@ -75,13 +75,6 @@ function user_setup
 			cvw_say -s "updating shell for $_id"
 			usermod -s "$_shell" $_id
 		fi
-		if ! cvw_xml -t $_base/imap ; then
-			_line=$(grep "^$_id:" /etc/shadow | cut -d: -f2)
-			if [[ "$_line" != "*" ]] ; then
-				cvw_say -s "removing password for $_id"
-				usermod -p "*" $_id
-			fi
-		fi
 	else
 		cvw_say -s "adding user '$_id'"
 		useradd -d $_home -m -c "$_info" -p "*" -s "$_shell" $_id
@@ -97,7 +90,6 @@ function user_setup
 	done
 
 	if cvw_xml -t $_base/imap ; then
-		cvw_xml -r $_base/password | passwd --stdin $_id >/dev/null
 		if [[ -s $_etc_aliases.tmp_VW ]] ; then
 			cvw_file -e $_etc_aliases.tmp_VW "s/^$_id:/#$_id:/"
 			cvw_xml -l $_base/alias | sort | while read _alias ; do
@@ -105,6 +97,21 @@ function user_setup
 				echo "$_alias:	$_id" >>$_etc_aliases.tmp_VW
 			done
 			[[ -s /tmp/cvw/error ]] && exit 1
+		fi
+	fi
+
+	if cvw_xml -t $_base/chown ; then
+		chown $_id:$_id $_home
+	fi
+
+	if cvw_xml -c $_base/password ; then
+		cvw_say -s "setting password for $_id"
+		cvw_xml -r $_base/password | passwd --stdin $_id >/dev/null
+	else
+		_line=$(grep "^$_id:" /etc/shadow | cut -d: -f2)
+		if [[ "$_line" != "*" ]] ; then
+			cvw_say -s "removing password for $_id"
+			usermod -p "*" $_id
 		fi
 	fi
 
