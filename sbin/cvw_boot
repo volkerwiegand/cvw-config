@@ -92,6 +92,7 @@ cvw_nodejs         -i ; error_check
 cvw_postgresql     -i ; error_check
 cvw_mailcow        -i ; error_check
 cvw_postfix        -i ; error_check
+cvw_postrelay      -i ; error_check
 cvw_opendkim       -i ; error_check
 cvw_opendmarc      -i ; error_check
 cvw_spamassassin   -i ; error_check

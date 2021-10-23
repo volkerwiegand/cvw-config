@@ -1,0 +1,137 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_postrelay - Install or remove Postfix using Smarthost
+######                 http://www.postfix.org/
+######
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Postfix using Smarthost"
+_slug="postrelay"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function postrelay_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _host=$(cvw_xml -r software/$_slug/host)
+	local _port=$(cvw_xml -r software/$_slug/port)
+	local _user=$(cvw_xml -r software/$_slug/username)
+	local _pass=$(cvw_xml -r software/$_slug/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _domain=${_fqdn#*.}
+	local _maps=/etc/postfix/sasl_passwd
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      Smarthost ...............: $_host
+			      SMTP Port ...............: $_port
+			      Login ...................: $_user
+			      Password ................: $_pass
+		EOF
+	fi
+
+	cvw_rpm -i sendmail	# provides alternatives mta
+	cvw_rpm -i postfix
+	cvw_rpm -i mailx
+	cvw_rpm -i cyrus-sasl-plain
+	cvw_service -d sendmail
+	cvw_service -s postfix
+	alternatives --set mta /usr/sbin/sendmail.postfix
+
+	cvw_file -b /etc/postfix/main.cf
+	cvw_file -b /etc/postfix/master.cf
+
+	echo "[$_host]:$_port $_user:$_pass" >$_maps.tmp_VW
+	cvw_file -m 0640 -u root:postfix -v $_maps postfix
+	postmap $_maps
+	chown root:postfix $_maps.db
+	chmod 0640 $_maps.db
+
+	postconf -e "myhostname=$_fqdn"
+	postconf -e "mydomain=$_domain"
+	postconf -e "relayhost=[$_host]:$_port"
+	postconf -e "smtp_use_tls=yes"
+	postconf -e "smtp_sasl_password_maps=hash:$_maps"
+	postconf -e "smtp_sasl_auth_enable=yes"
+	postconf -e "smtp_tls_CAfile=/etc/ssl/certs/ca-bundle.crt"
+	postconf -e "smtp_sasl_security_options=noanonymous"
+	postconf -e "smtp_sasl_tls_security_options=noanonymous"
+
+	cvw_service -r postfix
+
+	cvw_say -o "$_slug"
+}
+
+
+function postrelay_remove
+{
+	if cvw_service -c postfix ; then
+		cvw_say -h "Removing $_name"
+
+		cvw_rpm -i sendmail
+		cvw_service -S sendmail
+		alternatives --set mta /usr/sbin/sendmail.sendmail
+
+		cvw_service -d postfix
+		cvw_rpm -e postfix
+		rm -rf /etc/postfix
+
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":i" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				postrelay_install
+			else
+				postrelay_remove
+			fi
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

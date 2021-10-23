@@ -590,7 +590,9 @@ while getopts ":ix" opt ; do
 					postfix_install_standalone
 				fi
 			else
-				postfix_remove
+				if ! cvw_xml -a software/postrelay ; then
+					postfix_remove
+				fi
 			fi
 			exit 0
 		;;
