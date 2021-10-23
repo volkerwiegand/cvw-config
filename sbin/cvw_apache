@@ -6,7 +6,7 @@
 ###### cvw_apache - Install or disable Apache httpd
 ######              http://httpd.apache.org/
 ######
-###### (c) 2016-2020 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -375,6 +375,10 @@ function apache_finish
 		cvw_firewall -t $_port
 		cvw_firewall -t $_ssl_port
 	fi
+
+	cvw_say -s "enabling log file access"
+	chmod -R g+rx /var/log/httpd
+	chgrp -R apache /var/log/httpd
 
 	cvw_say -o "$_slug:finish"
 }
