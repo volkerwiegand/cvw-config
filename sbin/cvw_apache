@@ -203,8 +203,9 @@ function apache_initial
 		   SSLCertificateFile    $_cert/cert.pem
 		   SSLCertificateKeyFile $_cert/privkey.pem
 		   SSLCACertificateFile  $_cert/chain.pem
-		   $(grep "^SSLProtocol"    /etc/httpd/conf.d/ssl.conf.bak_VW)
-		   $(grep "^SSLCipherSuite" /etc/httpd/conf.d/ssl.conf.bak_VW)
+		   SSLProtocol           all -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
+		   SSLHonorCipherOrder   on
+		   SSLCipherSuite        "EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4"
 
 		   <Files ~ "\\.(cgi|shtml|phtml|php3?)\$">
 		      SSLOptions +StdEnvVars
@@ -221,6 +222,29 @@ function apache_initial
 		      nokeepalive ssl-unclean-shutdown \\
 		      downgrade-1.0 force-response-1.0
 	EOF
+
+	if cvw_xml -c software/apache/mta_sts ; then
+		_target=$(cvw_xml -r software/apache/mta_sts)
+		_base=$(cvw_xml -r system/app_root)/mta_sts
+		[[ -s /tmp/cvw/error ]] && exit 1
+		mkdir -p $_base
+		_file=$_base/mta-sts.txt
+		cat >$_file.tmp_VW <<-EOF
+			version: STSv1
+			mode: testing
+			max_age: 86400
+			mx: $_target
+		EOF
+		cvw_file -v $_file
+		cat >>$_CONF_FILE.tmp_VW <<-EOF
+
+			   Alias /.well-known/mta-sts.txt $_base/mta-sts.txt
+			   <Directory $_base>
+			      AllowOverride None
+			      Require all granted
+			   </Directory>
+		EOF
+	fi
 
 	if cvw_xml -c software/apache/redir_root ; then
 		_target=$(cvw_xml -r software/apache/redir_root)
