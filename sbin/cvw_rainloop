@@ -1,0 +1,137 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_rainloop - Install or remove RainLoop webmail
+######                https://www.rainloop.net/
+######                https://www.rainloop.net/docs/installation/
+######
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="RainLoop webmail"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function generate
+{
+	cat <<-EOF
+	    <rainloop active="true">
+	      <uri>/rainloop</uri>
+	    </rainloop>
+
+	EOF
+	exit 0
+}
+
+
+function rainloop_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/php || cvw_say -f "$_prog: requires php"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _root=$(cvw_xml -r system/app_root)/rainloop
+	local _uri=$(cvw_xml -r software/rainloop/uri)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _file _bkup _version
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      URL .....................: https://$_fqdn$_uri/
+		EOF
+		[[ -s /tmp/cvw/error ]] && exit 1
+	fi
+
+	cvw_unpack -i rainloop $_root/download VERSION
+	if [[ ! -h $_root/app ]] ; then
+		_version=$(cat $_root/download/VERSION 2>/tmp/cvw/error)
+		[[ -s /tmp/cvw/error ]] && exit 1
+		ln -nfs $_root/download/v/$_version $_root/app
+	fi
+
+	if cvw_xml -a software/nginx ; then
+		cvw_nginx -p rainloop
+	fi
+
+	if cvw_xml -a software/apache ; then
+		cvw_apache -p rainloop
+	fi
+
+	if [[ -x /usr/local/bin/bb.create ]] ; then
+		_bkup="/etc/cron.daily/bkup.rainloop"
+		cat >$_bkup.tmp_VW <<-EOF
+			#!/bin/bash
+			set -e
+			cd $_root
+
+			/usr/local/bin/bb.create rainloop app
+			/usr/local/bin/bb.prune  rainloop
+		EOF
+		cvw_file -m 0775 -v $_bkup
+		ln -nfs $_bkup /usr/local/bin/bkup.rainloop
+		rm -f /usr/local/bin/rstr.rainloop
+	else
+		cvw_backup rainloop $_root/app
+	fi
+
+	cvw_url -a "$_name" $_uri
+
+	cvw_say -o "rainloop"
+}
+
+
+while getopts ":ig" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/rainloop ; then
+				rainloop_install
+			else
+				cvw_php -z rainloop
+			fi
+			exit 0
+		;;
+
+		g)
+			generate
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

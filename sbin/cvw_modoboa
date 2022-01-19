@@ -1,0 +1,249 @@
+#!/bin/bash
+# vim: set ts=8 tw=0 noet :
+
+#################################################################################
+######
+###### cvw_modoboa - Install or remove Modoboa Mail Server
+######               https://modoboa.org/en/
+######               https://modoboa.readthedocs.io/en/latest/installation.html
+######
+###### (c) 2016-2022 Volker Wiegand <volker.wiegand@cvw.de>
+######               This file is part of "CVW Config"
+######               See LICENSE for copyright information
+######
+#################################################################################
+
+# Exit on error
+set -e -o pipefail
+
+# Remember the args
+_prog=${0##*/}
+_args="$*"
+_name="Modoboa"
+_slug="modoboa"
+
+
+function usage
+{
+	rm -rf /tmp/cvw_error
+	cat >/tmp/cvw_error <<-EOF
+		Syntax: $_prog -i   Install or remove $_name
+		    or: $_prog -g   Generate config template
+		Called with: '$_prog $_args'
+	EOF
+
+	if [[ -d /tmp/cvw ]] ; then
+		cat /tmp/cvw_error >>/tmp/cvw/error
+	else
+		cat /tmp/cvw_error >&2
+	fi
+	rm -f /tmp/cvw_error
+
+	exit 1
+}
+
+
+function generate
+{
+	local _fqdn=$(cvw_xml -r host/fqdn)
+
+	cat <<-EOF
+	    <$_slug active="true">
+	      <socket>inet:8893@localhost</socket>
+	      <milter>inet:localhost:8893</milter>
+	      <email>admin@${_fqdn#*.}</email>
+	      <order>15</order>
+	    </$_slug>
+
+	EOF
+	exit 0
+}
+
+
+function modoboa_install
+{
+	cvw_say -h "Installing $_name"
+	cvw_xml -a software/certbot || cvw_say -f "$_prog: requires certbot"
+	local _fqdn=$(cvw_xml -r host/fqdn)
+	local _addr=$(cvw_xml -r host/addr)
+	local _zone=$(cvw_xml -r system/timezone)
+	local _root=$(cvw_xml -r system/app_root)
+	local _pswd=$(cvw_xml -r software/$_slug/password)
+	[[ -s /tmp/cvw/error ]] && exit 1
+	local _domain=${_fqdn#*.}
+	local _rpm _file
+
+	if [[ -s /tmp/cvw/info ]] ; then
+		cat >>/tmp/cvw/info <<-EOF
+			    ====== $_name ======
+			      FQDN ....................: $_fqdn
+			      Domain ..................: $_domain
+			      Time zone ...............: $_zone
+		EOF
+	fi
+
+	for _rpm in \
+		python-virtualenv  \
+		python3-pip \
+		amavis \
+		spamassassin \
+		clamav \
+		clamav-update
+	do
+		cvw_rpm -i $_rpm
+	done
+
+	_file=/root/modoboa-installer/installer.cfg
+	cat >$_file.tmp_VW <<-EOF
+		[general]
+		hostname = $_fqdn
+
+		[certificate]
+		generate = false
+		type = letsencrypt
+
+		[letsencrypt]
+		email = admin@$_domain
+
+		[database]
+		engine = mysql
+		host = 127.0.0.1
+		install = false
+
+		[mysql]
+		# user = root
+		# password = root-pswd
+		charset = utf8
+		collation = utf8_general_ci
+
+		[modoboa]
+		user = modoboa
+		home_dir = $_root/modoboa
+		venv_path = %(home_dir)s/env
+		instance_path = %(home_dir)s/instance
+		timezone = $_zone
+		dbname = $_slug
+		dbuser = $_slug
+		dbpassword = $_pswd
+		extensions = modoboa-amavis modoboa-pdfcredentials modoboa-postfix-autoreply modoboa-sievefilters modoboa-webmail modoboa-contacts modoboa-radicale
+		devmode = false
+
+		[automx]
+		enabled = true
+		user = automx
+		config_dir = /etc
+		home_dir = $_root/automx
+		venv_path = %(home_dir)s/env
+		instance_path = %(home_dir)s/instance
+
+		[amavis]
+		enabled = true
+		user = amavis
+		max_servers = 1
+		dbname = amavis
+		dbuser = amavis
+		dbpassword = $_pswd
+
+		[clamav]
+		enabled = true
+		user = clamav
+
+		[dovecot]
+		enabled = true
+		config_dir = /etc/dovecot
+		user = vmail
+		home_dir = $_root/vmail
+		mailboxes_owner = vmail
+		extra_protocols = 
+		postmaster_address = postmaster@%(domain)s
+		radicale_auth_socket_path = /var/run/dovecot/auth-radicale
+
+		[nginx]
+		enabled = true
+		config_dir = /etc/nginx
+
+		[razor]
+		enabled = true
+		config_dir = /etc/razor
+
+		[postfix]
+		enabled = true
+		config_dir = /etc/postfix
+		message_size_limit = 11534336
+
+		[postwhite]
+		enabled = true
+		config_dir = /etc
+
+		[spamassassin]
+		enabled = true
+		config_dir = /etc/mail/spamassassin
+		dbname = spamassassin
+		dbuser = spamassassin
+		dbpassword = $_pswd
+
+		[uwsgi]
+		enabled = true
+		config_dir = /etc/uwsgi
+		nb_processes = 2
+
+		[radicale]
+		enabled = true
+		user = radicale
+		config_dir = /etc/radicale
+		home_dir = $_root/radicale
+		venv_path = %(home_dir)s/env
+
+		[opendkim]
+		enabled = true
+		user = opendkim
+		config_dir = /etc
+		port = 12345
+		keys_storage_dir = /var/lib/dkim
+		dbuser = opendkim
+		dbpassword = $_pswd
+	EOF
+	cvw_file -v $_file
+
+	cvw_say -o "$_slug"
+}
+
+
+function modoboa_remove
+{
+	local _file
+
+	if cvw_rpm -c modoboa ; then
+		cvw_say -h "Removing $_name"
+		cvw_rpm -e modoboa
+		rm -rf /etc/modoboa*
+		cvw_say -o "$_slug:remove"
+	fi
+}
+
+
+while getopts ":ig" opt ; do
+	case $opt in
+		i)
+			if cvw_xml -a software/$_slug ; then
+				modoboa_install
+			else
+				modoboa_remove
+			fi
+			exit 0
+		;;
+
+		g)
+			generate
+			exit 0
+		;;
+
+		\?)
+			usage
+		;;
+	esac
+done
+shift $(($OPTIND-1))
+
+usage
+

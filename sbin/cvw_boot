@@ -98,6 +98,7 @@ cvw_opendmarc      -i ; error_check
 cvw_spamassassin   -i ; error_check
 cvw_rspamd         -i ; error_check
 cvw_clamav         -i ; error_check
+cvw_modoboa        -i ; error_check
 cvw_redis          -i ; error_check
 cvw_memcache       -i ; error_check
 cvw_openldap       -i ; error_check
@@ -136,6 +137,7 @@ cvw_agendav        -i ; error_check
 cvw_prosody        -i ; error_check
 cvw_shariff        -i ; error_check
 cvw_roundcube      -i ; error_check
+cvw_rainloop       -i ; error_check
 cvw_squirrelmail   -i ; error_check
 cvw_mantis         -i ; error_check
 cvw_openproject    -i ; error_check

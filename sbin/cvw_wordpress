@@ -55,7 +55,7 @@ function wordpress_generate
 	      <password>$(cvw -p 20)</password>
 	      <title>WordPress Blog</title>
 	      <admin>
-	        <name>Blog Admin</name>
+	        <name>FeWo Admin</name>
 	        <password>$(cvw -p 20)</password>
 	        <email>admin@$_domain</email>
 	      </admin>
@@ -83,7 +83,6 @@ function wordpress_install
 	local _uri=$(cvw_xml -r software/$_slug/uri)
 	local _pass=$(cvw_xml -r software/$_slug/password)
 	[[ -s /tmp/cvw/error ]] && exit 1
-	cvw_user -s wordpress
 	local _app=$_root/app
 	local _conf _file _subdir _bkup
 

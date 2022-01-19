@@ -149,7 +149,7 @@ function mailcow_install
 		export MAILCOW_BACKUP_LOCATION=$_backups
 
 		cd $_base
-		./helper-scripts/backup_and_restore.sh backup all --delete-days 3
+		./helper-scripts/backup_and_restore.sh backup all --delete-days 2
 
 		if [[ -x /usr/local/bin/bb.create ]] ; then
 		  /usr/local/bin/bb.create $_slug $_backups

@@ -10,7 +10,7 @@
 ######               https://github.com/volkerwiegand/postfix-go
 ######               https://devops.profitbricks.com/tutorials/configure-a-postfix-relay-through-gmail-on-centos-7/
 ######
-###### (c) 2016-2019 Volker Wiegand <volker.wiegand@cvw.de>
+###### (c) 2016-2021 Volker Wiegand <volker.wiegand@cvw.de>
 ######               This file is part of "CVW Config"
 ######               See LICENSE for copyright information
 ######
@@ -477,8 +477,10 @@ function postfix_install_smarthost
 	if [[ -s /tmp/cvw/info ]] ; then
 		cat >>/tmp/cvw/info <<-EOF
 			    ====== $_name ======
-			      Smarthost / Port ........: $_host:$_port
-			      Login / Password ........: $_user:$_pass
+			      Smarthost ...............: $_host
+			      SMTP Port ...............: $_port
+			      Login ...................: $_user
+			      Password ................: $_pass
 		EOF
 	fi
 

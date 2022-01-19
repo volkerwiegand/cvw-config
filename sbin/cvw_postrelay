@@ -121,7 +121,9 @@ while getopts ":i" opt ; do
 			if cvw_xml -a software/$_slug ; then
 				postrelay_install
 			else
-				postrelay_remove
+				if ! cvw_xml -a software/postfix ; then
+					postrelay_remove
+				fi
 			fi
 			exit 0
 		;;
